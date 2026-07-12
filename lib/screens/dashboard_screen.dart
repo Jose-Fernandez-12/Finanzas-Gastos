@@ -101,12 +101,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final cuentasMora = data['cuentas_en_mora'] as List<dynamic>;
           final tarjetasData = data['tarjetas'] as List<dynamic>;
 
+          // Calcular alertas de pago para los próximos 3 días
+          final now = DateTime.now();
+          final limitDate = now.add(const Duration(days: 3));
+          final List<Map<String, dynamic>> alertasVencimiento = [];
+
+          // 1. Tarjetas
+          for (var c in proximasCuotas) {
+            final Map<String, dynamic> cuota = Map<String, dynamic>.from(c);
+            final fechaVencStr = cuota['fecha_vencimiento']?.toString();
+            if (fechaVencStr != null) {
+              final fechaVenc = DateTime.tryParse(fechaVencStr);
+              if (fechaVenc != null && fechaVenc.isAfter(now.subtract(const Duration(days: 1))) && fechaVenc.isBefore(limitDate)) {
+                final diffDays = fechaVenc.difference(now).inDays + 1;
+                alertasVencimiento.add({
+                  'tipo': 'Tarjeta',
+                  'descripcion': '${cuota['compra_descripcion'] ?? 'Cuota'} (${cuota['nombre_tarjeta'] ?? 'TC'})',
+                  'monto': (cuota['valor_cuota'] as num?)?.toDouble() ?? 0.0,
+                  'vence_en': '$diffDays día(s)',
+                });
+              }
+            }
+          }
+
+          // 2. Cuentas en mora
+          for (var c in cuentasMora) {
+            alertasVencimiento.add({
+              'tipo': 'Deudores en Mora',
+              'descripcion': 'Cobro atrasado de ${c['nombre_deudor']}',
+              'monto': (c['saldo_pendiente'] as num?)?.toDouble() ?? 0.0,
+              'vence_en': 'VENCIDO',
+            });
+          }
+
           return RefreshIndicator(
             color: AppTheme.primary,
             onRefresh: () async => ref.invalidate(dashboardProvider),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // --- Banner de Alertas de Pago ---
+                if (alertasVencimiento.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF5252), Color(0xFFFF1744)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF1744).withAlpha(60),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.notification_important_rounded, color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'ALERTAS DE PAGO PENDIENTES',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...alertasVencimiento.map((al) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${al['tipo']}: ${al['descripcion']}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '${formatCOP(al['monto'] as double)} (${al['vence_en']})',
+                                style: AppTheme.monoStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // --- Capacidad Crediticia ---
                 CapacidadCrediticiaCard(
                   pct: pctEndeudamiento,

@@ -10,9 +10,19 @@ import 'screens/gastos_screen.dart';
 import 'screens/ahorros_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 
+import 'core/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es', null);
+
+  // Inicializar notificaciones
+  final notifService = NotificationService.instance;
+  await notifService.init();
+  await notifService.requestPermissions();
+  
+  // Analizar y notificar deudas/pagos próximos
+  await notifService.checkAndNotifyUpcomingPayments();
 
   runApp(
     const ProviderScope(
