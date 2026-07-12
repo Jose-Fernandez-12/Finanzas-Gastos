@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../providers/app_providers.dart';
+import '../providers/analytics_provider.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import 'dart:math' as math;
 
-class AnalyticsScreen extends StatefulWidget {
+class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({Key? key}) : super(key: key);
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   String _selectedMonth = mesActual();
   List<dynamic> _gastosDelMes = [];
   double _mesIngresos = 0.0;
@@ -26,7 +26,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AnalyticsProvider>().cargar();
+      // ref.invalidate(analyticsProvider(_pctAbonoExtra));
       _fetchGastosDelMes();
     });
   }
@@ -58,7 +58,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AnalyticsProvider>();
+    final analyticsAsync = ref.watch(analyticsProvider(_pctAbonoExtra));
 
     return Scaffold(
       appBar: AppBar(
@@ -68,24 +68,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         iconTheme: const IconThemeData(color: AppTheme.textPrimary),
       ),
       backgroundColor: AppTheme.bgCanvas,
-      body: provider.loading || _loadingGastos
+      body: _loadingGastos
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : provider.error != null
-              ? Center(child: Text('Error: ${provider.error}', style: const TextStyle(color: AppTheme.colorGastos)))
-              : _buildContent(provider),
+          : analyticsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+              error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppTheme.colorGastos))),
+              data: (provider) => _buildContent(provider),
+            ),
     );
   }
 
-  Widget _buildContent(AnalyticsProvider provider) {
+  Widget _buildContent(Map<String, dynamic> provider) {
     // Construir historical dinámico con el mes seleccionado para que la gráfica no quede vacía
     final historical = [
       {'label': _selectedMonth, 'ingresos': _mesIngresos, 'egresos': _mesEgresos}
     ];
-    final proyeccion = provider.proyeccion;
+    final proyeccion = provider['proyeccion'] as List<dynamic>? ?? [];
 
     // Calcular datos de endeudamiento
-    final double endeudamientoPct = (provider.deudaTarjetas + provider.cuentasPorCobrar) > 0
-        ? (provider.deudaTarjetas / (provider.deudaTarjetas + provider.cuentasPorCobrar) * 100)
+    final double deudaTarjetas = (provider['deuda_tarjetas'] as num?)?.toDouble() ?? 0.0;
+    final double cuentasPorCobrar = (provider['cuentas_por_cobrar'] as num?)?.toDouble() ?? 0.0;
+    final double endeudamientoPct = (deudaTarjetas + cuentasPorCobrar) > 0
+        ? (deudaTarjetas / (deudaTarjetas + cuentasPorCobrar) * 100)
         : 0.0;
     final String nivelRiesgo = endeudamientoPct > 60
         ? 'Alto'
@@ -129,7 +133,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             const SizedBox(height: 10),
             _buildAbonoExtraSlider(),
             const SizedBox(height: 16),
-            _buildLineChart(proyeccion, provider.mesLibreDeDeuda),
+            _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? ''),
             const SizedBox(height: 24),
           ],
 
@@ -233,7 +237,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildEndeudamientoCard(double pct, String nivel, AnalyticsProvider provider) {
+  Widget _buildEndeudamientoCard(double pct, String nivel, Map<String, dynamic> provider) {
     final color = AppTheme.colorPorRiesgo(nivel);
 
     return Container(
@@ -309,7 +313,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(formatCOP(provider.cuentasPorCobrar), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text(formatCOP((provider['cuentas_por_cobrar'] as num?)?.toDouble() ?? 0.0), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                   ],
                 ),
               ),
@@ -325,7 +329,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(formatCOP(provider.deudaTarjetas), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text(formatCOP((provider['deuda_tarjetas'] as num?)?.toDouble() ?? 0.0), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                   ],
                 ),
               ),
@@ -644,9 +648,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     setStateSlider(() => _pctAbonoExtra = val);
                   },
                   onChangeEnd: (val) {
-                    // Update global state but silent to prevent screen blanking
-                    _pctAbonoExtra = val;
-                    context.read<AnalyticsProvider>().cargar(pctAbonoExtra: val, silent: true);
+                    // Update global state
+                    setState(() {
+                      _pctAbonoExtra = val;
+                    });
                   },
                 ),
               ),

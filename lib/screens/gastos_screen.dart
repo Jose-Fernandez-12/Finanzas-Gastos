@@ -1,30 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
-import '../providers/app_providers.dart';
+import '../providers/gastos_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../models/gasto_fijo.dart';
 
-class GastosScreen extends StatefulWidget {
+class GastosScreen extends ConsumerStatefulWidget {
   const GastosScreen({super.key});
   @override
-  State<GastosScreen> createState() => _GastosScreenState();
+  ConsumerState<GastosScreen> createState() => _GastosScreenState();
 }
 
-class _GastosScreenState extends State<GastosScreen> {
+class _GastosScreenState extends ConsumerState<GastosScreen> {
   final String _mes = mesActual();
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GastosProvider>().cargar(mes: _mes);
-    });
-  }
+  // initState removed as Riverpod handles initial load on watch
 
   @override
   Widget build(BuildContext context) {
+    final gastosAsync = ref.watch(gastosProvider(_mes));
     return Scaffold(
       backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
@@ -34,19 +31,22 @@ class _GastosScreenState extends State<GastosScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary),
-            onPressed: () => context.read<GastosProvider>().cargar(mes: _mes),
+            onPressed: () => ref.invalidate(gastosProvider(_mes)),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showForm(context),
+        onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.colorGastos,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
-      body: Consumer<GastosProvider>(
-        builder: (context, prov, _) {
-          if (prov.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-          final mesStr = prov.mes.isNotEmpty ? prov.mes : _mes;
+      body: gastosAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (gastosList) {
+          final mesStr = _mes;
+          double total = 0.0;
+          for(var g in gastosList) total += g.monto;
 
           return Column(
             children: [
@@ -55,7 +55,7 @@ class _GastosScreenState extends State<GastosScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: _TotalBanner(
                   label: 'Total Gastos (${formatMes(mesStr)})',
-                  monto: prov.total,
+                  monto: total,
                   color: AppTheme.colorGastos,
                 ),
               ),
@@ -74,18 +74,18 @@ class _GastosScreenState extends State<GastosScreen> {
 
               // Lista
               Expanded(
-                child: prov.gastos.isEmpty
+                child: gastosList.isEmpty
                     ? Center(child: Text('Sin gastos registrados en ${formatMes(mesStr)}', style: const TextStyle(color: AppTheme.textSecondary)))
                     : RefreshIndicator(
                         color: AppTheme.primary,
-                        onRefresh: () => prov.cargar(mes: _mes),
+                        onRefresh: () async => ref.invalidate(gastosProvider(_mes)),
                         child: ListView.builder(
                           padding:     const EdgeInsets.all(16).copyWith(top: 4),
-                          itemCount:   prov.gastos.length,
+                          itemCount:   gastosList.length,
                           itemBuilder: (ctx, i) => _GastoItem(
-                            gasto: prov.gastos[i],
-                            onEdit: () => _showForm(context, gasto: prov.gastos[i]),
-                            onDelete: () => _confirmDelete(context, prov.gastos[i]),
+                            gasto: gastosList[i],
+                            onEdit: () => _showForm(context, ref, gasto: gastosList[i]),
+                            onDelete: () => _confirmDelete(context, ref, gastosList[i]),
                           ),
                         ),
                       ),
@@ -97,7 +97,7 @@ class _GastosScreenState extends State<GastosScreen> {
     );
   }
 
-  void _showForm(BuildContext context, {Map<String, dynamic>? gasto}) {
+  void _showForm(BuildContext context, WidgetRef ref, {GastoFijo? gasto}) {
     showModalBottomSheet(
       context:            context,
       isScrollControlled: true,
@@ -106,29 +106,29 @@ class _GastosScreenState extends State<GastosScreen> {
       builder:            (_) => _FormGasto(
         gastoExistente: gasto,
         onSave: () {
-          context.read<GastosProvider>().cargar(mes: _mes);
-          context.read<DashboardProvider>().cargar();
+          ref.invalidate(gastosProvider(_mes));
+          ref.invalidate(dashboardProvider);
         },
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, Map<String, dynamic> gasto) {
+  void _confirmDelete(BuildContext context, WidgetRef ref, GastoFijo gasto) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.bgCard,
         title: const Text('Eliminar gasto', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
-        content: Text('¿Seguro que deseas eliminar "${gasto['nombre']}"?', style: const TextStyle(color: AppTheme.textSecondary)),
+        content: Text('¿Seguro que deseas eliminar "${gasto.nombre}"?', style: const TextStyle(color: AppTheme.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await LocalRepository.instance.deleteGastoFijo(gasto['id'] as int);
+              await LocalRepository.instance.deleteGastoFijo(gasto.id);
               if (context.mounted) {
-                context.read<GastosProvider>().cargar(mes: _mes);
-                context.read<DashboardProvider>().cargar();
+                ref.invalidate(gastosProvider(_mes));
+                ref.invalidate(dashboardProvider);
               }
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
@@ -214,21 +214,21 @@ class _TotalBanner extends StatelessWidget {
   );
 }
 
-class _GastoItem extends StatelessWidget {
-  final Map<String, dynamic> gasto;
+class _GastoItem extends ConsumerWidget {
+  final GastoFijo gasto;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   const _GastoItem({required this.gasto, required this.onEdit, required this.onDelete});
 
   @override
-  Widget build(BuildContext context) {
-    final color = hexToColor(gasto['color'] as String? ?? '#EF4444');
-    final String? ultimoPago = gasto['fecha_ultimo_pago'] as String?;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final color = hexToColor(gasto.categoriaColor ?? '#EF4444');
+    final String? ultimoPago = gasto.fechaUltimoPago;
     final String currentMonth = DateTime.now().toString().substring(0, 7);
     final bool isPaidThisMonth = ultimoPago != null && ultimoPago.startsWith(currentMonth);
-    final bool esFijo = (gasto['es_fijo'] as int? ?? 1) == 1;
-    final String mesRef = gasto['mes_referencia']?.toString() ?? currentMonth;
-    final String catIconName = gasto['icono']?.toString() ?? 'shopping_cart';
+    final bool esFijo = gasto.esFijo == 1;
+    final String mesRef = gasto.mesReferencia.isNotEmpty ? gasto.mesReferencia : currentMonth;
+    final String catIconName = gasto.categoriaIcono ?? 'shopping_cart';
     final IconData icon = isPaidThisMonth ? Icons.check_circle_rounded : getCategoryIcon(catIconName);
     final Color itemColor = isPaidThisMonth ? Colors.green : color;
 
@@ -265,14 +265,14 @@ class _GastoItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  gasto['nombre'] as String? ?? '', 
+                  gasto.nombre, 
                   style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)
                 ),
                 const SizedBox(height: 3),
                 Text(
                   esFijo
-                      ? '${gasto['categoria_nombre'] ?? 'Fijo'} • Fijo mensual • Día ${gasto['dia_pago'] ?? '-'}'
-                      : '${gasto['categoria_nombre'] ?? 'Variable'} • Gasto del mes (${formatMes(mesRef)})',
+                      ? '${gasto.categoriaNombre ?? 'Fijo'} • Fijo mensual • Día ${gasto.diaPago}'
+                      : '${gasto.categoriaNombre ?? 'Variable'} • Gasto del mes (${formatMes(mesRef)})',
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)
                 ),
               ],
@@ -282,7 +282,7 @@ class _GastoItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '-${formatCOP((gasto['monto'] as num).toDouble())}',
+                '-${formatCOP(gasto.monto)}',
                 style: AppTheme.monoStyle(color: AppTheme.colorGastos, fontWeight: FontWeight.w700, fontSize: 15),
               ),
               const SizedBox(height: 2),
@@ -292,10 +292,10 @@ class _GastoItem extends StatelessWidget {
                 onSelected: (val) async {
                   if (val == 'pay') {
                     try {
-                      await LocalRepository.instance.pagarGastoFijo(gasto['id'] as int);
+                      await LocalRepository.instance.pagarGastoFijo(gasto.id);
                       if (context.mounted) {
-                        context.read<GastosProvider>().cargar(mes: context.read<GastosProvider>().mes);
-                        context.read<DashboardProvider>().cargar();
+                        ref.invalidate(gastosProvider(currentMonth)); // Assuming _mes is currentMonth here roughly, or just reload current
+                        ref.invalidate(dashboardProvider);
                       }
                     } catch (e) {
                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al pagar: $e')));
@@ -323,7 +323,7 @@ class _GastoItem extends StatelessWidget {
 
 class _FormGasto extends StatefulWidget {
   final VoidCallback onSave;
-  final Map<String, dynamic>? gastoExistente;
+  final GastoFijo? gastoExistente;
   const _FormGasto({required this.onSave, this.gastoExistente});
 
   @override
@@ -344,11 +344,11 @@ class _FormGastoState extends State<_FormGasto> {
   void initState() {
     super.initState();
     if (widget.gastoExistente != null) {
-      _nombre.text = widget.gastoExistente!['nombre'] ?? '';
-      _monto.text  = widget.gastoExistente!['monto'].toString();
-      _dia.text    = widget.gastoExistente!['dia_pago']?.toString() ?? '';
-      _categoriaId = widget.gastoExistente!['categoria_id'] as int?;
-      _esFijo      = (widget.gastoExistente!['es_fijo'] as int? ?? 1) == 1;
+      _nombre.text = widget.gastoExistente!.nombre;
+      _monto.text  = widget.gastoExistente!.monto.toString();
+      _dia.text    = widget.gastoExistente!.diaPago.toString();
+      _categoriaId = widget.gastoExistente!.categoriaId;
+      _esFijo      = widget.gastoExistente!.esFijo == 1;
     }
     LocalRepository.instance.getCategoriasGasto().then((r) {
       setState(() {
@@ -453,7 +453,7 @@ class _FormGastoState extends State<_FormGasto> {
       };
       
       if (widget.gastoExistente != null) {
-        await LocalRepository.instance.updateGastoFijo(widget.gastoExistente!['id'] as int, data);
+        await LocalRepository.instance.updateGastoFijo(widget.gastoExistente!.id, data);
       } else {
         await LocalRepository.instance.createGastoFijo(data);
       }

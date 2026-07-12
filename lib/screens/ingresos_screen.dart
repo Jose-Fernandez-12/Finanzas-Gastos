@@ -1,30 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
-import '../providers/app_providers.dart';
+import '../providers/ingresos_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../models/ingreso.dart';
 
-class IngresosScreen extends StatefulWidget {
+class IngresosScreen extends ConsumerStatefulWidget {
   const IngresosScreen({super.key});
   @override
-  State<IngresosScreen> createState() => _IngresosScreenState();
+  ConsumerState<IngresosScreen> createState() => _IngresosScreenState();
 }
 
-class _IngresosScreenState extends State<IngresosScreen> {
+class _IngresosScreenState extends ConsumerState<IngresosScreen> {
   final String _mes = mesActual();
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<IngresosProvider>().cargar(mes: _mes);
-    });
-  }
+  // initState not needed since watch handles initial load
 
   @override
   Widget build(BuildContext context) {
+    final ingresosAsync = ref.watch(ingresosProvider(_mes));
     return Scaffold(
       backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
@@ -35,18 +32,21 @@ class _IngresosScreenState extends State<IngresosScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary),
-            onPressed: () => context.read<IngresosProvider>().cargar(mes: _mes),
+            onPressed: () => ref.invalidate(ingresosProvider(_mes)),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showForm(context),
+        onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.colorIngresos,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
-      body: Consumer<IngresosProvider>(
-        builder: (context, prov, _) {
-          if (prov.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+      body: ingresosAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (ingresosList) {
+          double total = 0.0;
+          for(var i in ingresosList) total += i.monto;
 
           return Column(
             children: [
@@ -55,7 +55,7 @@ class _IngresosScreenState extends State<IngresosScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: _TotalBanner(
                   label: 'Total Mes Actual',
-                  monto: prov.total,
+                  monto: total,
                   color: AppTheme.colorIngresos,
                 ),
               ),
@@ -74,17 +74,17 @@ class _IngresosScreenState extends State<IngresosScreen> {
 
               // Lista
               Expanded(
-                child: prov.ingresos.isEmpty
+                child: ingresosList.isEmpty
                     ? const _Empty(mensaje: 'Sin ingresos registrados este mes')
                     : RefreshIndicator(
                         color:     AppTheme.primary,
-                        onRefresh: () => prov.cargar(mes: _mes),
+                        onRefresh: () async => ref.invalidate(ingresosProvider(_mes)),
                         child: ListView.builder(
                           padding:     const EdgeInsets.all(16).copyWith(top: 4),
-                          itemCount:   prov.ingresos.length,
+                          itemCount:   ingresosList.length,
                           itemBuilder: (ctx, i) => _IngresoItem(
-                            ingreso: prov.ingresos[i],
-                            onEdit: (ingresoToEdit) => _showForm(context, ingreso: ingresoToEdit),
+                            ingreso: ingresosList[i],
+                            onEdit: (ingresoToEdit) => _showForm(context, ref, ingreso: ingresoToEdit),
                           ),
                         ),
                       ),
@@ -96,7 +96,7 @@ class _IngresosScreenState extends State<IngresosScreen> {
     );
   }
 
-  void _showForm(BuildContext context, {Map<String, dynamic>? ingreso}) {
+  void _showForm(BuildContext context, WidgetRef ref, {Ingreso? ingreso}) {
     showModalBottomSheet(
       context:            context,
       isScrollControlled: true,
@@ -105,8 +105,8 @@ class _IngresosScreenState extends State<IngresosScreen> {
       builder:            (_) => _FormIngreso(
         ingreso: ingreso,
         onSave: () {
-          context.read<IngresosProvider>().cargar(mes: _mes);
-          context.read<DashboardProvider>().cargar();
+          ref.invalidate(ingresosProvider(_mes));
+          ref.invalidate(dashboardProvider);
         }
       ),
     );
@@ -188,15 +188,15 @@ class _TotalBanner extends StatelessWidget {
   );
 }
 
-class _IngresoItem extends StatelessWidget {
-  final Map<String, dynamic> ingreso;
-  final Function(Map<String, dynamic>) onEdit;
+class _IngresoItem extends ConsumerWidget {
+  final Ingreso ingreso;
+  final Function(Ingreso) onEdit;
   const _IngresoItem({required this.ingreso, required this.onEdit});
 
   @override
-  Widget build(BuildContext context) {
-    final color = hexToColor(ingreso['color'] as String? ?? '#10B981');
-    final String catIconName = ingreso['icono']?.toString() ?? 'trending_up';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final color = hexToColor(ingreso.categoriaColor ?? '#10B981');
+    final String catIconName = ingreso.categoriaIcono ?? 'trending_up';
     final IconData icon = getCategoryIcon(catIconName);
 
     return Container(
@@ -232,12 +232,12 @@ class _IngresoItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  ingreso['descripcion'] as String? ?? '', 
+                  ingreso.descripcion ?? '', 
                   style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${ingreso['categoria_nombre'] ?? 'General'} • ${formatFecha(ingreso['fecha']?.toString())}',
+                  '${ingreso.categoriaNombre ?? 'General'} • ${formatFecha(ingreso.fecha)}',
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)
                 ),
               ],
@@ -247,7 +247,7 @@ class _IngresoItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '+${formatCOP((ingreso['monto'] as num).toDouble())}',
+                '+${formatCOP(ingreso.monto)}',
                 style: AppTheme.monoStyle(color: AppTheme.colorIngresos, fontWeight: FontWeight.w700, fontSize: 15),
               ),
               const SizedBox(width: 12),
@@ -266,7 +266,7 @@ class _IngresoItem extends StatelessWidget {
 }
 
 class _FormIngreso extends StatefulWidget {
-  final Map<String, dynamic>? ingreso;
+  final Ingreso? ingreso;
   final VoidCallback onSave;
   const _FormIngreso({this.ingreso, required this.onSave});
 
@@ -295,11 +295,11 @@ class _FormIngresoState extends State<_FormIngreso> {
     setState(() => _categorias = r['data'] ?? []);
     if (widget.ingreso != null) {
       final i = widget.ingreso!;
-      _categoriaId = i['categoria_id'] as int?;
-      _desc.text = i['descripcion']?.toString() ?? '';
-      _monto.text = i['monto']?.toString() ?? '';
-      _fecha.text = i['fecha']?.toString() ?? '';
-      _esFijo = (i['es_fijo'] as int? ?? 1) == 1;
+      _categoriaId = i.categoriaId;
+      _desc.text = i.descripcion ?? '';
+      _monto.text = i.monto.toString();
+      _fecha.text = i.fecha;
+      _esFijo = i.esFijo == 1;
     } else {
       if (_categorias.isNotEmpty) _categoriaId = _categorias[0]['id'] as int;
     }
@@ -418,7 +418,7 @@ class _FormIngresoState extends State<_FormIngreso> {
               Navigator.pop(ctx);
               setState(() => _saving = true);
               try {
-                await LocalRepository.instance.deleteIngreso(widget.ingreso!['id'] as int);
+                await LocalRepository.instance.deleteIngreso(widget.ingreso!.id);
                 if (mounted) {
                   Navigator.pop(context);
                   widget.onSave();
@@ -442,7 +442,7 @@ class _FormIngresoState extends State<_FormIngreso> {
     try {
       final double monto = double.tryParse(_monto.text) ?? 0.0;
       if (widget.ingreso != null && monto <= 0) {
-        await LocalRepository.instance.deleteIngreso(widget.ingreso!['id'] as int);
+        await LocalRepository.instance.deleteIngreso(widget.ingreso!.id);
       } else {
         final reqData = {
           'categoria_id': _categoriaId,
@@ -456,7 +456,7 @@ class _FormIngresoState extends State<_FormIngreso> {
             await LocalRepository.instance.createIngreso(reqData);
           }
         } else {
-          await LocalRepository.instance.updateIngreso(widget.ingreso!['id'] as int, reqData);
+          await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);
         }
       }
       if (mounted) { Navigator.pop(context); widget.onSave(); }

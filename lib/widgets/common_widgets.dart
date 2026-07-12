@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
+import '../models/bolsillo_ahorro.dart';
 
 /// Tarjeta resumen reutilizable para el dashboard (estilo Finanzas Light Impeccable)
 class SummaryCard extends StatelessWidget {
@@ -335,16 +336,16 @@ class CuotaRow extends StatelessWidget {
 
 /// Barra de progreso de ahorro (Estilo claro vibrante)
 class ProgresoAhorroBar extends StatelessWidget {
-  final Map<String, dynamic> bolsillo;
+  final BolsilloAhorro bolsillo;
 
   const ProgresoAhorroBar({super.key, required this.bolsillo});
 
   @override
   Widget build(BuildContext context) {
-    final actual = (bolsillo['monto_actual'] as num?)?.toDouble() ?? 0;
-    final meta   = (bolsillo['meta_monto']   as num?)?.toDouble() ?? 1;
-    final pct    = (bolsillo['progreso_pct'] as num?)?.toDouble() ?? (meta > 0 ? (actual / meta) * 100 : 0.0);
-    final color  = hexToColor(bolsillo['color'] as String? ?? '#3B82F6');
+    final actual = bolsillo.montoActual;
+    final meta   = bolsillo.metaMonto;
+    final pct    = meta > 0 ? (actual / meta) * 100 : 0.0;
+    final color  = hexToColor(bolsillo.color);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -374,7 +375,7 @@ class ProgresoAhorroBar extends StatelessWidget {
                 child: Icon(Icons.savings_rounded, color: color, size: 18),
               ),
               const SizedBox(width: 10),
-              Expanded(child: Text(bolsillo['nombre'] as String? ?? '', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14))),
+              Expanded(child: Text(bolsillo.nombre, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14))),
               Text('${pct.toStringAsFixed(0)}%', style: AppTheme.monoStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
             ],
           ),

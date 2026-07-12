@@ -6,24 +6,14 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gastos_e_ingresos/main.dart';
-import 'package:gastos_e_ingresos/providers/app_providers.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => DashboardProvider()),
-          ChangeNotifierProvider(create: (_) => TarjetasProvider()),
-          ChangeNotifierProvider(create: (_) => IngresosProvider()),
-          ChangeNotifierProvider(create: (_) => GastosProvider()),
-          ChangeNotifierProvider(create: (_) => AhorrosProvider()),
-          ChangeNotifierProvider(create: (_) => CuentasCobrarProvider()),
-          ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
-        ],
-        child: const FinanzasApp(),
+      const ProviderScope(
+        child: FinanzasApp(),
       ),
     );
   });

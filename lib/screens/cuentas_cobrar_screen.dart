@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
-import '../providers/app_providers.dart';
+import '../providers/cuentas_cobrar_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../models/cuenta_cobrar.dart';
 
-class CuentasCobrarScreen extends StatefulWidget {
+class CuentasCobrarScreen extends ConsumerStatefulWidget {
   const CuentasCobrarScreen({super.key});
   @override
-  State<CuentasCobrarScreen> createState() => _CuentasCobrarScreenState();
+  ConsumerState<CuentasCobrarScreen> createState() => _CuentasCobrarScreenState();
 }
 
-class _CuentasCobrarScreenState extends State<CuentasCobrarScreen> {
+class _CuentasCobrarScreenState extends ConsumerState<CuentasCobrarScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CuentasCobrarProvider>().cargar();
-    });
-  }
+  // initState not needed since watch handles initial load
 
   @override
   Widget build(BuildContext context) {
+    final cuentasAsync = ref.watch(cuentasCobrarProvider);
     return Scaffold(
       backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
@@ -33,24 +31,24 @@ class _CuentasCobrarScreenState extends State<CuentasCobrarScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary),
-            onPressed: () => context.read<CuentasCobrarProvider>().cargar(),
+            onPressed: () => ref.invalidate(cuentasCobrarProvider),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showForm(context),
+        onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.person_add_rounded, color: Colors.white, size: 28),
       ),
-      body: Consumer<CuentasCobrarProvider>(
-        builder: (context, prov, _) {
-          if (prov.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-
+      body: cuentasAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (cuentasList) {
           // Calcular el total pendiente de cobro
           double totalPendiente = 0.0;
-          for (var c in prov.cuentas) {
-            if (c['estado'] != 'CANCELADO') {
-              totalPendiente += (c['saldo_pendiente'] as num?)?.toDouble() ?? 0.0;
+          for (var c in cuentasList) {
+            if (c.estado != 'CANCELADO') {
+              totalPendiente += c.saldoPendiente;
             }
           }
 
@@ -74,21 +72,21 @@ class _CuentasCobrarScreenState extends State<CuentasCobrarScreen> {
               ),
 
               Expanded(
-                child: prov.cuentas.isEmpty
+                child: cuentasList.isEmpty
                     ? const Center(child: Text('Sin cuentas por cobrar', style: TextStyle(color: AppTheme.textSecondary)))
                     : RefreshIndicator(
                         color: AppTheme.primary,
-                        onRefresh: () => prov.cargar(),
+                        onRefresh: () async => ref.invalidate(cuentasCobrarProvider),
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16).copyWith(top: 4),
-                          itemCount: prov.cuentas.length,
+                          itemCount: cuentasList.length,
                           itemBuilder: (ctx, i) => _CuentaItem(
-                            cuenta: prov.cuentas[i],
+                            cuenta: cuentasList[i],
                             onPago: () {
-                              prov.cargar();
-                              context.read<DashboardProvider>().cargar();
+                              ref.invalidate(cuentasCobrarProvider);
+                              ref.invalidate(dashboardProvider);
                             },
-                            onEdit: () => _showForm(context, cuenta: prov.cuentas[i]),
+                            onEdit: () => _showForm(context, ref, cuenta: cuentasList[i]),
                           ),
                         ),
                       ),
@@ -100,7 +98,7 @@ class _CuentasCobrarScreenState extends State<CuentasCobrarScreen> {
     );
   }
 
-  void _showForm(BuildContext context, {Map<String, dynamic>? cuenta}) {
+  void _showForm(BuildContext context, WidgetRef ref, {CuentaCobrar? cuenta}) {
     showModalBottomSheet(
       context:            context,
       isScrollControlled: true,
@@ -109,8 +107,8 @@ class _CuentasCobrarScreenState extends State<CuentasCobrarScreen> {
       builder:            (_) => _FormCuenta(
         cuenta: cuenta,
         onSave: () {
-          context.read<CuentasCobrarProvider>().cargar();
-          context.read<DashboardProvider>().cargar();
+          ref.invalidate(cuentasCobrarProvider);
+          ref.invalidate(dashboardProvider);
         },
       ),
     );
@@ -173,9 +171,9 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _CuentaItem extends StatelessWidget {
-  final Map<String, dynamic> cuenta;
-  final VoidCallback         onPago;
-  final VoidCallback         onEdit;
+  final CuentaCobrar cuenta;
+  final VoidCallback onPago;
+  final VoidCallback onEdit;
   const _CuentaItem({required this.cuenta, required this.onPago, required this.onEdit});
 
   String getInitials(String name) {
@@ -189,14 +187,14 @@ class _CuentaItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final estado = cuenta['estado'] as String? ?? 'AL_DIA';
+    final estado = cuenta.estado;
     final color  = estado == 'MORA'      ? AppTheme.colorMora
                  : estado == 'CANCELADO' ? AppTheme.colorCancelado
                  : AppTheme.colorAlDia;
-    final saldo  = (cuenta['saldo_pendiente'] as num?)?.toDouble() ?? 0;
-    final total  = (cuenta['monto_total']     as num?)?.toDouble() ?? 1;
+    final saldo  = cuenta.saldoPendiente;
+    final total  = cuenta.montoTotal;
     final pct    = ((total - saldo) / total * 100).clamp(0.0, 100.0);
-    final String deudorNombre = cuenta['nombre_deudor'] as String? ?? 'Deudor';
+    final String deudorNombre = cuenta.nombreDeudor;
 
     return Container(
       margin:  const EdgeInsets.only(bottom: 16),
@@ -244,7 +242,7 @@ class _CuentaItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      cuenta['notas']?.toString() ?? 'Préstamo personal',
+                      cuenta.notas ?? 'Préstamo personal',
                       style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                     ),
                   ],
@@ -284,9 +282,9 @@ class _CuentaItem extends StatelessWidget {
               valueColor:      AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          if (cuenta['telefono'] != null) ...[
+          if (cuenta.telefono != null && cuenta.telefono!.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('Tel: ${cuenta['telefono']}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            Text('Tel: ${cuenta.telefono}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
           ],
           
           // Footer: Límite & Registrar Pago (WhatsApp button omitted as requested)
@@ -300,7 +298,7 @@ class _CuentaItem extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Límite: ${cuenta['fecha_primer_vencimiento'] != null ? formatFecha(cuenta['fecha_primer_vencimiento'].toString()) : 'Por definir'}',
+                  'Límite: ${cuenta.fechaPrimerVencimiento != null ? formatFecha(cuenta.fechaPrimerVencimiento!) : 'Por definir'}',
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 Row(
@@ -337,13 +335,13 @@ class _CuentaItem extends StatelessWidget {
     );
   }
 
-  void _showPagoDialog(BuildContext context, Map<String, dynamic> cuenta, VoidCallback onPago) {
+  void _showPagoDialog(BuildContext context, CuentaCobrar cuenta, VoidCallback onPago) {
     final montoCtrl = TextEditingController();
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.bgCard,
-        title: Text('Pago de ${cuenta['nombre_deudor']}',
+        title: Text('Pago de ${cuenta.nombreDeudor}',
             style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: TextField(
           controller:  montoCtrl,
@@ -352,7 +350,7 @@ class _CuentaItem extends StatelessWidget {
           style:       const TextStyle(color: AppTheme.textPrimary),
           decoration:  InputDecoration(
             labelText: 'Monto recibido',
-            hintText:  'Max: ${formatCOP((cuenta['saldo_pendiente'] as num).toDouble())}',
+            hintText:  'Max: ${formatCOP(cuenta.saldoPendiente)}',
           ),
         ),
         actions: [
@@ -361,7 +359,7 @@ class _CuentaItem extends StatelessWidget {
             onPressed: () async {
               if (montoCtrl.text.isEmpty) return;
               try {
-                await LocalRepository.instance.registrarPago(cuenta['id'] as int, {
+                await LocalRepository.instance.registrarPago(cuenta.id, {
                   'monto_pagado': double.parse(montoCtrl.text),
                   'fecha_pago':   DateTime.now().toIso8601String().split('T')[0],
                 });
@@ -380,7 +378,7 @@ class _CuentaItem extends StatelessWidget {
 }
 
 class _FormCuenta extends StatefulWidget {
-  final Map<String, dynamic>? cuenta;
+  final CuentaCobrar? cuenta;
   final VoidCallback onSave;
   const _FormCuenta({this.cuenta, required this.onSave});
 
@@ -405,12 +403,12 @@ class _FormCuentaState extends State<_FormCuenta> {
     super.initState();
     if (_isEditing) {
       final c = widget.cuenta!;
-      _nombre.text     = c['nombre_deudor']?.toString() ?? '';
-      _telefono.text   = c['telefono']?.toString() ?? '';
-      _monto.text      = (c['monto_total'] as num?)?.toStringAsFixed(0) ?? '';
-      _cuotas.text     = (c['num_cuotas'] as num?)?.toString() ?? '1';
-      _vencimiento.text = c['fecha_primer_vencimiento']?.toString() ?? '';
-      _modalidad       = c['modalidad']?.toString() ?? 'CUOTAS';
+      _nombre.text     = c.nombreDeudor;
+      _telefono.text   = c.telefono ?? '';
+      _monto.text      = c.montoTotal.toStringAsFixed(0);
+      _cuotas.text     = c.numCuotas.toString();
+      _vencimiento.text = c.fechaPrimerVencimiento ?? '';
+      _modalidad       = c.modalidad ?? 'CUOTAS';
     }
   }
 
@@ -506,7 +504,7 @@ class _FormCuentaState extends State<_FormCuenta> {
         'fecha_primer_vencimiento': _vencimiento.text,
       };
       if (_isEditing) {
-        await LocalRepository.instance.updateCuentaCobrar(widget.cuenta!['id'] as int, payload);
+        await LocalRepository.instance.updateCuentaCobrar(widget.cuenta!.id, payload);
       } else {
         await LocalRepository.instance.createCuentaCobrar(payload);
       }

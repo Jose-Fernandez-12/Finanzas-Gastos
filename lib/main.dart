@@ -1,33 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme.dart';
-import 'providers/app_providers.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/tarjetas_screen.dart';
+import 'screens/tarjetas/tarjetas_screen.dart';
 import 'screens/ingresos_screen.dart';
 import 'screens/gastos_screen.dart';
 import 'screens/ahorros_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es', null);
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => DashboardProvider()),
-        ChangeNotifierProvider(create: (_) => TarjetasProvider()),
-        ChangeNotifierProvider(create: (_) => IngresosProvider()),
-        ChangeNotifierProvider(create: (_) => GastosProvider()),
-        ChangeNotifierProvider(create: (_) => AhorrosProvider()),
-        ChangeNotifierProvider(create: (_) => CuentasCobrarProvider()),
-        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
-      ],
-      child: const FinanzasApp(),
+    const ProviderScope(
+      child: FinanzasApp(),
     ),
   );
 }
@@ -38,35 +27,27 @@ class FinanzasApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:         'Mis Finanzas',
-      theme:         AppTheme.lightTheme,
+      title: 'Mis Finanzas',
+      theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home:          const MainNavigation(),
+      home: const MainNavigation(),
     );
   }
 }
 
-class MainNavigation extends StatefulWidget {
+class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  ConsumerState<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends ConsumerState<MainNavigation> {
   int _currentIndex = 0;
 
   late final List<Widget> _screens = [
     DashboardScreen(
       onNavigate: (i) {
         setState(() => _currentIndex = i);
-        switch (i) {
-          case 0: context.read<DashboardProvider>().cargar();
-          case 1: context.read<IngresosProvider>().cargar();
-          case 2: context.read<GastosProvider>().cargar();
-          case 3: context.read<TarjetasProvider>().cargar();
-          case 4: context.read<AhorrosProvider>().cargar();
-          case 5: context.read<CuentasCobrarProvider>().cargar();
-        }
       },
     ),
     const IngresosScreen(),
@@ -80,7 +61,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
-        index:    _currentIndex,
+        index: _currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
@@ -96,21 +77,12 @@ class _MainNavigationState extends State<MainNavigation> {
           ],
         ),
         child: NavigationBar(
-          selectedIndex:    _currentIndex,
-          backgroundColor:  AppTheme.bgCard,
-          indicatorColor:   AppTheme.primary.withAlpha(25),
-          labelBehavior:    NavigationDestinationLabelBehavior.alwaysShow,
+          selectedIndex: _currentIndex,
+          backgroundColor: AppTheme.bgCard,
+          indicatorColor: AppTheme.primary.withAlpha(25),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           onDestinationSelected: (i) {
             setState(() => _currentIndex = i);
-            // Recargar datos al cambiar de pantalla
-            switch (i) {
-              case 0: context.read<DashboardProvider>().cargar();
-              case 1: context.read<IngresosProvider>().cargar();
-              case 2: context.read<GastosProvider>().cargar();
-              case 3: context.read<TarjetasProvider>().cargar();
-              case 4: context.read<AhorrosProvider>().cargar();
-              case 5: context.read<CuentasCobrarProvider>().cargar();
-            }
           },
           destinations: const [
             NavigationDestination(icon: Icon(Icons.dashboard_rounded),       label: 'Inicio'),

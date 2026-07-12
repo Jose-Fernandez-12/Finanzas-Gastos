@@ -1,33 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
-import '../providers/app_providers.dart';
+import '../providers/dashboard_provider.dart';
 import '../widgets/common_widgets.dart';
-import 'tarjetas_screen.dart';
+import 'tarjetas/tarjeta_detalle_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
+import '../models/bolsillo_ahorro.dart';
+import '../models/tarjeta_credito.dart';
 
-
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   final Function(int)? onNavigate;
   const DashboardScreen({super.key, this.onNavigate});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DashboardProvider>().cargar();
-    });
-  }
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dashboardAsync = ref.watch(dashboardProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
@@ -78,67 +74,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary),
-            onPressed: () => context.read<DashboardProvider>().cargar(),
+            onPressed: () => ref.invalidate(dashboardProvider),
           ),
         ],
       ),
-      body: Consumer<DashboardProvider>(
-        builder: (context, provider, _) {
-          if (provider.loading) {
-            return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-          }
-          if (provider.error != null) {
-            return _ErrorView(error: provider.error!, onRetry: provider.cargar);
-          }
+      body: dashboardAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, stack) => _ErrorView(error: err.toString(), onRetry: () => ref.invalidate(dashboardProvider)),
+        data: (response) {
+          final data = response['data'] as Map<String, dynamic>;
+          final cap = data['capacidad_crediticia'] as Map<String, dynamic>;
+          final pctEndeudamiento = (cap['porcentaje_endeudamiento'] as num).toDouble();
+          final nivelRiesgo = cap['nivel_riesgo'] as String;
+          final liquidez = (cap['liquidez_disponible'] as num).toDouble();
+          final ingresos = (cap['ingresos_mes'] as num).toDouble();
+          final gastosFijos = (cap['total_gastos_fijos'] as num).toDouble();
+          final cuotasTarj = (cap['cuotas_tarjetas_mes'] as num).toDouble();
+
+          final totales = data['totales'] as Map<String, dynamic>;
+          final totalCuentasCobrar = (totales['cuentas_cobrar'] as num).toDouble();
+          final totalAhorros = (totales['total_ahorros'] as num).toDouble();
+          final totalDeudaTarjetas = (totales['deuda_tarjetas'] as num).toDouble();
+
+          final proximasCuotas = data['proximas_cuotas'] as List<dynamic>;
+          final ahorros = data['ahorros'] as List<dynamic>;
+          final cuentasMora = data['cuentas_en_mora'] as List<dynamic>;
+          final tarjetasData = data['tarjetas'] as List<dynamic>;
+
           return RefreshIndicator(
-            color:    AppTheme.primary,
-            onRefresh: provider.cargar,
+            color: AppTheme.primary,
+            onRefresh: () async => ref.invalidate(dashboardProvider),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 // --- Capacidad Crediticia ---
                 CapacidadCrediticiaCard(
-                  pct:     provider.pctEndeudamiento,
-                  nivel:   provider.nivelRiesgo,
-                  liquidez: provider.liquidez,
+                  pct: pctEndeudamiento,
+                  nivel: nivelRiesgo,
+                  liquidez: liquidez,
                 ),
                 const SizedBox(height: 16),
 
                 // --- Resumen de 4 cuadros principales ---
                 GridView.count(
-                  crossAxisCount:    2,
-                  crossAxisSpacing:  12,
-                  mainAxisSpacing:   12,
-                  childAspectRatio:  MediaQuery.of(context).size.width < 400 ? 1.35 : 1.55,
-                  shrinkWrap:        true,
-                  physics:           const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: MediaQuery.of(context).size.width < 400 ? 1.35 : 1.55,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   children: [
                     SummaryCard(
                       label: 'Liquidez',
-                      monto: provider.liquidez,
+                      monto: liquidez,
                       color: AppTheme.secondary,
-                      icon:  Icons.account_balance_wallet_rounded,
+                      icon: Icons.account_balance_wallet_rounded,
                       onTap: null,
                     ),
                     SummaryCard(
                       label: 'Ingresos (Mes)',
-                      monto: provider.ingresos,
+                      monto: ingresos,
                       color: AppTheme.colorIngresos,
-                      icon:  Icons.trending_up_rounded,
+                      icon: Icons.trending_up_rounded,
                       onTap: () => widget.onNavigate?.call(1),
                     ),
                     SummaryCard(
                       label: 'Gastos Fijos',
-                      monto: provider.gastosFijos,
+                      monto: gastosFijos,
                       color: AppTheme.colorGastos,
-                      icon:  Icons.trending_down_rounded,
+                      icon: Icons.trending_down_rounded,
                       onTap: () => widget.onNavigate?.call(2),
                     ),
                     SummaryCard(
                       label: 'Cuotas TdC',
-                      monto: provider.cuotasTarj,
+                      monto: cuotasTarj,
                       color: AppTheme.colorDeudas,
-                      icon:  Icons.credit_card_rounded,
+                      icon: Icons.credit_card_rounded,
                       onTap: () => widget.onNavigate?.call(3),
                     ),
                   ],
@@ -151,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _WideSummaryCard(
                   title: 'Libre a fin de mes',
                   subtitle: 'Proyección calculada',
-                  total: provider.liquidez,
+                  total: liquidez,
                   color: AppTheme.secondary,
                   icon: Icons.savings_outlined,
                 ),
@@ -159,28 +170,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _WideSummaryCard(
                   title: 'Cuentas por cobrar',
                   subtitle: 'Deudores activos',
-                  total: provider.totalCuentasCobrar,
+                  total: totalCuentasCobrar,
                   color: AppTheme.primary,
                   icon: Icons.people_rounded,
                   onTap: () => widget.onNavigate?.call(5),
                 ),
                 const SizedBox(height: 10),
-                if (provider.totalAhorros > 0) ...[
+                if (totalAhorros > 0) ...[
                   _WideSummaryCard(
                     title: 'Total ahorros',
                     subtitle: 'Fondo de emergencia',
-                    total: provider.totalAhorros,
+                    total: totalAhorros,
                     color: AppTheme.colorAhorros,
                     icon: Icons.savings_rounded,
                     onTap: () => widget.onNavigate?.call(4),
                   ),
                   const SizedBox(height: 10),
                 ],
-                if (provider.totalDeudaTarjetas > 0) ...[
+                if (totalDeudaTarjetas > 0) ...[
                   _WideSummaryCard(
                     title: 'Deuda activa en tarjetas',
                     subtitle: 'Saldo total adeudado',
-                    total: provider.totalDeudaTarjetas,
+                    total: totalDeudaTarjetas,
                     color: AppTheme.colorDeudas,
                     icon: Icons.credit_card_rounded,
                   ),
@@ -188,29 +199,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
 
                 // --- Proximas cuotas a vencer ---
-                if (provider.proximasCuotas.isNotEmpty) ...[
+                if (proximasCuotas.isNotEmpty) ...[
                   const _SectionTitle(title: 'Próximas cuotas (45 días)'),
                   const SizedBox(height: 12),
-                  ...provider.proximasCuotas.map((c) => _ProximaCuotaItem(cuota: c)),
+                  ...proximasCuotas.map((c) => _ProximaCuotaItem(cuota: Map<String, dynamic>.from(c), tarjetas: tarjetasData)),
                   const SizedBox(height: 24),
                 ],
 
                 // --- Ahorros ---
-                if (provider.ahorros.isNotEmpty) ...[
+                if (ahorros.isNotEmpty) ...[
                   const _SectionTitle(title: 'Metas de ahorro'),
                   const SizedBox(height: 12),
-                  ...provider.ahorros.map((a) => Padding(
+                  ...ahorros.map((a) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: ProgresoAhorroBar(bolsillo: a),
+                    child: ProgresoAhorroBar(bolsillo: BolsilloAhorro.fromMap(Map<String, dynamic>.from(a))),
                   )),
                   const SizedBox(height: 24),
                 ],
 
                 // --- Cuentas en mora ---
-                if (provider.cuentasMora.isNotEmpty) ...[
+                if (cuentasMora.isNotEmpty) ...[
                   const _SectionTitle(title: 'Cuentas en mora', color: AppTheme.colorMora),
                   const SizedBox(height: 12),
-                  ...provider.cuentasMora.map((c) => _MoraItem(cuenta: c)),
+                  ...cuentasMora.map((c) => _MoraItem(cuenta: Map<String, dynamic>.from(c))),
                 ],
                 const SizedBox(height: 80),
               ],
@@ -326,26 +337,27 @@ class _WideSummaryCard extends StatelessWidget {
   );
 }
 
-class _ProximaCuotaItem extends StatelessWidget {
+class _ProximaCuotaItem extends ConsumerWidget {
   final Map<String, dynamic> cuota;
-  const _ProximaCuotaItem({required this.cuota});
+  final List<dynamic> tarjetas;
+  const _ProximaCuotaItem({required this.cuota, required this.tarjetas});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = getTarjetaColor(cuota);
     return InkWell(
       onTap: () {
         final tId = cuota['tarjeta_id'] as int?;
         if (tId != null) {
-          final prov = context.read<DashboardProvider>();
-          final tarjetaIndex = prov.tarjetas.indexWhere((t) => t['id'] == tId);
+          final tarjetaIndex = tarjetas.indexWhere((t) => (t as Map<String, dynamic>)['id'] == tId);
           if (tarjetaIndex != -1) {
+            final tarjetaObj = TarjetaCredito.fromMap(Map<String, dynamic>.from(tarjetas[tarjetaIndex] as Map));
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => TarjetaDetalleScreen(tarjeta: prov.tarjetas[tarjetaIndex]),
+                builder: (_) => TarjetaDetalleScreen(tarjeta: tarjetaObj),
               ),
-            ).then((_) => prov.cargar()); // Recargar al volver
+            ).then((_) => ref.invalidate(dashboardProvider)); // Recargar al volver
           }
         }
       },

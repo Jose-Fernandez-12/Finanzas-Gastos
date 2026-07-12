@@ -1,52 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/local_repository.dart';
-import '../providers/app_providers.dart';
+import '../providers/ahorros_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../models/bolsillo_ahorro.dart';
 import '../widgets/common_widgets.dart';
 
-class AhorrosScreen extends StatefulWidget {
+class AhorrosScreen extends ConsumerStatefulWidget {
   const AhorrosScreen({super.key});
   @override
-  State<AhorrosScreen> createState() => _AhorrosScreenState();
+  ConsumerState<AhorrosScreen> createState() => _AhorrosScreenState();
 }
 
-class _AhorrosScreenState extends State<AhorrosScreen> {
+class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AhorrosProvider>().cargar();
-    });
-  }
+  // initState not needed since watch handles initial load
 
   @override
   Widget build(BuildContext context) {
+    final ahorrosAsync = ref.watch(ahorrosProvider);
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(title: const Text('Metas de Ahorro')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(context),
+        onPressed: () => _showForm(context, ref),
         icon:      const Icon(Icons.add_rounded),
         label:     const Text('Nueva meta'),
         backgroundColor: AppTheme.colorAhorros,
       ),
-      body: Consumer<AhorrosProvider>(
-        builder: (context, prov, _) {
-          if (prov.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-          if (prov.ahorros.isEmpty) {
+      body: ahorrosAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (ahorrosList) {
+          if (ahorrosList.isEmpty) {
             return const Center(child: Text('Sin metas de ahorro', style: TextStyle(color: AppTheme.textSecondary)));
           }
           return ListView.builder(
             padding:     const EdgeInsets.all(16),
-            itemCount:   prov.ahorros.length,
+            itemCount:   ahorrosList.length,
             itemBuilder: (ctx, i) {
-              final b = prov.ahorros[i];
+              final b = ahorrosList[i];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: GestureDetector(
-                  onTap: () => _showAporteDialog(context, b),
+                  onTap: () => _showAporteDialog(context, ref, b),
                   child: ProgresoAhorroBar(bolsillo: b),
                 ),
               );
@@ -57,23 +56,23 @@ class _AhorrosScreenState extends State<AhorrosScreen> {
     );
   }
 
-  void _showForm(BuildContext context) {
+  void _showForm(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context:            context,
       isScrollControlled: true,
       backgroundColor:    AppTheme.bgCard,
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder:            (_) => _FormAhorro(onSave: () => context.read<AhorrosProvider>().cargar()),
+      builder:            (_) => _FormAhorro(onSave: () => ref.invalidate(ahorrosProvider)),
     );
   }
 
-  void _showAporteDialog(BuildContext context, Map<String, dynamic> bolsillo) {
+  void _showAporteDialog(BuildContext context, WidgetRef ref, BolsilloAhorro bolsillo) {
     final montoCtrl = TextEditingController();
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.bgCard,
-        title: Text('Aporte a: ${bolsillo['nombre']}',
+        title: Text('Aporte a: ${bolsillo.nombre}',
             style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: TextField(
           controller:  montoCtrl,
@@ -87,15 +86,15 @@ class _AhorrosScreenState extends State<AhorrosScreen> {
           ElevatedButton(
             onPressed: () async {
               if (montoCtrl.text.isEmpty) return;
-              await LocalRepository.instance.createAporte(bolsillo['id'] as int, {
+              await LocalRepository.instance.createAporte(bolsillo.id, {
                 'monto': double.parse(montoCtrl.text),
                 'fecha': DateTime.now().toIso8601String().split('T')[0],
                 'descripcion': 'Aporte manual',
               });
               if (context.mounted) {
                 Navigator.pop(context);
-                context.read<AhorrosProvider>().cargar();
-                context.read<DashboardProvider>().cargar();
+                ref.invalidate(ahorrosProvider);
+                ref.invalidate(dashboardProvider);
               }
             },
             child: const Text('Abonar'),
