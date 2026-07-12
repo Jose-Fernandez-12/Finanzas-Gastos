@@ -1,0 +1,55 @@
+name: gastos_e_ingresos
+description: "App de Finanzas Personales — Ingresos, Gastos, Tarjetas, Ahorros y Cuentas por Cobrar."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Manejo de base de datos local SQLite
+  sqflite: ^2.3.0
+  path_provider: ^2.1.2
+  path: ^1.8.3
+
+  # Manejo de estado
+  provider: ^6.1.2
+
+  # Graficas para el dashboard
+  fl_chart: ^0.68.0
+
+  # Formato de moneda y fechas
+  intl: ^0.19.0
+
+  # Almacenamiento local para la URL del servidor
+  shared_preferences: ^2.2.3
+
+  # Iconos adicionales
+  flutter_svg: ^2.0.10+1
+
+  # Tipografías oficiales del diseño (Inter y JetBrains Mono)
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/db/
+    - assets/logo.png

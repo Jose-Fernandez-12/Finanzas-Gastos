@@ -1,0 +1,117 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+
+class DatabaseService {
+  static final DatabaseService instance = DatabaseService._init();
+
+  static Database? _database;
+
+  DatabaseService._init();
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDB('finanzas.db');
+    return _database!;
+  }
+
+  Future<Database> _initDB(String filePath) async {
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, filePath);
+
+    // Comprobar si la base de datos ya existe
+    var exists = await databaseExists(path);
+
+    if (!exists) {
+      // Debería ocurrir solo la primera vez que se lanza la app
+      print("Creando nueva copia de la base de datos desde los assets");
+
+      // Asegurarse de que el directorio padre existe
+      try {
+        await Directory(dirname(path)).create(recursive: true);
+      } catch (_) {}
+
+      // Copiar de los assets
+      ByteData data = await rootBundle.load(join("assets/db", filePath));
+      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+
+      // Escribir y volcar los bytes copiados
+      await File(path).writeAsBytes(bytes, flush: true);
+    } else {
+      print("Abriendo base de datos existente");
+    }
+
+    // Abrir la base de datos
+    return await openDatabase(
+      path,
+      version: 1,
+      onOpen: (db) async {
+        // Habilitar foreign keys si no están habilitadas por defecto
+        await db.execute("PRAGMA foreign_keys = ON;");
+      },
+    );
+  }
+
+  // --- Métodos de utilidad generales para envolver las operaciones ---
+
+  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? arguments]) async {
+    final db = await instance.database;
+    return await db.rawQuery(sql, arguments);
+  }
+
+  Future<Map<String, dynamic>?> getOne(String sql, [List<dynamic>? arguments]) async {
+    final rows = await query(sql, arguments);
+    if (rows.isNotEmpty) {
+      return rows.first;
+    }
+    return null;
+  }
+
+  Future<int> insert(String table, Map<String, dynamic> values) async {
+    final db = await instance.database;
+    return await db.insert(table, values);
+  }
+  
+  Future<int> rawInsert(String sql, [List<dynamic>? arguments]) async {
+    final db = await instance.database;
+    return await db.rawInsert(sql, arguments);
+  }
+
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) async {
+    final db = await instance.database;
+    return await db.update(table, values, where: where, whereArgs: whereArgs);
+  }
+
+  Future<int> rawUpdate(String sql, [List<dynamic>? arguments]) async {
+    final db = await instance.database;
+    return await db.rawUpdate(sql, arguments);
+  }
+
+  Future<int> delete(String table, {String? where, List<dynamic>? whereArgs}) async {
+    final db = await instance.database;
+    return await db.delete(table, where: where, whereArgs: whereArgs);
+  }
+  
+  Future<int> rawDelete(String sql, [List<dynamic>? arguments]) async {
+    final db = await instance.database;
+    return await db.rawDelete(sql, arguments);
+  }
+
+  Future<void> execute(String sql, [List<dynamic>? arguments]) async {
+    final db = await instance.database;
+    await db.execute(sql, arguments);
+  }
+
+  Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
+    final db = await instance.database;
+    return await db.transaction(action);
+  }
+
+  Future close() async {
+    final db = await instance.database;
+    _database = null;
+    return db.close();
+  }
+}
