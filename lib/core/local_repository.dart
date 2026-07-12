@@ -687,15 +687,42 @@ class LocalRepository {
   }
 
   Future<void> updateCuentaCobrar(int id, Map<String, dynamic> data) async {
-    await DatabaseService.instance.update('cuentas_cobrar', {
-      'nombre_deudor': data['nombre_deudor'],
-      'telefono': data['telefono'],
-      'monto_total': data['monto_total'],
-      'modalidad': data['modalidad'] ?? 'CUOTAS',
-      'num_cuotas': data['num_cuotas'] ?? 1,
-      'fecha_primer_vencimiento': data['fecha_primer_vencimiento'],
-      'notas': data['notas']
-    }, where: 'id = ?', whereArgs: [id]);
+    await DatabaseService.instance.transaction((txn) async {
+      final anterior = (await txn.rawQuery('SELECT monto_total, saldo_pendiente, estado FROM cuentas_cobrar WHERE id = ?', [id])).firstOrNull;
+      double nuevoMontoTotal = (data['monto_total'] as num).toDouble();
+      double nuevoSaldo = nuevoMontoTotal;
+      String? nuevoEstado;
+
+      if (anterior != null) {
+        double montoTotalAnterior = (anterior['monto_total'] as num).toDouble();
+        double saldoPendienteAnterior = (anterior['saldo_pendiente'] as num).toDouble();
+        double diff = nuevoMontoTotal - montoTotalAnterior;
+        nuevoSaldo = (saldoPendienteAnterior + diff).clamp(0.0, double.infinity);
+        String estadoAnterior = anterior['estado']?.toString() ?? 'AL_DIA';
+        if (nuevoSaldo > 0 && estadoAnterior == 'CANCELADO') {
+          nuevoEstado = 'AL_DIA';
+        } else if (nuevoSaldo == 0) {
+          nuevoEstado = 'CANCELADO';
+        }
+      }
+
+      final Map<String, dynamic> updateValues = {
+        'nombre_deudor': data['nombre_deudor'],
+        'telefono': data['telefono'],
+        'monto_total': nuevoMontoTotal,
+        'saldo_pendiente': nuevoSaldo,
+        'modalidad': data['modalidad'] ?? 'CUOTAS',
+        'num_cuotas': data['num_cuotas'] ?? 1,
+        'fecha_primer_vencimiento': data['fecha_primer_vencimiento'],
+        'notas': data['notas'],
+        'actualizado_en': DateTime.now().toIso8601String(),
+      };
+      if (nuevoEstado != null) {
+        updateValues['estado'] = nuevoEstado;
+      }
+
+      await txn.update('cuentas_cobrar', updateValues, where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<void> registrarPago(int cuentaId, Map<String, dynamic> data) async {

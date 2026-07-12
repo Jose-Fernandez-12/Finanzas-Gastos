@@ -285,6 +285,19 @@ class _FormCompraState extends State<FormCompra> {
           ? await LocalRepository.instance.createCompra(widget.tarjetaId, reqData)
           : await LocalRepository.instance.updateCompra(widget.tarjetaId, widget.compra!['id'] as int, reqData);
 
+      if (result['ok'] == false) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result['error'] ?? 'No se pudo registrar la compra.'}'),
+              backgroundColor: AppTheme.colorGastos,
+            ),
+          );
+        }
+        setState(() => _saving = false);
+        return;
+      }
+
       if (mounted) {
         Navigator.pop(context);
         widget.onSave();
@@ -292,7 +305,7 @@ class _FormCompraState extends State<FormCompra> {
         if (cuotaFija != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Amortizacion generada. Cuota mensual: '),
+              content: Text('Amortizacion generada. Cuota mensual: ${formatCOP(cuotaFija)}'),
               backgroundColor: AppTheme.colorAlDia,
               duration: const Duration(seconds: 3),
             ),
