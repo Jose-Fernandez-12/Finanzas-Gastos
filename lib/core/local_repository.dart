@@ -239,6 +239,11 @@ class LocalRepository {
     }, where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> deleteIngreso(int id) async {
+    await DatabaseService.instance.delete('ingresos', where: 'id = ?', whereArgs: [id]);
+  }
+
+
   Future<Map<String, dynamic>> getCategoriasIngreso() async {
     final rows = await DatabaseService.instance.query('SELECT * FROM categorias_ingreso WHERE activa = 1');
     return {'ok': true, 'data': rows};

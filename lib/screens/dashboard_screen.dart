@@ -6,6 +6,8 @@ import '../providers/app_providers.dart';
 import '../widgets/common_widgets.dart';
 import 'tarjetas_screen.dart';
 import 'analytics_screen.dart';
+import 'settings_screen.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   final Function(int)? onNavigate;
@@ -40,6 +42,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.textSecondary.withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.settings_rounded, color: AppTheme.textSecondary, size: 20),
+            ),
+            tooltip: 'Configuración',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -132,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _WideSummaryCard(
                   title: 'Libre a fin de mes',
                   subtitle: 'Proyección calculada',
-                  total: provider.liquidez - provider.cuotasTarj,
+                  total: provider.liquidez,
                   color: AppTheme.secondary,
                   icon: Icons.savings_outlined,
                 ),

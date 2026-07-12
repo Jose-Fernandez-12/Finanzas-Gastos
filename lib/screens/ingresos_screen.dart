@@ -364,15 +364,38 @@ class _FormIngresoState extends State<_FormIngreso> {
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.colorIngresos),
-                  child: _saving
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Guardar ingreso'),
-                ),
+              Row(
+                children: [
+                  if (widget.ingreso != null) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _saving ? null : _confirmDelete,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Eliminar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    flex: widget.ingreso != null ? 2 : 1,
+                    child: ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.colorIngresos,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: _saving
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Guardar ingreso'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -381,21 +404,60 @@ class _FormIngresoState extends State<_FormIngreso> {
     );
   }
 
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        title: const Text('Eliminar ingreso', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        content: Text('¿Seguro que deseas eliminar "${_desc.text.trim()}"?', style: const TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _saving = true);
+              try {
+                await LocalRepository.instance.deleteIngreso(widget.ingreso!['id'] as int);
+                if (mounted) {
+                  Navigator.pop(context);
+                  widget.onSave();
+                }
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
+              } finally {
+                if (mounted) setState(() => _saving = false);
+              }
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final reqData = {
-        'categoria_id': _categoriaId,
-        'descripcion':  _desc.text.trim(),
-        'monto':        double.parse(_monto.text),
-        'es_fijo':      _esFijo ? 1 : 0,
-        'fecha':        _fecha.text,
-      };
-      if (widget.ingreso == null) {
-        await LocalRepository.instance.createIngreso(reqData);
+      final double monto = double.tryParse(_monto.text) ?? 0.0;
+      if (widget.ingreso != null && monto <= 0) {
+        await LocalRepository.instance.deleteIngreso(widget.ingreso!['id'] as int);
       } else {
-        await LocalRepository.instance.updateIngreso(widget.ingreso!['id'] as int, reqData);
+        final reqData = {
+          'categoria_id': _categoriaId,
+          'descripcion':  _desc.text.trim(),
+          'monto':        monto,
+          'es_fijo':      _esFijo ? 1 : 0,
+          'fecha':        _fecha.text,
+        };
+        if (widget.ingreso == null) {
+          if (monto > 0) {
+            await LocalRepository.instance.createIngreso(reqData);
+          }
+        } else {
+          await LocalRepository.instance.updateIngreso(widget.ingreso!['id'] as int, reqData);
+        }
       }
       if (mounted) { Navigator.pop(context); widget.onSave(); }
     } catch (e) {
@@ -405,6 +467,7 @@ class _FormIngresoState extends State<_FormIngreso> {
     }
   }
 }
+
 
 class _Empty extends StatelessWidget {
   final String mensaje;

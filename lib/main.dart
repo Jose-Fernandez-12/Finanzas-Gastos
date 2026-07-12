@@ -10,7 +10,7 @@ import 'screens/ingresos_screen.dart';
 import 'screens/gastos_screen.dart';
 import 'screens/ahorros_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
-import 'screens/settings_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,14 +122,6 @@ class _MainNavigationState extends State<MainNavigation> {
           ],
         ),
       ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              mini:      true,
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-              tooltip:   'Configuracion del servidor',
-              child:     const Icon(Icons.settings_rounded),
-            )
-          : null,
     );
   }
 }
