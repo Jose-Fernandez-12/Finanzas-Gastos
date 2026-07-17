@@ -139,7 +139,25 @@ class _FormTarjetaState extends State<FormTarjeta> {
       
       if (mounted) { Navigator.pop(context); widget.onSave(); }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: '), backgroundColor: AppTheme.colorGastos));
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppTheme.bgCard,
+            title: const Text('Error', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: const TextStyle(color: AppTheme.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Aceptar'),
+              ),
+            ],
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -287,10 +305,21 @@ class _FormCompraState extends State<FormCompra> {
 
       if (result['ok'] == false) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${result['error'] ?? 'No se pudo registrar la compra.'}'),
-              backgroundColor: AppTheme.colorGastos,
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppTheme.bgCard,
+              title: const Text('Error', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+              content: Text(
+                (result['error']?.toString() ?? 'No se pudo registrar la compra.').replaceAll('Exception: ', ''),
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Aceptar'),
+                ),
+              ],
             ),
           );
         }
@@ -314,8 +343,22 @@ class _FormCompraState extends State<FormCompra> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos)
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppTheme.bgCard,
+            title: const Text('Error', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: const TextStyle(color: AppTheme.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Aceptar'),
+              ),
+            ],
+          ),
         );
       }
     } finally {
