@@ -50,6 +50,21 @@ class DatabaseService {
       onOpen: (db) async {
         // Habilitar foreign keys si no están habilitadas por defecto
         await db.execute("PRAGMA foreign_keys = ON;");
+        // Crear tabla de logs de notificaciones si no existe (migracion no destructiva)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS notification_logs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            package_name    TEXT NOT NULL,
+            app_label       TEXT,
+            titulo          TEXT,
+            cuerpo          TEXT,
+            monto_detectado REAL,
+            comercio_detectado TEXT,
+            tipo_tarjeta    TEXT,
+            parseado        INTEGER DEFAULT 0,
+            creado_en       TEXT DEFAULT (datetime('now'))
+          )
+        ''');
       },
     );
   }
