@@ -65,6 +65,16 @@ class DatabaseService {
             creado_en       TEXT DEFAULT (datetime('now'))
           )
         ''');
+
+        // Migraciones de columnas seguras (no destructivas) para bases de datos existentes
+        try { await db.execute("ALTER TABLE cuotas_amortizacion ADD COLUMN fecha_pago_real TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN es_fijo INTEGER DEFAULT 1;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE ingresos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE ingresos ADD COLUMN es_fijo INTEGER DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN es_avance INTEGER DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
       },
     );
   }
