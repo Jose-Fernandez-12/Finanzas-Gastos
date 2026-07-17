@@ -21,12 +21,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   double _mesEgresos = 0.0;
   bool _loadingGastos = false;
   double _pctAbonoExtra = 0.0;
+  double _abonoSimulador = 200000.0;
+  bool _simuladorAvalancha = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ref.invalidate(analyticsProvider(_pctAbonoExtra));
       _fetchGastosDelMes();
     });
   }
@@ -59,10 +60,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     final analyticsAsync = ref.watch(analyticsProvider(_pctAbonoExtra));
+    final advancedAsync = ref.watch(advancedAnalyticsProvider({'mes': _selectedMonth, 'abonoExtra': _abonoSimulador}));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analíticas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppTheme.textPrimary)),
+        title: const Text('Analíticas Pro', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppTheme.textPrimary)),
         backgroundColor: AppTheme.bgCanvas,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppTheme.textPrimary),
@@ -73,13 +75,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           : analyticsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
               error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppTheme.colorGastos))),
-              data: (provider) => _buildContent(provider),
+              data: (provider) => _buildContent(provider, advancedAsync.value),
             ),
     );
   }
 
-  Widget _buildContent(Map<String, dynamic> provider) {
-    // Construir historical dinámico con el mes seleccionado para que la gráfica no quede vacía
+  Widget _buildContent(Map<String, dynamic> provider, Map<String, dynamic>? adv) {
     final historical = [
       {'label': _selectedMonth, 'ingresos': _mesIngresos, 'egresos': _mesEgresos}
     ];
@@ -109,25 +110,53 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         children: [
           // Selector de Mes flotante
           _buildMonthSelector(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // 1. Estado de Endeudamiento
+          // Alerta de Estrés de Efectivo
+          if (adv != null && adv['estres'] != null) ...[
+            _buildAlertaEstresBanner(adv['estres'] as Map<String, dynamic>),
+            const SizedBox(height: 20),
+          ],
+
+          // 1. Termómetro de "Plata Libre de Culpa"
+          if (adv != null && adv['termometro'] != null) ...[
+            _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
+            const SizedBox(height: 24),
+          ],
+
+          // Estado de Endeudamiento
           const _SectionTitle(title: 'Estado de Endeudamiento'),
           const SizedBox(height: 10),
           _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
           const SizedBox(height: 24),
 
-          // 2. Tarjetas de Resumen Lado a Lado
+          // Tarjetas de Resumen Lado a Lado
           _buildResumenCards(mesIngresos, mesEgresos),
           const SizedBox(height: 24),
 
-          // 3. Flujo de Caja
+          // 2. Radar de Gastos Hormiga & Suscripciones
+          if (adv != null && adv['radar_hormiga'] != null) ...[
+            const _SectionTitle(title: 'Radar de Gastos Hormiga & Pequeñas Fugas 🐜'),
+            const SizedBox(height: 10),
+            _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
+            const SizedBox(height: 24),
+          ],
+
+          // Flujo de Caja
           const _SectionTitle(title: 'Flujo de Caja'),
           const SizedBox(height: 10),
           _buildBarChart(historical),
           const SizedBox(height: 24),
 
-          // 4. Camino a Cero Deuda
+          // 3. Simulador Inteligente de Pagos ("Avalancha vs Bola de Nieve")
+          if (adv != null && adv['simulador'] != null && (adv['simulador']['deudas'] as List).isNotEmpty) ...[
+            const _SectionTitle(title: 'Simulador Inteligente de Pagos 🚀'),
+            const SizedBox(height: 10),
+            _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>),
+            const SizedBox(height: 24),
+          ],
+
+          // Camino a Cero Deuda
           if (proyeccion.isNotEmpty) ...[
             const _SectionTitle(title: 'Camino a Cero Deuda'),
             const SizedBox(height: 10),
@@ -137,7 +166,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(height: 24),
           ],
 
-          // 5. Gastos por Categoría
+          // Gastos por Categoría
           const _SectionTitle(title: 'Gastos por Categoría'),
           const SizedBox(height: 10),
           _buildCategoriasCard(),
@@ -797,6 +826,342 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertaEstresBanner(Map<String, dynamic> estres) {
+    final bool alerta = estres['alerta'] as bool? ?? false;
+    final String msg = estres['mensaje'] as String? ?? '';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: alerta ? AppTheme.colorDeudas.withAlpha(25) : AppTheme.secondary.withAlpha(25),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: alerta ? AppTheme.colorDeudas : AppTheme.secondary, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            alerta ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+            color: alerta ? AppTheme.colorDeudas : AppTheme.secondary,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              msg,
+              style: TextStyle(
+                color: alerta ? AppTheme.colorDeudas : AppTheme.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTermometroCard(Map<String, dynamic> t) {
+    final double diario = (t['diario_seguro'] as num?)?.toDouble() ?? 0.0;
+    final double semanal = (t['semanal_seguro'] as num?)?.toDouble() ?? 0.0;
+    final double disponible = (t['disponible_real'] as num?)?.toDouble() ?? 0.0;
+    final double comprometido = (t['saldo_comprometido'] as num?)?.toDouble() ?? 0.0;
+    final double ingresos = (t['ingresos'] as num?)?.toDouble() ?? 0.0;
+    final int dias = (t['dias_restantes'] as int?) ?? 1;
+    final String estado = t['estado'] as String? ?? 'Sano';
+
+    Color cEstado = AppTheme.secondary;
+    if (estado == 'Déficit') cEstado = AppTheme.colorGastos;
+    if (estado == 'Ajustado') cEstado = AppTheme.colorDeudas;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.bgCard, AppTheme.primary.withAlpha(15)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primary.withAlpha(80), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: AppTheme.primary.withAlpha(20), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.primary.withAlpha(30), shape: BoxShape.circle),
+                    child: const Icon(Icons.local_fire_department_rounded, color: AppTheme.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Plata Libre de Culpa', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.textPrimary)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: cEstado.withAlpha(30), borderRadius: BorderRadius.circular(12), border: Border.all(color: cEstado)),
+                child: Text(estado.toUpperCase(), style: TextStyle(color: cEstado, fontWeight: FontWeight.bold, fontSize: 10)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text('Presupuesto diario seguro de aquí a fin de mes:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(formatCOP(diario), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontSize: 26, fontWeight: FontWeight.w800)),
+              const SizedBox(width: 6),
+              const Text('/ día', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Text('${formatCOP(semanal)} / sem', style: AppTheme.monoStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: AppTheme.borderLight, height: 1),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildMetricItem('Ingresos Mes', formatCOP(ingresos), AppTheme.textPrimary),
+              _buildMetricItem('Comprometido', '-${formatCOP(comprometido)}', AppTheme.colorGastos),
+              _buildMetricItem('Libre ($dias días)', formatCOP(disponible), cEstado),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricItem(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+        const SizedBox(height: 3),
+        Text(value, style: AppTheme.monoStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
+  Widget _buildRadarHormigaCard(Map<String, dynamic> radar) {
+    final double anual = (radar['total_anual'] as num?)?.toDouble() ?? 0.0;
+    final List<dynamic> lista = radar['lista'] as List<dynamic>? ?? [];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bug_report_rounded, color: AppTheme.colorGastos, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Fuga anual detectada: ${formatCOP(anual)} / año',
+                  style: const TextStyle(color: AppTheme.colorGastos, fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (lista.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('¡Excelente! No hemos detectado suscripciones ni gastos hormiga recurrentes en tu historial.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: lista.length > 5 ? 5 : lista.length,
+              separatorBuilder: (_, __) => const Divider(color: AppTheme.borderLight, height: 16),
+              itemBuilder: (context, idx) {
+                final item = lista[idx] as Map<String, dynamic>;
+                final nombre = item['nombre'] as String? ?? '';
+                final cant = item['cantidad'] as int? ?? 1;
+                final tot = (item['total'] as num?)?.toDouble() ?? 0.0;
+                final an = (item['anualizado'] as num?)?.toDouble() ?? 0.0;
+
+                return Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.colorDeudas),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(nombre, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text('$cant registro${cant > 1 ? 's' : ''} en este ciclo', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(formatCOP(tot), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('${formatCOP(an)} / año', style: AppTheme.monoStyle(color: AppTheme.colorGastos, fontSize: 11, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimuladorDeudaCard(Map<String, dynamic> sim) {
+    final avalancha = sim['avalancha'] as Map<String, dynamic>?;
+    final bola = sim['bola_nieve'] as Map<String, dynamic>?;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildSimuladorTab('🔥 Avalancha (Ahorro Interés)', _simuladorAvalancha, () {
+                  setState(() => _simuladorAvalancha = true);
+                }),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSimuladorTab('❄️ Bola de Nieve (Victoria Rápida)', !_simuladorAvalancha, () {
+                  setState(() => _simuladorAvalancha = false);
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text('Simula un abono extra este mes:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildSimuladorChip('\$100k', 100000.0),
+                const SizedBox(width: 8),
+                _buildSimuladorChip('\$200k', 200000.0),
+                const SizedBox(width: 8),
+                _buildSimuladorChip('\$500k', 500000.0),
+                const SizedBox(width: 8),
+                _buildSimuladorChip('\$1M', 1000000.0),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_simuladorAvalancha && avalancha != null) ...[
+            _buildSimuladorResultado(
+              titulo: 'Recomendación Avalancha',
+              subtitulo: 'Pagar a la deuda de mayor interés (${avalancha['top_deuda']['banco']})',
+              destacado: 'Ahorro proyectado en intereses: ${formatCOP(avalancha['ahorro_estimado'])}',
+              razon: avalancha['razon'] ?? '',
+              color: AppTheme.colorDeudas,
+            )
+          ] else if (!_simuladorAvalancha && bola != null) ...[
+            _buildSimuladorResultado(
+              titulo: 'Recomendación Bola de Nieve',
+              subtitulo: 'Liquidar o reducir la menor deuda (${bola['top_deuda']['banco']})',
+              destacado: 'Meses ganados: ¡${bola['meses_ganados']} cuotas antes de lo previsto!',
+              razon: bola['razon'] ?? '',
+              color: AppTheme.primary,
+            )
+          ] else
+            const Text('No hay deudas de tarjeta activas para simular.', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimuladorTab(String label, bool active, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? AppTheme.primary.withAlpha(25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: active ? AppTheme.primary : AppTheme.borderLight, width: active ? 1.5 : 1),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: active ? AppTheme.primary : AppTheme.textSecondary, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimuladorChip(String label, double val) {
+    final active = _abonoSimulador == val;
+    return InkWell(
+      onTap: () => setState(() => _abonoSimulador = val),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppTheme.primary : AppTheme.bgCanvas,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: active ? AppTheme.primary : AppTheme.borderLight),
+        ),
+        child: Text(label, style: TextStyle(color: active ? Colors.white : AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildSimuladorResultado({required String titulo, required String subtitulo, required String destacado, required String razon, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: color.withAlpha(15), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withAlpha(60))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(subtitulo, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(8)),
+            child: Text(destacado, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+          const SizedBox(height: 8),
+          Text(razon, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.3)),
         ],
       ),
     );
