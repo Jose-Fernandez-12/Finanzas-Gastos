@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.gastos_e_ingresos"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

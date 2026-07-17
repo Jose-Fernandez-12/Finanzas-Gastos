@@ -83,6 +83,10 @@ class MainActivity : FlutterActivity() {
                         dismissPending(index)
                         result.success(null)
                     }
+                    "fetchActiveNotifications" -> {
+                        NotificationListener.instance?.fetchAndProcessActiveNotifications()
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

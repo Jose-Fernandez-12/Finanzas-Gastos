@@ -36,6 +36,7 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_gastos',
         onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.colorGastos,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),

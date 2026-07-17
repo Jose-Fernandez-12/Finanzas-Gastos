@@ -13,6 +13,7 @@ import java.util.*
 class NotificationListener : NotificationListenerService() {
 
     companion object {
+        var instance: NotificationListener? = null
         private const val TAG = "GastosNotifListener"
         private const val PREFS_NAME = "gastos_notif_prefs"
         private const val KEY_LOGGING_ENABLED = "logging_enabled"
@@ -23,6 +24,7 @@ class NotificationListener : NotificationListenerService() {
         // Packages de apps financieras soportadas
         val SUPPORTED_PACKAGES = mapOf(
             "com.google.android.apps.walletnfcrel" to "Google Pay",
+            "com.google.android.gms"              to "Google Pay",
             "com.nu.production"                   to "Nu",
             "com.bancolombia.smv"                 to "Bancolombia",
             "com.rappi.pay"                       to "Rappi Pay",
@@ -34,29 +36,35 @@ class NotificationListener : NotificationListenerService() {
         // Formato: list de pares (montoRegex, comercioRegex, tipoTarjeta)
         val PARSERS = mapOf(
             "com.google.android.apps.walletnfcrel" to listOf(
-                // "Pagaste $150.000 en Éxito con Tu Nu"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)(?:\s+con|\s*$)""", RegexOption.IGNORE_CASE),
                     "credito"
-                ),
-                // "Compra aprobada: $150.000"
+                )
+            ),
+            "com.google.android.gms" to listOf(
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)(?:\s+con|\s*$)""", RegexOption.IGNORE_CASE),
-                    "desconocido"
+                    "credito"
                 )
             ),
             "com.nu.production" to listOf(
+                // "Recibiste 13.000,00 en tu cuenta"
+                Triple(
+                    Regex("""(?:recibiste|llegó|transferencia|abono|consignación)[:\s]+(?:[\$\$]|COP[\$\s]*)?([\d.,]+)""", RegexOption.IGNORE_CASE),
+                    Regex("""(?:dinero|transferencia)\s+de\s+(.+?)(?:\s+con|\s*\.|$)""", RegexOption.IGNORE_CASE),
+                    "ingreso"
+                ),
                 // "Compra de $150.000 en Éxito aprobada"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)\s+aprobada""", RegexOption.IGNORE_CASE),
                     "credito"
                 ),
                 // "Avance de efectivo: $150.000"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""avance de efectivo""", RegexOption.IGNORE_CASE),
                     "credito_avance"
                 )
@@ -64,20 +72,20 @@ class NotificationListener : NotificationListenerService() {
             "com.bancolombia.smv" to listOf(
                 // "Compra por $150,000 en EXITO con tu tarjeta"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)\s+con\s+tu""", RegexOption.IGNORE_CASE),
                     "credito"
                 ),
                 // "Retiro $150,000 — debito"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""Retiro|ATM""", RegexOption.IGNORE_CASE),
                     "debito"
                 )
             ),
             "com.rappi.pay" to listOf(
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)(?:\s+con|\s*$)""", RegexOption.IGNORE_CASE),
                     "credito"
                 )
@@ -85,14 +93,14 @@ class NotificationListener : NotificationListenerService() {
             "com.nequi.mobilebanking" to listOf(
                 // "Transferencia de $50.000 a Juan"
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""a\s+(.+?)(?:\.|$)""", RegexOption.IGNORE_CASE),
                     "debito"
                 )
             ),
             "co.com.davivienda.mobileapp" to listOf(
                 Triple(
-                    Regex("""[\$\$]\s*([\d.,]+)"""),
+                    Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
                     Regex("""en\s+(.+?)(?:\s+con|\s*$)""", RegexOption.IGNORE_CASE),
                     "credito"
                 )
@@ -100,8 +108,23 @@ class NotificationListener : NotificationListenerService() {
         )
 
         fun parseAmount(raw: String): Double? {
-            // Limpia el monto: "1.500.000" o "1,500,000" o "150000" → 150000.0
-            val cleaned = raw.replace(".", "").replace(",", "").trim()
+            val trimmed = raw.trim()
+            // Si termina en decimales exactos (.XX o .X, por ejemplo 3,500.00)
+            if (trimmed.matches(Regex("""^.*\.\d{1,2}$"""))) {
+                val idx = trimmed.lastIndexOf('.')
+                val intPart = trimmed.substring(0, idx).replace(".", "").replace(",", "")
+                val decPart = trimmed.substring(idx + 1)
+                return "$intPart.$decPart".toDoubleOrNull()
+            }
+            // Si termina en decimales con coma (,XX o ,X, por ejemplo 3.500,00)
+            if (trimmed.matches(Regex("""^.*,\d{1,2}$"""))) {
+                val idx = trimmed.lastIndexOf(',')
+                val intPart = trimmed.substring(0, idx).replace(".", "").replace(",", "")
+                val decPart = trimmed.substring(idx + 1)
+                return "$intPart.$decPart".toDoubleOrNull()
+            }
+            // Si no tiene decimales al final (.XX o ,XX), entonces todo punto o coma es separador de miles
+            val cleaned = trimmed.replace(".", "").replace(",", "")
             return cleaned.toDoubleOrNull()
         }
     }
@@ -113,6 +136,31 @@ class NotificationListener : NotificationListenerService() {
         super.onCreate()
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         Log.d(TAG, "NotificationListenerService creado")
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+        Log.d(TAG, "NotificationListenerService conectado")
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        instance = null
+        Log.d(TAG, "NotificationListenerService desconectado")
+    }
+
+    fun fetchAndProcessActiveNotifications() {
+        Log.d(TAG, "Fetching active notifications...")
+        try {
+            val activeNotifs = activeNotifications ?: return
+            for (sbn in activeNotifs) {
+                // Call the existing method to process it
+                onNotificationPosted(sbn)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching active notifications", e)
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -170,7 +218,12 @@ class NotificationListener : NotificationListenerService() {
 
     private fun tryParse(pkg: String, titulo: String, cuerpo: String): Triple<Double, String, String>? {
         val texto = "$titulo $cuerpo"
-        val parsers = PARSERS[pkg] ?: return null
+        
+        // 1. Intentar con los parsers específicos del paquete
+        val parsers = PARSERS[pkg] ?: emptyList()
+        var montoEncontrado: Double? = null
+        var comercioEncontrado: String = ""
+        var tipoEncontrado: String = "desconocido"
 
         for ((montoRegex, comercioRegex, tipo) in parsers) {
             val montoMatch = montoRegex.find(texto) ?: continue
@@ -178,22 +231,72 @@ class NotificationListener : NotificationListenerService() {
             val monto = parseAmount(montoRaw) ?: continue
             if (monto <= 0) continue
 
-            // Comercio puede no encontrarse (queda como vacío)
+            montoEncontrado = monto
             val comercioMatch = comercioRegex.find(texto)
-            val comercio = comercioMatch?.groupValues?.getOrNull(1)?.trim() ?: ""
-
-            // Detectar tipo según keywords en el texto
-            val tipoFinal = when {
-                texto.contains("avance", ignoreCase = true) -> "credito_avance"
-                texto.contains("débito", ignoreCase = true) ||
-                texto.contains("debito", ignoreCase = true) ||
-                texto.contains("retiro", ignoreCase = true) -> "debito"
-                else -> tipo
-            }
-
-            return Triple(monto, comercio, tipoFinal)
+            comercioEncontrado = comercioMatch?.groupValues?.getOrNull(1)?.trim() ?: ""
+            tipoEncontrado = tipo
+            break
         }
-        return null
+
+        // 2. Fallback universal si no coincidió el montoRegex específico:
+        // Buscar cualquier monto como COP3,500.00 o $150.000 o "Recibiste 13.000,00" en el texto
+        if (montoEncontrado == null) {
+            val universalMontoRegex = Regex("""(?:[\$\$]|COP[\$\s]*|(?:recibiste|llegó|transferencia|abono|consignación)[:\s]+(?:[\$\$]|COP[\$\s]*)?)\s*([\d.,]+)""", RegexOption.IGNORE_CASE)
+            val montoMatch = universalMontoRegex.find(texto)
+            if (montoMatch != null) {
+                val montoRaw = montoMatch.groupValues.getOrNull(1) ?: ""
+                val monto = parseAmount(montoRaw)
+                if (monto != null && monto > 0) {
+                    montoEncontrado = monto
+                }
+            }
+        }
+
+        if (montoEncontrado == null || montoEncontrado <= 0) {
+            return null
+        }
+
+        // 3. Si el comercio no se extrajo por regex, deducirlo del título o texto
+        if (comercioEncontrado.isBlank()) {
+            // Intentar extraer remitente de ingreso ("dinero de JOSE ISMAEL...")
+            val remitenteMatch = Regex("""(?:dinero|transferencia)\s+de\s+(.+?)(?:\s+con|\s*\.|$)""", RegexOption.IGNORE_CASE).find(texto)
+            if (remitenteMatch != null) {
+                comercioEncontrado = remitenteMatch.groupValues[1].trim()
+            } else {
+                // Para Google Pay u otras donde el título es "GOOGLE *Minecraft" o "Uber"
+                val lim = titulo.replace(Regex("""^GOOGLE\s*\*?""", RegexOption.IGNORE_CASE), "").trim()
+                if (lim.isNotEmpty() && !lim.equals("Google Pay", ignoreCase = true) && !lim.contains("Compra", ignoreCase = true) && !lim.contains("Notificación", ignoreCase = true) && !lim.contains("Recibiste", ignoreCase = true)) {
+                    comercioEncontrado = lim
+                } else {
+                    // Si no, tomar las primeras palabras del título o cuerpo como referencia
+                    comercioEncontrado = if (titulo.isNotBlank() && !titulo.contains("Recibiste", ignoreCase = true)) titulo else "Ingreso / Transferencia"
+                }
+            }
+        }
+
+        // 4. Detectar tipo según keywords en el texto (tanto español como inglés)
+        val tipoFinal = when {
+            texto.contains("recibiste", ignoreCase = true) ||
+            texto.contains("llegó dinero", ignoreCase = true) ||
+            texto.contains("llego dinero", ignoreCase = true) ||
+            texto.contains("consignación", ignoreCase = true) ||
+            texto.contains("consignacion", ignoreCase = true) ||
+            texto.contains("transferencia recibida", ignoreCase = true) ||
+            texto.contains("abono", ignoreCase = true) ||
+            tipoEncontrado == "ingreso" -> "ingreso"
+            texto.contains("avance", ignoreCase = true) -> "credito_avance"
+            texto.contains("débito", ignoreCase = true) ||
+            texto.contains("debito", ignoreCase = true) ||
+            texto.contains("debit", ignoreCase = true) ||
+            texto.contains("retiro", ignoreCase = true) -> "debito"
+            texto.contains("crédito", ignoreCase = true) ||
+            texto.contains("credito", ignoreCase = true) ||
+            texto.contains("credit", ignoreCase = true) ||
+            tipoEncontrado == "credito" -> "credito"
+            else -> "desconocido"
+        }
+
+        return Triple(montoEncontrado, comercioEncontrado, tipoFinal)
     }
 
     private fun saveRawLog(

@@ -36,6 +36,7 @@ class _CuentasCobrarScreenState extends ConsumerState<CuentasCobrarScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_cuentas_cobrar',
         onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.person_add_rounded, color: Colors.white, size: 28),

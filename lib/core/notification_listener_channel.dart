@@ -99,4 +99,11 @@ class NotificationListenerChannel {
       await _method.invokeMethod('clearRawLogs');
     } catch (_) {}
   }
+
+  /// Escanea notificaciones activas actuales y genera transacciones si aplican
+  Future<void> fetchActiveNotifications() async {
+    try {
+      await _method.invokeMethod('fetchActiveNotifications');
+    } catch (_) {}
+  }
 }

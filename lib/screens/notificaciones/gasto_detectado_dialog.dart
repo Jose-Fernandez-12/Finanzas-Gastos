@@ -38,13 +38,15 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
   void initState() {
     super.initState();
     final comercio = widget.rawData['comercio'] as String? ?? '';
-    final monto    = widget.rawData['monto']    as double? ?? 0.0;
-    _descCtrl  = TextEditingController(text: comercio.isNotEmpty ? comercio : 'Compra detectada');
-    _montoCtrl = TextEditingController(text: monto.toStringAsFixed(0));
-
+    final monto    = (widget.rawData['monto'] as num?)?.toDouble() ?? 0.0;
     _tipoSeleccionado = widget.classification.route == TransactionRoute.creditCard
         ? 'credito'
-        : 'simple';
+        : widget.classification.route == TransactionRoute.income
+            ? 'ingreso'
+            : 'simple';
+
+    _descCtrl  = TextEditingController(text: comercio.isNotEmpty ? comercio : (_tipoSeleccionado == 'ingreso' ? 'Ingreso detectado' : 'Compra detectada'));
+    _montoCtrl = TextEditingController(text: monto.toStringAsFixed(0));
     _tarjetaSeleccionada = widget.classification.tarjetaMatch;
 
     if (_tipoSeleccionado == 'credito') _loadTarjetas();
@@ -83,7 +85,21 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
 
     setState(() => _saving = true);
     try {
-      if (_tipoSeleccionado == 'credito' && _tarjetaSeleccionada != null) {
+      if (_tipoSeleccionado == 'ingreso') {
+        final now = DateTime.now();
+        final mesActualStr = mesActual();
+        // Obtener primer categoria de ingreso activa o 1 por defecto
+        final categorias = await LocalRepository.instance.getIngresos(); // check database service if needed, default id 1
+        await LocalRepository.instance.createIngreso({
+          'categoria_id':   1,
+          'descripcion':    _descCtrl.text.trim(),
+          'monto':          monto,
+          'es_fijo':        0,
+          'fecha':          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}",
+          'mes_referencia': mesActualStr,
+          'notas':          'Auto-detectado · ${widget.rawData['app_label'] ?? ''}',
+        });
+      } else if (_tipoSeleccionado == 'credito' && _tarjetaSeleccionada != null) {
         // Crear como gasto_fijo simple en el mes actual (compra rapida, sin amortizacion)
         // Nota: el usuario puede luego ir a Tarjetas y registrar la amortizacion completa si lo desea
         final mesActualStr = mesActual();
@@ -110,14 +126,16 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
         });
       }
 
-      await NotificationListenerChannel.instance.dismissPendingTransaction(widget.pendingIndex);
+      if (widget.pendingIndex >= 0) {
+        await NotificationListenerChannel.instance.dismissPendingTransaction(widget.pendingIndex);
+      }
 
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context, rootNavigator: true).pop();
         widget.onDone();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gasto registrado correctamente'),
+          SnackBar(
+            content: Text(_tipoSeleccionado == 'ingreso' ? 'Ingreso registrado correctamente' : 'Gasto registrado correctamente'),
             backgroundColor: AppTheme.colorAlDia,
           ),
         );
@@ -134,9 +152,11 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
   }
 
   Future<void> _discard() async {
-    await NotificationListenerChannel.instance.dismissPendingTransaction(widget.pendingIndex);
+    if (widget.pendingIndex >= 0) {
+      await NotificationListenerChannel.instance.dismissPendingTransaction(widget.pendingIndex);
+    }
     if (mounted) {
-      Navigator.of(context).pop();
+      Navigator.of(context, rootNavigator: true).pop();
       widget.onDone();
     }
   }
@@ -176,7 +196,7 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Compra detectada', style: const TextStyle(
+                    Text(_tipoSeleccionado == 'ingreso' ? 'Ingreso detectado 💰' : 'Compra detectada', style: const TextStyle(
                       color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
                     Text('Desde $appLabel · ${tsLabel.length > 10 ? tsLabel.substring(0, 16) : tsLabel}',
                         style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
@@ -195,19 +215,24 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: tipoTarjeta.contains('credito')
-                    ? AppTheme.primary.withAlpha(20)
-                    : AppTheme.colorIngresos.withAlpha(20),
+                color: tipoTarjeta == 'ingreso'
+                    ? AppTheme.colorIngresos.withAlpha(20)
+                    : tipoTarjeta.contains('credito')
+                        ? AppTheme.primary.withAlpha(20)
+                        : AppTheme.colorAlDia.withAlpha(20),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                tipoTarjeta == 'credito' ? 'Tarjeta de credito'
+                tipoTarjeta == 'ingreso' ? 'Ingreso 💰'
+                    : tipoTarjeta == 'credito' ? 'Tarjeta de credito'
                     : tipoTarjeta == 'credito_avance' ? 'Avance de efectivo'
                     : tipoTarjeta == 'debito' ? 'Debito'
                     : 'Tipo desconocido',
                 style: TextStyle(
                   fontSize: 11, fontWeight: FontWeight.w600,
-                  color: tipoTarjeta.contains('credito') ? AppTheme.primary : AppTheme.colorIngresos,
+                  color: tipoTarjeta == 'ingreso'
+                      ? AppTheme.colorIngresos
+                      : tipoTarjeta.contains('credito') ? AppTheme.primary : AppTheme.colorAlDia,
                 ),
               ),
             ),
@@ -263,7 +288,9 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
                 const Text('Registrar como:', style: TextStyle(
                   color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _TipoChip(
                       label: 'Gasto simple',
@@ -271,7 +298,6 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
                       selected: _tipoSeleccionado == 'simple',
                       onTap: () => setState(() => _tipoSeleccionado = 'simple'),
                     ),
-                    const SizedBox(width: 8),
                     _TipoChip(
                       label: 'Tarjeta de credito',
                       icon: Icons.credit_card_rounded,
@@ -280,6 +306,12 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
                         setState(() => _tipoSeleccionado = 'credito');
                         if (_tarjetas.isEmpty) _loadTarjetas();
                       },
+                    ),
+                    _TipoChip(
+                      label: 'Ingreso',
+                      icon: Icons.savings_rounded,
+                      selected: _tipoSeleccionado == 'ingreso',
+                      onTap: () => setState(() => _tipoSeleccionado = 'ingreso'),
                     ),
                   ],
                 ),
@@ -314,20 +346,33 @@ class _GastoDetectadoDialogState extends State<GastoDetectadoDialog> {
           Row(
             children: [
               Expanded(
+                flex: 4,
                 child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+                  ),
                   onPressed: _saving ? null : _discard,
-                  child: const Text('Descartar'),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Descartar', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                flex: 2,
+                flex: 6,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+                  ),
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(height: 20, width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Guardar gasto'),
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(_tipoSeleccionado == 'ingreso' ? 'Guardar ingreso' : 'Guardar gasto', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        ),
                 ),
               ),
             ],
@@ -348,36 +393,31 @@ class _TipoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.primary.withAlpha(20) : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? AppTheme.primary : AppTheme.borderLight,
-              width: selected ? 1.5 : 1,
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary.withAlpha(20) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.borderLight,
+            width: selected ? 1.5 : 1,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: selected ? AppTheme.primary : AppTheme.textMuted),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(label,
-                  style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: selected ? AppTheme.primary : AppTheme.textMuted,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? AppTheme.primary : AppTheme.textMuted),
+            const SizedBox(width: 4),
+            Text(label,
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600,
+                color: selected ? AppTheme.primary : AppTheme.textMuted,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

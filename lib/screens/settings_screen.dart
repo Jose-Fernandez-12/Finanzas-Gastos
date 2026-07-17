@@ -4,9 +4,11 @@ import '../core/notification_listener_channel.dart';
 import 'notificaciones/notification_logs_screen.dart';
 
 import 'dart:io';
-import 'package:path/path.dart';
+import 'package:path/path.dart' hide context;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 /// Pantalla de configuracion
 class SettingsScreen extends StatefulWidget {
@@ -65,6 +67,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
       String path = join(dir.path, 'finanzas.db');
       await deleteDatabase(path);
       exit(0);
+    }
+  }
+
+  Future<void> _exportData() async {
+    try {
+      Directory dir = await getApplicationDocumentsDirectory();
+      String path = join(dir.path, 'finanzas.db');
+      if (await File(path).exists()) {
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: 'Copia de seguridad de Mis Finanzas (finanzas.db)',
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay base de datos para exportar')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
+    }
+  }
+
+  Future<void> _importData() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+      if (result != null && result.files.single.path != null) {
+        final backupPath = result.files.single.path!;
+        
+        final conf = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.bgCard,
+            title: const Text('¿Importar copia de seguridad?', style: TextStyle(color: AppTheme.textPrimary)),
+            content: const Text('Esto reemplazará todos tus datos actuales con los del archivo seleccionado. La app se cerrará para aplicar los cambios.', style: TextStyle(color: AppTheme.textSecondary)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('Importar'),
+              ),
+            ],
+          ),
+        );
+
+        if (conf == true) {
+          Directory dir = await getApplicationDocumentsDirectory();
+          String targetPath = join(dir.path, 'finanzas.db');
+          
+          await deleteDatabase(targetPath);
+          await File(backupPath).copy(targetPath);
+          
+          exit(0);
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
     }
   }
 
@@ -213,6 +272,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                           ),
+                          
+                          // Boton escanear notificaciones activas actuales
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.document_scanner_rounded, size: 16),
+                              label: const Text('Escanear notificaciones actuales'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () async {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Escaneando notificaciones...')),
+                                );
+                                await NotificationListenerChannel.instance.fetchActiveNotifications();
+                                // Wait a bit for native side to process and create pending transactions
+                                await Future.delayed(const Duration(milliseconds: 1000));
+                                
+                                // Show pending transactions (this triggers the first one, which then chains if there are more)
+                                final pending = await NotificationListenerChannel.instance.getPendingTransactions();
+                                if (pending.isEmpty && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('No se encontraron notificaciones de pagos pendientes.')),
+                                  );
+                                } else if (mounted) {
+                                  // Just reload Dashboard or let Dashboard handle it? 
+                                  // The Dashboard handles it in `initState`, but we are in Settings.
+                                  // Let's pop back to Dashboard so it can trigger them, or we can trigger the dialog here?
+                                  // Wait, Dashboard only checks on `initState` or when it receives an event stream. 
+                                  // Let's just pop to root to let Dashboard handle it.
+                                  Navigator.of(context).popUntil((route) => route.isFirst);
+                                }
+                              },
+                            ),
+                          ),
                         ],
 
                         // Apps soportadas
@@ -242,13 +338,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 32),
 
+            // ─── Seccion: Copias de Seguridad ────────────────────────
+            _SectionHeader(title: 'Copias de Seguridad', icon: Icons.backup_rounded),
+            const SizedBox(height: 10),
+            _InfoCard(
+              child: Column(
+                children: [
+                  const Text(
+                    'Exporta tu base de datos para guardarla en otro lugar o impórtala si cambiaste de dispositivo o reinstalaste la app.',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.upload_file_rounded, size: 18),
+                          label: const Text('Exportar'),
+                          onPressed: _exportData,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text('Importar'),
+                          onPressed: _importData,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
             // ─── Seccion: Peligroso ──────────────────────────────────
             _SectionHeader(title: 'Zona de peligro', icon: Icons.warning_amber_rounded, color: AppTheme.colorGastos),
             const SizedBox(height: 10),
             Center(
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.delete_forever),
-                label: const Text('Restaurar Base de Datos'),
+                label: const Text('Borrar todos los datos'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                 onPressed: () => _borrarDatos(context),
               ),

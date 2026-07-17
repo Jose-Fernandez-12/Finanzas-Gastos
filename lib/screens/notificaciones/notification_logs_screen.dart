@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../core/notification_listener_channel.dart';
 import '../../core/theme.dart';
 import '../../core/formatters.dart';
+import '../../core/transaction_classifier.dart';
+import 'gasto_detectado_dialog.dart';
 
 /// Pantalla de logs de notificaciones capturadas por el NotificationListenerService.
 /// Util para depuracion: muestra el texto crudo de cada notificacion y si fue parseada.
@@ -69,6 +71,66 @@ Fecha: ${log['timestamp'] ?? ''}
     );
   }
 
+  void _registerFromLog(Map<String, dynamic> log) async {
+    final texto = '${log['titulo'] ?? ''} ${log['cuerpo'] ?? ''}';
+    double? monto = (log['monto_detectado'] as num?)?.toDouble();
+    if (monto == null || monto <= 0) {
+      final match = RegExp(r'(?:recibiste|llegó|transferencia|abono|consignación|\$|COP[\s$]*)\s*([\d.,]+)', caseSensitive: false).firstMatch(texto);
+      if (match != null) {
+        final raw = match.group(1) ?? '';
+        final clean = raw.replaceAll(RegExp(r'\.(?=\d{3}(?:\D|$))'), '').replaceAll(',', '.').replaceAll(RegExp(r'\.(?=\d{3}\b)'), '');
+        final lim = raw.replaceAll('.', '').replaceAll(',', '');
+        monto = double.tryParse(lim) ?? double.tryParse(clean) ?? 0.0;
+      }
+    }
+
+    String comercio = (log['comercio_detectado'] as String? ?? '').trim();
+    if (comercio.isEmpty) {
+      final rem = RegExp(r'(?:dinero|transferencia)\s+de\s+(.+?)(?:\s+con|\s*\.|$)', caseSensitive: false).firstMatch(texto);
+      if (rem != null) {
+        comercio = rem.group(1)!.trim();
+      } else {
+        comercio = (log['app_label'] as String? ?? 'Notificación').trim();
+      }
+    }
+
+    String tipo = (log['tipo_tarjeta'] as String? ?? '').trim().toLowerCase();
+    if (tipo.isEmpty || tipo == 'desconocido') {
+      if (texto.toLowerCase().contains('recibiste') || texto.toLowerCase().contains('llegó dinero')) {
+        tipo = 'ingreso';
+      } else if (texto.toLowerCase().contains('crédito') || texto.toLowerCase().contains('credito')) {
+        tipo = 'credito';
+      } else {
+        tipo = 'debito';
+      }
+    }
+
+    final rawData = {
+      'app_label': log['app_label'] ?? 'App',
+      'package_name': log['package_name'] ?? '',
+      'titulo': log['titulo'] ?? '',
+      'cuerpo': log['cuerpo'] ?? '',
+      'monto': monto ?? 0.0,
+      'comercio': comercio,
+      'tipo_tarjeta': tipo,
+      'timestamp': log['timestamp'] ?? '',
+    };
+
+    final classification = await TransactionClassifier.classify(rawData);
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => GastoDetectadoDialog(
+        rawData: rawData,
+        classification: classification,
+        pendingIndex: -1,
+        onDone: () => _loadLogs(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,7 +150,7 @@ Fecha: ${log['timestamp'] ?? ''}
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary),
-            tooltip: 'Actualizar',
+            tooltip: 'Refrescar',
             onPressed: _loadLogs,
           ),
         ],
@@ -104,14 +166,15 @@ Fecha: ${log['timestamp'] ?? ''}
   Widget _buildEmpty() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_rounded, size: 60, color: AppTheme.textMuted.withAlpha(100)),
-          const SizedBox(height: 16),
-          const Text('No hay logs registrados', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
-          const SizedBox(height: 8),
-          const Text('Activa el registro en Configuracion para capturar\nlas notificaciones de apps financieras.',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 13), textAlign: TextAlign.center),
+          Icon(Icons.history_rounded, size: 56, color: AppTheme.textMuted.withAlpha(80)),
+          const SizedBox(height: 12),
+          const Text('No hay logs capturados',
+              style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('Las notificaciones recibidas apareceran aqui.',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
         ],
       ),
     );
@@ -120,22 +183,20 @@ Fecha: ${log['timestamp'] ?? ''}
   Widget _buildList() {
     return Column(
       children: [
-        // Info banner
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppTheme.primary.withAlpha(15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.primary.withAlpha(40)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.primary),
+              const Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${_logs.length} notificaciones capturadas. Toca el icono de copia para enviar un log y ajustar los parsers.',
+                  '${_logs.length} notificaciones capturadas. Toca el icono de registro (+) para procesar o copiar.',
                   style: const TextStyle(color: AppTheme.primary, fontSize: 12),
                 ),
               ),
@@ -146,7 +207,11 @@ Fecha: ${log['timestamp'] ?? ''}
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: _logs.length,
-            itemBuilder: (context, i) => _LogCard(log: _logs[i], onCopy: () => _copyLog(_logs[i])),
+            itemBuilder: (context, i) => _LogCard(
+              log: _logs[i],
+              onCopy: () => _copyLog(_logs[i]),
+              onRegister: () => _registerFromLog(_logs[i]),
+            ),
           ),
         ),
       ],
@@ -157,8 +222,9 @@ Fecha: ${log['timestamp'] ?? ''}
 class _LogCard extends StatelessWidget {
   final Map<String, dynamic> log;
   final VoidCallback onCopy;
+  final VoidCallback onRegister;
 
-  const _LogCard({required this.log, required this.onCopy});
+  const _LogCard({required this.log, required this.onCopy, required this.onRegister});
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +288,26 @@ class _LogCard extends StatelessWidget {
                     style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                 const SizedBox(width: 4),
                 InkWell(
+                  onTap: onRegister,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withAlpha(25),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_circle_outline_rounded, size: 14, color: AppTheme.primary),
+                        SizedBox(width: 3),
+                        Text('Registrar', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
                   onTap: onCopy,
                   borderRadius: BorderRadius.circular(6),
                   child: const Padding(
@@ -251,12 +337,12 @@ class _LogCard extends StatelessWidget {
                     _Chip(
                       icon: Icons.attach_money_rounded,
                       label: formatCOP((monto as num).toDouble()),
-                      color: AppTheme.colorGastos,
+                      color: tipoTarjeta == 'ingreso' ? AppTheme.colorIngresos : AppTheme.colorGastos,
                     ),
                   if (comercio != null && comercio.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     _Chip(
-                      icon: Icons.store_rounded,
+                      icon: tipoTarjeta == 'ingreso' ? Icons.person_rounded : Icons.store_rounded,
                       label: comercio,
                       color: AppTheme.primary,
                     ),
@@ -264,9 +350,9 @@ class _LogCard extends StatelessWidget {
                   if (tipoTarjeta != null && tipoTarjeta.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     _Chip(
-                      icon: Icons.credit_card_rounded,
+                      icon: tipoTarjeta == 'ingreso' ? Icons.savings_rounded : Icons.credit_card_rounded,
                       label: tipoTarjeta,
-                      color: AppTheme.colorDeudas,
+                      color: tipoTarjeta == 'ingreso' ? AppTheme.colorIngresos : AppTheme.colorDeudas,
                     ),
                   ],
                 ],

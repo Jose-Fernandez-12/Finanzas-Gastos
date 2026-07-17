@@ -7,6 +7,8 @@ enum TransactionRoute {
   creditCard,
   /// Pago con debito, efectivo u otro → crear gasto_fijo simple
   simpleExpense,
+  /// Ingreso de dinero, consignacion o transferencia recibida
+  income,
   /// No se puede determinar el tipo → preguntar al usuario
   unknown,
 }
@@ -31,6 +33,8 @@ class TransactionClassifier {
   static const _creditTypes = {'credito', 'credito_avance'};
   /// Tipos de tarjeta que identifican debito/efectivo
   static const _debitTypes  = {'debito', 'efectivo', 'transferencia'};
+  /// Tipos que identifican ingreso
+  static const _incomeTypes = {'ingreso', 'abono', 'consignacion', 'recibiste'};
 
   /// Mapa de paquete → banco para emparejar con tarjetas registradas
   static const _packageToBanco = {
@@ -45,7 +49,14 @@ class TransactionClassifier {
   /// Clasifica la transaccion consultando las tarjetas registradas en la app.
   static Future<ClassifiedTransaction> classify(Map<String, dynamic> rawData) async {
     final tipoTarjeta = (rawData['tipo_tarjeta'] as String? ?? '').toLowerCase();
+    final titulo = (rawData['titulo'] as String? ?? '').toLowerCase();
+    final cuerpo = (rawData['cuerpo'] as String? ?? '').toLowerCase();
     final pkg = rawData['package_name'] as String? ?? '';
+
+    // 0. Si es ingreso (transferencia recibida, abono, consignacion)
+    if (_incomeTypes.contains(tipoTarjeta) || titulo.contains('recibiste') || cuerpo.contains('recibiste') || titulo.contains('llegó dinero') || cuerpo.contains('llegó dinero')) {
+      return ClassifiedTransaction(route: TransactionRoute.income, rawData: rawData);
+    }
 
     // 1. Si es debito/efectivo por tipo detectado → gasto simple directamente
     if (_debitTypes.contains(tipoTarjeta)) {

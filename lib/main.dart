@@ -101,6 +101,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => GastoDetectadoDialog(
         rawData: rawData,
