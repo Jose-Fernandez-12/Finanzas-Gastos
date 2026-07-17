@@ -23,14 +23,15 @@ class AnalyticsDao {
 
     // 2. Obtener gastos fijos del mes
     final gastos = await DatabaseService.instance.query(
-      "SELECT SUM(monto) as total FROM gastos_fijos WHERE activo = 1 AND (es_fijo = 1 OR mes_referencia = ?)",
+      "SELECT COALESCE(SUM(monto), 0) as total FROM gastos_fijos WHERE activo = 1 AND (es_fijo = 1 OR mes_referencia = ?) AND nombre NOT LIKE 'Cuota TC:%'",
       [mesActualStr]
     );
     final totalGastosFijos = (gastos.first['total'] as num?)?.toDouble() ?? 0.0;
 
-    // 3. Obtener cuota básica de tarjetas
+    // 3. Obtener cuota básica de tarjetas (tanto pendientes como pagadas correspondientes a este mes)
     final cuotasBasicasQuery = await DatabaseService.instance.query(
-      "SELECT SUM(c.valor_cuota) as total FROM cuotas_amortizacion c JOIN compras_tarjeta cp ON c.compra_id = cp.id WHERE c.numero_cuota = cp.cuota_actual AND c.estado = 'PENDIENTE'"
+      "SELECT COALESCE(SUM(valor_cuota), 0) as total FROM cuotas_amortizacion WHERE (strftime('%Y-%m', fecha_vencimiento) = ? OR strftime('%Y-%m', fecha_pago_real) = ?) AND estado IN ('PENDIENTE', 'PAGADA')",
+      [mesActualStr, mesActualStr]
     );
     final cuotaBasicaTarjetas = (cuotasBasicasQuery.first['total'] as num?)?.toDouble() ?? 0.0;
 
@@ -108,14 +109,14 @@ class AnalyticsDao {
     final double ingresos = (ingRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
     final gfRes = await DatabaseService.instance.query(
-      "SELECT COALESCE(SUM(monto), 0) as total FROM gastos_fijos WHERE activo = 1 AND (es_fijo = 1 OR mes_referencia = ?)",
+      "SELECT COALESCE(SUM(monto), 0) as total FROM gastos_fijos WHERE activo = 1 AND (es_fijo = 1 OR mes_referencia = ?) AND nombre NOT LIKE 'Cuota TC:%'",
       [mesStr]
     );
     final double gastosFijos = (gfRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
     final ctRes = await DatabaseService.instance.query(
-      "SELECT COALESCE(SUM(valor_cuota), 0) as total FROM cuotas_amortizacion WHERE estado = 'PENDIENTE' AND strftime('%Y-%m', fecha_vencimiento) = ?",
-      [mesStr]
+      "SELECT COALESCE(SUM(valor_cuota), 0) as total FROM cuotas_amortizacion WHERE (strftime('%Y-%m', fecha_vencimiento) = ? OR strftime('%Y-%m', fecha_pago_real) = ?) AND estado IN ('PENDIENTE', 'PAGADA')",
+      [mesStr, mesStr]
     );
     final double cuotasTarjetas = (ctRes.first['total'] as num?)?.toDouble() ?? 0.0;
 

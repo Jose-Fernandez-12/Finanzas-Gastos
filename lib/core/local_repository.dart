@@ -489,23 +489,6 @@ class LocalRepository {
           [montoTotal, tarjetaId]
         );
 
-        // Registrar cuota mensual como gasto del mes actual automáticamente
-        if (tabla.isNotEmpty) {
-          final cuotaMensual = tabla[0]['valor_cuota'] as double;
-          final descCompra = data['descripcion']?.toString() ?? 'Compra TC';
-          final now = DateTime.now();
-          final mesActual = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-          await txn.insert('gastos_fijos', {
-            'categoria_id': 9,
-            'nombre': 'Cuota TC: $descCompra',
-            'monto': cuotaMensual,
-            'dia_pago': (tarjeta['fecha_pago'] as num?)?.toInt() ?? 0,
-            'notas': 'Generado automáticamente para la compra en tarjeta de crédito',
-            'es_fijo': 0,
-            'mes_referencia': mesActual,
-          });
-        }
-
         return {
           'ok': true, 
           'data': {
