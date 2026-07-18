@@ -56,10 +56,10 @@ class NotificationListener : NotificationListenerService() {
                     Regex("""(?:dinero|transferencia)\s+de\s+(.+?)(?:\s+con|\s*\.|$)""", RegexOption.IGNORE_CASE),
                     "ingreso"
                 ),
-                // "Compra de $150.000 en Éxito aprobada"
+                // "Compra de $150.000 en Éxito aprobada" o "Compra aprobada por $41.490... Compra en SUPERTIENDA"
                 Triple(
                     Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
-                    Regex("""en\s+(.+?)\s+aprobada""", RegexOption.IGNORE_CASE),
+                    Regex("""(?:en\s+|Compra en\s+)(.+?)(?:\s+aprobada|\s+con\s+|\s*\.|\s*$)""", RegexOption.IGNORE_CASE),
                     "credito"
                 ),
                 // "Avance de efectivo: $150.000"
@@ -153,9 +153,15 @@ class NotificationListener : NotificationListenerService() {
     fun fetchAndProcessActiveNotifications() {
         Log.d(TAG, "Fetching active notifications...")
         try {
-            val activeNotifs = activeNotifications ?: return
+            val activeNotifs = activeNotifications
+            if (activeNotifs == null) {
+                Log.d(TAG, "activeNotifications is null. Service might not be properly bound.")
+                return
+            }
+            Log.d(TAG, "Encontradas ${activeNotifs.size} notificaciones activas en el sistema.")
             for (sbn in activeNotifs) {
-                // Call the existing method to process it
+                val pkg = sbn.packageName ?: "unknown"
+                Log.d(TAG, "Notificacion activa: $pkg")
                 onNotificationPosted(sbn)
             }
         } catch (e: Exception) {
@@ -171,9 +177,9 @@ class NotificationListener : NotificationListenerService() {
         val notification = sbn.notification ?: return
         val extras = notification.extras ?: return
 
-        val titulo = extras.getString(Notification.EXTRA_TITLE) ?: ""
-        val cuerpo  = extras.getString(Notification.EXTRA_TEXT)
-                    ?: extras.getString(Notification.EXTRA_BIG_TEXT)
+        val titulo = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val cuerpo  = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+                    ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
                     ?: ""
         val timestamp = dateFormat.format(Date(sbn.postTime))
 
@@ -336,14 +342,14 @@ class NotificationListener : NotificationListenerService() {
         val pendingJson = prefs.getString(KEY_PENDING_TRANSACTIONS, "[]")
         val pending = JSONArray(pendingJson)
 
-        // Evitar duplicados: misma app + mismo monto + misma fecha (hasta minuto)
+        // Evitar duplicados cruzados (ej. Nu y Google Pay reportando la misma compra)
+        // Mismo monto + misma fecha (hasta el minuto). Ya no requerimos que sea la misma app.
         val timestampMin = timestamp.substring(0, 16) // "yyyy-MM-dd HH:mm"
         for (i in 0 until pending.length()) {
             val p = pending.getJSONObject(i)
             if (p.optString("timestamp").startsWith(timestampMin) &&
-                p.optDouble("monto") == monto &&
-                p.optString("app_label") == appLabel) {
-                Log.d(TAG, "Transaccion duplicada ignorada: $monto en $comercio")
+                p.optDouble("monto") == monto) {
+                Log.d(TAG, "Transaccion duplicada (misma app o cruzada) ignorada: $monto en $comercio")
                 return
             }
         }

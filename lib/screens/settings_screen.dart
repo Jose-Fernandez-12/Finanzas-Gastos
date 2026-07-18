@@ -210,18 +210,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ),
-                            TextButton(
-                              onPressed: () async {
-                                if (!_permissionGranted) {
-                                  await NotificationListenerChannel.instance.openPermissionSettings();
-                                  await Future.delayed(const Duration(seconds: 2));
-                                }
+                            Switch(
+                              value: _permissionGranted,
+                              activeColor: AppTheme.primary,
+                              onChanged: (val) async {
+                                // Siempre abrir la configuracion, ya sea para apagar o prender
+                                await NotificationListenerChannel.instance.openPermissionSettings();
+                                // Esperar un momento a que el usuario regrese
+                                await Future.delayed(const Duration(seconds: 1));
                                 _checkPermissions();
                               },
-                              child: Text(
-                                _permissionGranted ? 'Verificar' : 'Activar',
-                                style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600),
-                              ),
                             ),
                           ],
                         ),
