@@ -182,8 +182,38 @@ class NotificationService {
           }
         }
       }
+      // 4. Suscripciones activas con cobro proximo segun su recordatorio_dias
+      final suscripcionesList = await repo.getSuscripciones();
+      for (var s in suscripcionesList) {
+        final diaCobro = (s['dia_cobro'] as num?)?.toInt() ?? 1;
+        final recordatorioDias = (s['recordatorio_dias'] as num?)?.toInt() ?? 1;
+        final nombre   = s['nombre'] ?? 'Suscripcion';
+        final monto    = (s['monto'] as num?)?.toDouble() ?? 0.0;
+
+        // Calcular la fecha de cobro este mes; si ya paso, usar el mes siguiente
+        DateTime fechaCobro = DateTime(now.year, now.month, diaCobro.clamp(1, 28));
+        if (fechaCobro.isBefore(DateTime(now.year, now.month, now.day))) {
+          fechaCobro = DateTime(now.year, now.month + 1, diaCobro.clamp(1, 28));
+        }
+
+        final diasRestantes = fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
+
+        if (diasRestantes <= recordatorioDias && diasRestantes >= 0) {
+          final textoTiempo = diasRestantes == 0
+              ? 'hoy'
+              : diasRestantes == 1
+                  ? 'manana'
+                  : 'en $diasRestantes dias';
+
+          await showNotification(
+            id: notificationId++,
+            title: 'Suscripcion por cobrar: $nombre',
+            body: 'Se te cobrara \$${monto.toStringAsFixed(0)} $textoTiempo (dia $diaCobro).',
+          );
+        }
+      }
     } catch (_) {
-      // Ignorar silenciosamente en producción
+      // Ignorar silenciosamente en produccion
     }
   }
 }
