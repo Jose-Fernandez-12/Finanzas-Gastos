@@ -66,6 +66,25 @@ class DatabaseService {
           )
         ''');
 
+        // Tabla de suscripciones (modulo independiente)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS suscripciones (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre            TEXT NOT NULL,
+            monto             REAL NOT NULL,
+            dia_cobro         INTEGER NOT NULL DEFAULT 1,
+            frecuencia        TEXT NOT NULL DEFAULT 'Mensual',
+            recordatorio_dias INTEGER NOT NULL DEFAULT 1,
+            color             TEXT NOT NULL DEFAULT '#4F46E5',
+            notas             TEXT,
+            activa            INTEGER NOT NULL DEFAULT 1,
+            fecha_ultimo_cobro TEXT,
+            creado_en         TEXT DEFAULT (datetime('now')),
+            actualizado_en    TEXT DEFAULT (datetime('now'))
+          )
+        ''');
+
+
         // Migraciones de columnas seguras (no destructivas) para bases de datos existentes
         try { await db.execute("ALTER TABLE cuotas_amortizacion ADD COLUMN fecha_pago_real TEXT;"); } catch (_) {}
         try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
@@ -75,6 +94,15 @@ class DatabaseService {
         try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
         try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN es_avance INTEGER DEFAULT 0;"); } catch (_) {}
         try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
+
+        // Migraciones para Ahorros (Cuotas y metas)
+        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN cuota_monto REAL DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN frecuencia_cuota TEXT DEFAULT 'Mensual';"); } catch (_) {}
+        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN meses_meta INTEGER;"); } catch (_) {}
+
+        // Migraciones para Suscripciones (Gastos Fijos expandidos)
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN tipo_frecuencia TEXT DEFAULT 'Mensual';"); } catch (_) {}
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN recordatorio_dias INTEGER DEFAULT 1;"); } catch (_) {}
       },
     );
   }

@@ -642,7 +642,70 @@ class LocalRepository {
     });
   }
 
+  Future<void> updateAhorro(int id, Map<String, dynamic> data) async {
+    await DatabaseService.instance.update('bolsillos_ahorro', {
+      'nombre':           data['nombre'],
+      'meta_monto':       data['meta_monto'],
+      'fecha_meta':       data['fecha_meta'],
+      'color':            data['color'] ?? '#4CAF50',
+      'notas':            data['notas'],
+      'cuota_monto':      data['cuota_monto'] ?? 0.0,
+      'frecuencia_cuota': data['frecuencia_cuota'] ?? 'Mensual',
+      'meses_meta':       data['meses_meta'],
+      'actualizado_en':   DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteAhorro(int id) async {
+    await DatabaseService.instance.update('bolsillos_ahorro', {'activo': 0}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ---- Suscripciones ----
+  Future<List<Map<String, dynamic>>> getSuscripciones({bool soloActivas = true}) async {
+    final where = soloActivas ? 'WHERE activa = 1' : '';
+    return await DatabaseService.instance.query(
+      'SELECT * FROM suscripciones $where ORDER BY dia_cobro ASC',
+    );
+  }
+
+  Future<void> createSuscripcion(Map<String, dynamic> data) async {
+    await DatabaseService.instance.insert('suscripciones', {
+      'nombre':            data['nombre'],
+      'monto':             data['monto'],
+      'dia_cobro':         data['dia_cobro'] ?? 1,
+      'frecuencia':        data['frecuencia'] ?? 'Mensual',
+      'recordatorio_dias': data['recordatorio_dias'] ?? 1,
+      'color':             data['color'] ?? '#4F46E5',
+      'notas':             data['notas'],
+    });
+  }
+
+  Future<void> updateSuscripcion(int id, Map<String, dynamic> data) async {
+    await DatabaseService.instance.update('suscripciones', {
+      'nombre':            data['nombre'],
+      'monto':             data['monto'],
+      'dia_cobro':         data['dia_cobro'] ?? 1,
+      'frecuencia':        data['frecuencia'] ?? 'Mensual',
+      'recordatorio_dias': data['recordatorio_dias'] ?? 1,
+      'color':             data['color'] ?? '#4F46E5',
+      'notas':             data['notas'],
+      'actualizado_en':    DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteSuscripcion(int id) async {
+    await DatabaseService.instance.update('suscripciones', {'activa': 0}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> registrarCobroSuscripcion(int id) async {
+    await DatabaseService.instance.update('suscripciones', {
+      'fecha_ultimo_cobro': DateTime.now().toIso8601String().split('T')[0],
+      'actualizado_en':     DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
   // ---- Cuentas por Cobrar ----
+
   Future<Map<String, dynamic>> getCuentasCobrar() async {
     // La actualización de MORA la hacemos en la consulta local también
     await DatabaseService.instance.execute(

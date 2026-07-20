@@ -10,6 +10,7 @@ import 'screens/tarjetas/tarjetas_screen.dart';
 import 'screens/ingresos_screen.dart';
 import 'screens/gastos_screen.dart';
 import 'screens/ahorros_screen.dart';
+import 'screens/suscripciones_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 import 'screens/notificaciones/gasto_detectado_dialog.dart';
 
@@ -65,6 +66,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     const GastosScreen(),
     const TarjetasScreen(),
     const AhorrosScreen(),
+    const SuscripcionesScreen(),
     const CuentasCobrarScreen(),
   ];
 
@@ -160,12 +162,13 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             setState(() => _currentIndex = i);
           },
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.dashboard_rounded),       label: 'Inicio'),
-            NavigationDestination(icon: Icon(Icons.trending_up_rounded),     label: 'Ingresos'),
-            NavigationDestination(icon: Icon(Icons.receipt_long_rounded),    label: 'Gastos'),
-            NavigationDestination(icon: Icon(Icons.credit_card_rounded),     label: 'Tarjetas'),
-            NavigationDestination(icon: Icon(Icons.savings_rounded),         label: 'Ahorros'),
-            NavigationDestination(icon: Icon(Icons.people_rounded),          label: 'Cobrar'),
+            NavigationDestination(icon: Icon(Icons.dashboard_rounded),         label: 'Inicio'),
+            NavigationDestination(icon: Icon(Icons.trending_up_rounded),       label: 'Ingresos'),
+            NavigationDestination(icon: Icon(Icons.receipt_long_rounded),      label: 'Gastos'),
+            NavigationDestination(icon: Icon(Icons.credit_card_rounded),       label: 'Tarjetas'),
+            NavigationDestination(icon: Icon(Icons.savings_rounded),           label: 'Ahorros'),
+            NavigationDestination(icon: Icon(Icons.subscriptions_rounded),     label: 'Suscripc.'),
+            NavigationDestination(icon: Icon(Icons.people_rounded),            label: 'Cobrar'),
           ],
         ),
       ),

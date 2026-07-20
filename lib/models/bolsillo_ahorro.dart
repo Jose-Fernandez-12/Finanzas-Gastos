@@ -9,6 +9,11 @@ class BolsilloAhorro {
   final String? notas;
   final int activo;
 
+  // Nuevos campos para cuotas
+  final double cuotaMonto;
+  final String frecuenciaCuota;
+  final int? mesesMeta;
+
   BolsilloAhorro({
     required this.id,
     required this.nombre,
@@ -19,6 +24,9 @@ class BolsilloAhorro {
     required this.color,
     this.notas,
     required this.activo,
+    this.cuotaMonto = 0.0,
+    this.frecuenciaCuota = 'Mensual',
+    this.mesesMeta,
   });
 
   factory BolsilloAhorro.fromMap(Map<String, dynamic> map) {
@@ -32,6 +40,9 @@ class BolsilloAhorro {
       color: map['color'] ?? '#4CAF50',
       notas: map['notas'],
       activo: map['activo'] ?? 1,
+      cuotaMonto: (map['cuota_monto'] ?? 0.0) is num ? (map['cuota_monto'] as num).toDouble() : double.tryParse(map['cuota_monto'].toString()) ?? 0.0,
+      frecuenciaCuota: map['frecuencia_cuota'] ?? 'Mensual',
+      mesesMeta: map['meses_meta'] as int?,
     );
   }
 
@@ -46,6 +57,9 @@ class BolsilloAhorro {
       'color': color,
       'notas': notas,
       'activo': activo,
+      'cuota_monto': cuotaMonto,
+      'frecuencia_cuota': frecuenciaCuota,
+      'meses_meta': mesesMeta,
     };
   }
 }
