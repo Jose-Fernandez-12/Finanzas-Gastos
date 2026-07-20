@@ -212,8 +212,31 @@ class NotificationService {
           );
         }
       }
+      // 5. Metas de ahorro
+      final ahorrosRes = await repo.getAhorros();
+      if (ahorrosRes['ok'] == true) {
+        final listAhorros = ahorrosRes['data'] as List<dynamic>? ?? [];
+        for (var a in listAhorros) {
+          final Map<String, dynamic> ahorro = Map<String, dynamic>.from(a);
+          final meta = (ahorro['meta_monto'] as num?)?.toDouble() ?? 0.0;
+          final actual = (ahorro['monto_actual'] as num?)?.toDouble() ?? 0.0;
+          final cuota = (ahorro['cuota_monto'] as num?)?.toDouble() ?? 0.0;
+          final nombre = ahorro['nombre'] ?? 'Meta de ahorro';
+          
+          if (meta > 0 && actual < meta && cuota > 0) {
+            // Un recordatorio para que no olvide separar su cuota
+            await showNotification(
+              id: notificationId++,
+              title: '¡No olvides tu meta: $nombre!',
+              body: 'Recuerda separar tu cuota de \$${cuota.toStringAsFixed(0)} para seguir acercandote a tu meta.',
+            );
+          }
+        }
+      }
+
     } catch (_) {
       // Ignorar silenciosamente en produccion
     }
   }
 }
+
