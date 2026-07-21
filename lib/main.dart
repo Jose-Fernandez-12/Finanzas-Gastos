@@ -72,17 +72,23 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   void initState() {
     super.initState();
     // Al abrir la app, verificar si hay transacciones detectadas pendientes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await NotificationListenerChannel.instance.fetchActiveNotifications();
       _checkPendingTransactions();
       _listenForRealTimeTransactions();
     });
   }
 
+  bool _isShowingDialog = false;
+
   /// Verifica transacciones pendientes guardadas mientras la app estaba cerrada
   Future<void> _checkPendingTransactions() async {
+    if (_isShowingDialog) return; // Si ya hay uno abierto, esperar a que cierre
+
     final pending = await NotificationListenerChannel.instance.getPendingTransactions();
     if (!mounted || pending.isEmpty) return;
 
+    _isShowingDialog = true;
     // Mostrar el dialog para la primera transaccion pendiente
     _showGastoDetectado(pending.first, 0);
   }
@@ -90,13 +96,17 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   /// Escucha transacciones en tiempo real mientras la app esta abierta
   void _listenForRealTimeTransactions() {
     NotificationListenerChannel.instance.transactionStream.listen((data) {
-      if (mounted) _showGastoDetectado(data, -1);
+      // Como Kotlin ya guarda la notificacion en "pending", solo avisamos que revise los pendientes
+      if (mounted) _checkPendingTransactions();
     });
   }
 
   Future<void> _showGastoDetectado(Map<String, dynamic> rawData, int index) async {
     final classification = await TransactionClassifier.classify(rawData);
-    if (!mounted) return;
+    if (!mounted) {
+      _isShowingDialog = false;
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -108,11 +118,18 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
         pendingIndex: index >= 0 ? index : 0,
         classification: classification,
         onDone: () {
+          _isShowingDialog = false;
           // Verificar si hay mas transacciones pendientes
-          if (index >= 0) _checkPendingTransactions();
+          _checkPendingTransactions();
         },
       ),
-    );
+    ).then((_) {
+      // Por si el usuario cierra el modal arrastrandolo hacia abajo o tocando afuera
+      if (_isShowingDialog) {
+        _isShowingDialog = false;
+        _checkPendingTransactions();
+      }
+    });
   }
 
   @override
