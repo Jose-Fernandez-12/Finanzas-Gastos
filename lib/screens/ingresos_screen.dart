@@ -37,6 +37,7 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_ingresos',
         onPressed: () => _showForm(context, ref),
         backgroundColor: AppTheme.colorIngresos,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),

@@ -25,6 +25,7 @@ class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(title: const Text('Metas de Ahorro')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_ahorros',
         onPressed: () => _showForm(context, ref),
         icon:      const Icon(Icons.add_rounded),
         label:     const Text('Nueva meta'),

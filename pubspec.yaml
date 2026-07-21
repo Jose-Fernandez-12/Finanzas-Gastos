@@ -39,6 +39,8 @@ dependencies:
   # Notificaciones locales
   flutter_local_notifications: ^17.2.1
   timezone: ^0.9.4
+  share_plus: ^10.0.0
+  file_picker: ^8.1.4
 
 dev_dependencies:
   flutter_test:

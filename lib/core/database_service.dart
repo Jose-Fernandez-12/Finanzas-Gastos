@@ -50,6 +50,31 @@ class DatabaseService {
       onOpen: (db) async {
         // Habilitar foreign keys si no están habilitadas por defecto
         await db.execute("PRAGMA foreign_keys = ON;");
+        // Crear tabla de logs de notificaciones si no existe (migracion no destructiva)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS notification_logs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            package_name    TEXT NOT NULL,
+            app_label       TEXT,
+            titulo          TEXT,
+            cuerpo          TEXT,
+            monto_detectado REAL,
+            comercio_detectado TEXT,
+            tipo_tarjeta    TEXT,
+            parseado        INTEGER DEFAULT 0,
+            creado_en       TEXT DEFAULT (datetime('now'))
+          )
+        ''');
+
+        // Migraciones de columnas seguras (no destructivas) para bases de datos existentes
+        try { await db.execute("ALTER TABLE cuotas_amortizacion ADD COLUMN fecha_pago_real TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN es_fijo INTEGER DEFAULT 1;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE ingresos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE ingresos ADD COLUMN es_fijo INTEGER DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN es_avance INTEGER DEFAULT 0;"); } catch (_) {}
+        try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
       },
     );
   }

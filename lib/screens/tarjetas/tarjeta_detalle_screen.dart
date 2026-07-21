@@ -95,6 +95,7 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_tarjeta_detalle',
         onPressed: () => _showFormCompra(context),
         icon:  const Icon(Icons.add_shopping_cart_rounded, color: Colors.white),
         label: const Text('Registrar compra', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
