@@ -206,6 +206,60 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     return options[_random.nextInt(options.length)];
   }
 
+  /// Registra la vista actual para mensajes contextuales por pantalla
+  void setCurrentView(String viewName) {
+    if (state.isAction && state.isVisible) return; // No interrumpir acciones
+
+    final Map<String, List<String>> viewMessages = {
+      'dashboard': [
+        "Aquí está el resumen de todo. ¿Cómo vas con el presupuesto de este mes?",
+        "Vista general lista. Tus números cuentan una historia, ¿la ves?",
+        "Tu dashboard financiero al día. Los pequeños datos hacen las grandes diferencias.",
+      ],
+      'gastos': [
+        "En gastos. Recuerda: cada peso que sale, se registra aquí.",
+        "¡Ojo! El control de gastos es el primer paso para ahorrar más.",
+        "Revisando gastos. ¿Ves algún gasto que puedas eliminar este mes?",
+        "Tip del día: categoriza bien cada gasto para tener mejores reportes.",
+      ],
+      'ingresos': [
+        "¡Área de ingresos! Aquí entra la magia (o sea, el dinero).",
+        "¿Llegó algún ingreso nuevo? No lo dejes sin registrar.",
+        "Registrar ingresos te ayuda a saber exactamente con cuánto cuentas.",
+      ],
+      'ahorros': [
+        "¡Mis favoritos: los bolsillos de ahorro! ¿Cómo van tus metas?",
+        "Ahorrar aunque sea un poquito cada mes hace una gran diferencia.",
+        "Cada peso en ahorro es una versión futura de ti que te lo agradece.",
+      ],
+      'tarjetas': [
+        "Tarjetas de crédito. Úsalas con inteligencia, no con impulso.",
+        "¿Tu cupo disponible es suficiente? Aquí puedes llevar el control.",
+        "Recuerda: el mínimo de tarjeta nunca es suficiente para salir de deudas.",
+      ],
+      'suscripciones': [
+        "Suscripciones activas. ¿Estás usando todas las que tienes?",
+        "A veces olvidamos suscripciones activas. ¿Hay alguna que ya no necesitas?",
+        "Cada suscripción que no usas es dinero que se pierde cada mes.",
+      ],
+      'analitica': [
+        "Modo analítico activado. Los números no mienten.",
+        "¿Ves algún patrón interesante en tus gastos? Yo sí lo veo...",
+        "La analítica te ayuda a entender tus hábitos financieros reales.",
+      ],
+    };
+
+    final frases = viewMessages[viewName];
+    if (frases == null) return;
+
+    final msg = frases[_random.nextInt(frases.length)];
+    state = AssistantState(message: msg, isVisible: true, isAction: false, animation: AssistantAnimation.nod);
+
+    Future.delayed(const Duration(seconds: 10), () {
+      if (state.message == msg) hideMessage();
+    });
+  }
+
   void toggleVisibility() {
     state = state.copyWith(isVisible: !state.isVisible);
     if (state.isVisible) {

@@ -5,6 +5,7 @@ import '../../core/formatters.dart';
 import '../../core/local_repository.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/virtual_assistant_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
 
@@ -26,6 +27,9 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
   void initState() {
     super.initState();
     _recargarTodo();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('tarjetas');
+    });
   }
 
   Future<void> _recargarTodo() async {

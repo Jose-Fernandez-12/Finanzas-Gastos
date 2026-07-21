@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/local_repository.dart';
 import '../providers/suscripciones_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/suscripcion.dart';
 
 class SuscripcionesScreen extends ConsumerStatefulWidget {
@@ -20,6 +21,9 @@ class _SuscripcionesScreenState extends ConsumerState<SuscripcionesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('suscripciones');
+    });
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/analytics_profile_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
@@ -33,6 +34,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchGastosDelMes();
+      ref.read(virtualAssistantProvider.notifier).setCurrentView('analitica');
     });
   }
 

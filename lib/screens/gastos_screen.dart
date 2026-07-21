@@ -18,7 +18,13 @@ class GastosScreen extends ConsumerStatefulWidget {
 class _GastosScreenState extends ConsumerState<GastosScreen> {
   final String _mes = mesActual();
 
-  // initState removed as Riverpod handles initial load on watch
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('gastos');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

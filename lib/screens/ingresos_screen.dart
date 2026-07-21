@@ -18,7 +18,13 @@ class IngresosScreen extends ConsumerStatefulWidget {
 class _IngresosScreenState extends ConsumerState<IngresosScreen> {
   final String _mes = mesActual();
 
-  // initState not needed since watch handles initial load
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('ingresos');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
