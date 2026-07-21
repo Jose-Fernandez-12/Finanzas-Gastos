@@ -11,20 +11,23 @@ class AssistantState {
   final bool isVisible;
   final bool isAction;
   final AssistantAnimation animation;
+  final String? themeIcon;
 
   AssistantState({
     required this.message, 
     this.isVisible = false, 
     this.isAction = false,
     this.animation = AssistantAnimation.idle,
+    this.themeIcon,
   });
 
-  AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation}) {
+  AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation, String? themeIcon}) {
     return AssistantState(
       message: message ?? this.message,
       isVisible: isVisible ?? this.isVisible,
       isAction: isAction ?? this.isAction,
       animation: animation ?? this.animation,
+      themeIcon: themeIcon ?? this.themeIcon,
     );
   }
 }
@@ -127,7 +130,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         anim = AssistantAnimation.idle;
     }
 
-    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim, themeIcon: '✨');
     
     // Auto ocultar más rápido para acciones
     Future.delayed(const Duration(seconds: 8), () {
@@ -154,7 +157,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
     String newMessage = _generateMessage(pctEndeudamiento, liquidez, cuentasMora, proximasCuotas);
     
-    state = AssistantState(message: newMessage, isVisible: true, isAction: false);
+    state = AssistantState(message: newMessage, isVisible: true, isAction: false, themeIcon: '📊');
     
     Future.delayed(const Duration(seconds: 12), () {
       if (state.message == newMessage) {
@@ -247,13 +250,46 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         "¿Ves algún patrón interesante en tus gastos? Yo sí lo veo...",
         "La analítica te ayuda a entender tus hábitos financieros reales.",
       ],
+      'cobrar': [
+        "Sección de cobros. Es hora de recuperar lo prestado.",
+        "¿Alguien te debe dinero? Anótalo aquí para no olvidarlo.",
+        "Prestar dinero a amigos a veces es difícil, cobrarles también. ¡Yo te ayudo!",
+      ]
+    };
+
+    final Map<String, AssistantAnimation> viewAnims = {
+      'dashboard': AssistantAnimation.spin,
+      'gastos': AssistantAnimation.shrink,
+      'ingresos': AssistantAnimation.jump,
+      'ahorros': AssistantAnimation.glowGreen,
+      'tarjetas': AssistantAnimation.glitch,
+      'suscripciones': AssistantAnimation.nod,
+      'analitica': AssistantAnimation.stretch,
+      'cobrar': AssistantAnimation.shake,
+    };
+
+    final Map<String, String> viewIcons = {
+      'dashboard': '🏠',
+      'gastos': '💸',
+      'ingresos': '💰',
+      'ahorros': '🌱',
+      'tarjetas': '💳',
+      'suscripciones': '📺',
+      'analitica': '📈',
+      'cobrar': '🤝',
     };
 
     final frases = viewMessages[viewName];
     if (frases == null) return;
 
     final msg = frases[_random.nextInt(frases.length)];
-    state = AssistantState(message: msg, isVisible: true, isAction: false, animation: AssistantAnimation.nod);
+    state = AssistantState(
+      message: msg, 
+      isVisible: true, 
+      isAction: false, 
+      animation: viewAnims[viewName] ?? AssistantAnimation.idle,
+      themeIcon: viewIcons[viewName],
+    );
 
     Future.delayed(const Duration(seconds: 10), () {
       if (state.message == msg) hideMessage();

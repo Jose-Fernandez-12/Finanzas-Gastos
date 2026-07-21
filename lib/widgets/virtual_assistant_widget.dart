@@ -137,9 +137,33 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
               ),
 
             // El Avatar animado Pixel Art
-            AnimatedAvatar(
-              animation: state.animation,
-              controller: _controller,
+            Stack(
+              alignment: Alignment.topRight,
+              children: [
+                AnimatedAvatar(
+                  animation: state.animation,
+                  controller: _controller,
+                ),
+                if (state.themeIcon != null && state.isVisible)
+                  Positioned(
+                    top: -10,
+                    right: -10,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Text(
+                            state.themeIcon!,
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
