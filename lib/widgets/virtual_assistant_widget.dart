@@ -370,8 +370,8 @@ class AnimatedAvatar extends StatelessWidget {
             ..scale(scaleX, scaleY),
           alignment: Alignment.center,
           child: SizedBox(
-            width: 45,
-            height: 45,
+            width: 56,
+            height: 32,
             child: CustomPaint(
               painter: _PixelArtPainter(color: filterColor),
             ),
