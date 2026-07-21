@@ -191,8 +191,8 @@ class _PixelArtPainter extends CustomPainter {
     "   ##################   ", // 10 (Body below arms)
     "   ##################   ", // 11
     "   ##################   ", // 12 (Solid body instead of legs gap!)
-    "   ###   ##  ##   ###   ", // 13 (Legs perfectly aligned with eyes)
-    "   ###   ##  ##   ###   ", // 14
+    "    ##   ##  ##   ##    ", // 13 (Legs shifted inward)
+    "    ##   ##  ##   ##    ", // 14
   ];
 
   @override
