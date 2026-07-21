@@ -151,9 +151,10 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
 
 class _PixelArtPainter extends CustomPainter {
   final Color color;
-  _PixelArtPainter({required this.color});
+  final List<String> sprite;
+  _PixelArtPainter({required this.color, required this.sprite});
 
-  static const List<String> sprite = [
+  static const List<String> baseFrame = [
     "  ##########  ", 
     "  ##########  ", 
     "  ##########  ", 
@@ -168,13 +169,102 @@ class _PixelArtPainter extends CustomPainter {
     "   # #  # #   ", 
   ];
 
+  static const List<String> blinkFrame = [
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   # #  # #   ", 
+    "   # #  # #   ", 
+    "   # #  # #   ", 
+  ];
+
+  static const List<String> armsUpFrame = [
+    "  ##########  ", 
+    "####      ####", 
+    "####      ####", 
+    "  ## #### ##  ", 
+    "  ## #### ##  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   # #  # #   ", 
+    "   # #  # #   ", 
+    "   # #  # #   ", 
+  ];
+
+  static const List<String> squishFrame = [
+    "              ", 
+    "              ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ## #### ##  ", 
+    "  ## #### ##  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   ##    ##   ", 
+  ];
+
+  static const List<String> walkFrame1 = [
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ## #### ##  ", 
+    "  ## #### ##  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   ##   # #   ", 
+    "   ##   # #   ", 
+    "        # #   ", 
+  ];
+
+  static const List<String> walkFrame2 = [
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ## #### ##  ", 
+    "  ## #### ##  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   # #   ##   ", 
+    "   # #   ##   ", 
+    "   # #        ", 
+  ];
+
+  static const List<String> nodFrame = [
+    "              ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ## #### ##  ", 
+    "  ## #### ##  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   # #  # #   ", 
+    "   # #  # #   ", 
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
     
-    // Resplandor
     final glowPaint = Paint()
       ..color = color.withAlpha(80)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
@@ -182,12 +272,10 @@ class _PixelArtPainter extends CustomPainter {
     final rows = sprite.length;
     final cols = sprite[0].length;
     
-    // Forzar píxeles perfectamente cuadrados (5x5) para el grid de 14x8
-    const double pixelSize = 5.0; 
+    const double pixelSize = 3.5; 
     final double spriteW = cols * pixelSize; 
     final double spriteH = rows * pixelSize; 
     
-    // Centrar el sprite dentro del canvas
     final double offsetX = (size.width - spriteW) / 2;
     final double offsetY = (size.height - spriteH) / 2;
 
@@ -206,7 +294,7 @@ class _PixelArtPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class TypingText extends StatefulWidget {
@@ -293,97 +381,82 @@ class AnimatedAvatar extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
-        final floatOffset = math.sin(controller.value * math.pi) * 8.0;
-        
-        double scaleX = 1.0;
-        double scaleY = 1.0;
-        double transX = 0.0;
-        double transY = floatOffset;
-        double rotZ = 0.0;
-        double rotY = 0.0;
+        final v = controller.value;
+        List<String> currentSprite = _PixelArtPainter.baseFrame;
         Color filterColor = const Color(0xFFD4B886);
         
-        final v = controller.value;
-        
+        bool isAlt = v > 0.5;
+
         switch (animation) {
           case AssistantAnimation.jump:
-            transY = -math.sin(v * math.pi) * 20.0;
+            currentSprite = isAlt ? _PixelArtPainter.armsUpFrame : _PixelArtPainter.squishFrame;
             break;
           case AssistantAnimation.shake:
-            transX = math.sin(v * math.pi * 12) * 8.0;
+            currentSprite = isAlt ? _PixelArtPainter.walkFrame1 : _PixelArtPainter.walkFrame2;
             break;
           case AssistantAnimation.stretch:
-            scaleY = 1.0 + math.sin(v * math.pi) * 0.5;
-            scaleX = 1.0 - math.sin(v * math.pi) * 0.3;
+            currentSprite = _PixelArtPainter.armsUpFrame;
             break;
           case AssistantAnimation.shrink:
-            scaleY = 1.0 - math.sin(v * math.pi) * 0.5;
-            scaleX = 1.0 + math.sin(v * math.pi) * 0.3;
-            transY = floatOffset + 15;
+            currentSprite = _PixelArtPainter.squishFrame;
             break;
           case AssistantAnimation.spin:
-            rotZ = v * 2 * math.pi;
+            currentSprite = isAlt ? _PixelArtPainter.walkFrame1 : _PixelArtPainter.walkFrame2;
             break;
           case AssistantAnimation.flip:
-            rotY = v * 2 * math.pi;
+            currentSprite = isAlt ? _PixelArtPainter.walkFrame2 : _PixelArtPainter.walkFrame1;
             break;
           case AssistantAnimation.glowGreen:
             filterColor = Color.lerp(const Color(0xFFD4B886), Colors.greenAccent, math.sin(v * math.pi))!;
-            scaleX = 1.0 + math.sin(v * math.pi) * 0.2;
-            scaleY = 1.0 + math.sin(v * math.pi) * 0.2;
+            currentSprite = isAlt ? _PixelArtPainter.armsUpFrame : _PixelArtPainter.baseFrame;
             break;
           case AssistantAnimation.glowRed:
             filterColor = Color.lerp(const Color(0xFFD4B886), Colors.redAccent, math.sin(v * math.pi))!;
-            transX = math.sin(v * math.pi * 12) * 5.0; 
+            currentSprite = isAlt ? _PixelArtPainter.squishFrame : _PixelArtPainter.blinkFrame;
             break;
           case AssistantAnimation.nod:
-            rotZ = math.sin(v * math.pi * 6) * 0.4;
+            currentSprite = isAlt ? _PixelArtPainter.nodFrame : _PixelArtPainter.baseFrame;
             break;
           case AssistantAnimation.glitch:
-            transX = (math.Random().nextDouble() - 0.5) * 15.0;
-            transY = floatOffset + (math.Random().nextDouble() - 0.5) * 15.0;
             filterColor = math.Random().nextBool() ? Colors.cyanAccent : Colors.redAccent;
+            int rand = math.Random().nextInt(4);
+            if (rand == 0) currentSprite = _PixelArtPainter.squishFrame;
+            else if (rand == 1) currentSprite = _PixelArtPainter.armsUpFrame;
+            else if (rand == 2) currentSprite = _PixelArtPainter.blinkFrame;
+            else currentSprite = _PixelArtPainter.walkFrame2;
             break;
           case AssistantAnimation.idle:
           default:
+            if (v > 0.9) {
+              currentSprite = _PixelArtPainter.blinkFrame;
+            } else {
+              currentSprite = _PixelArtPainter.baseFrame;
+            }
             break;
         }
 
-        return Transform(
-          transform: Matrix4.identity()
-            ..translate(transX, transY)
-            ..rotateZ(rotZ)
-            ..rotateY(rotY)
-            ..scale(scaleX, scaleY),
-          alignment: Alignment.center,
+        final floatOffset = math.sin(v * math.pi * 2) * 2.0;
+
+        return Transform.translate(
+          offset: Offset(0, floatOffset),
           child: SizedBox(
-            width: 80,
-            height: 80,
+            width: 55, 
+            height: 55,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Positioned.fill(
                   child: CustomPaint(
-                    painter: _PixelArtPainter(color: filterColor),
+                    painter: _PixelArtPainter(color: filterColor, sprite: currentSprite),
                   ),
                 ),
                 if (themeIcon != null)
                   Positioned(
                     top: -5,
                     right: -5,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Text(
-                            themeIcon!,
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        );
-                      },
+                    child: Text(
+                      themeIcon!,
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
               ],

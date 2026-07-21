@@ -62,6 +62,9 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "Otro gasto registrado. Espero que no haya sido un gasto hormiga.",
           "Gasto guardado. Vigilaré que no te pases del presupuesto este mes.",
           "Registrado. A veces hay que gastar, pero con responsabilidad.",
+          "Menos dinero en la cuenta, pero al menos está anotado. 📝",
+          "¡Anotado! Cada peso cuenta para el balance mensual.",
+          "Gasto capturado. ¿Era realmente necesario? 🤔",
           amount != null && amount > 100000 
             ? "¡Vaya gasto grande! Espero que lo tuvieras planeado." 
             : "Pequeño gasto registrado. Recuerda que de a poco se llena el vaso... o se vacía."
@@ -76,7 +79,10 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "¡Dinero nuevo! 💰 Esto me pone muy feliz.",
           "¡Excelente! Más gasolina para nuestra salud financiera.",
           "Ingreso registrado. ¿Qué tal si guardamos un % en los bolsillos de ahorro?",
-          "¡Cha-ching! 🤑 Un gran día para tus finanzas."
+          "¡Cha-ching! 🤑 Un gran día para tus finanzas.",
+          "Sube el nivel de energía financiera. ¡Buen trabajo!",
+          "¡Ingreso detectado! Los números verdes son mis favoritos. 💚",
+          "Aumentando reservas de liquidez. ¡A celebrar (sin gastarlo todo)!"
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.nod];
@@ -87,7 +93,9 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         final frases = [
           "¡Bien hecho! Pagar a tiempo te ahorra intereses.",
           "Un paso más para mantener ese historial crediticio impecable.",
-          "Deuda reducida. Es una gran sensación, ¿verdad?"
+          "Deuda reducida. Es una gran sensación, ¿verdad?",
+          "Las tarjetas de crédito te temen. ¡Buen pago!",
+          "Pago registrado. Adiós a esos intereses abusivos."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.spin, AssistantAnimation.nod];
@@ -98,7 +106,9 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         final frases = [
           "¡Me encanta esto! Pagarte a ti mismo en el futuro es la mejor inversión.",
           "Un paso más cerca de tu meta. Sigue así.",
-          "Ahorrar requiere disciplina, y tú la tienes. 🚀"
+          "Ahorrar requiere disciplina, y tú la tienes. 🚀",
+          "Ahorro protegido. Tu futuro financiero se ve más brillante.",
+          "Píxel a píxel se construye un castillo, y peso a peso un gran ahorro."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.nod, AssistantAnimation.stretch, AssistantAnimation.glowGreen];
@@ -108,7 +118,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       case 'NUEVA_DEUDA_A_COBRAR':
         final frases = [
           "Dinero prestado... Ojalá te paguen pronto. Yo estaré vigilando.",
-          "Registrado. No olvides cobrar cuando llegue la fecha."
+          "Registrado. No olvides cobrar cuando llegue la fecha.",
+          "Eres una buena persona prestando dinero. Ahora hay que ser buenos cobrando."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.shrink, AssistantAnimation.nod];
@@ -118,7 +129,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       case 'COBRO_RECIBIDO':
         final frases = [
           "¡Por fin pagaron! Dinero recuperado con éxito.",
-          "Justicia divina. Deuda saldada."
+          "Justicia divina. Deuda saldada.",
+          "El universo financiero vuelve a estar en equilibrio. ¡Cobro recibido!"
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.jump];
@@ -218,42 +230,50 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         "Aquí está el resumen de todo. ¿Cómo vas con el presupuesto de este mes?",
         "Vista general lista. Tus números cuentan una historia, ¿la ves?",
         "Tu dashboard financiero al día. Los pequeños datos hacen las grandes diferencias.",
+        "Monitoreando la central de mando financiero. ¡Todo bajo control!",
       ],
       'gastos': [
         "En gastos. Recuerda: cada peso que sale, se registra aquí.",
         "¡Ojo! El control de gastos es el primer paso para ahorrar más.",
         "Revisando gastos. ¿Ves algún gasto que puedas eliminar este mes?",
         "Tip del día: categoriza bien cada gasto para tener mejores reportes.",
+        "Sección de gastos. Mantenlos bajos y tu paz mental alta.",
       ],
       'ingresos': [
         "¡Área de ingresos! Aquí entra la magia (o sea, el dinero).",
         "¿Llegó algún ingreso nuevo? No lo dejes sin registrar.",
         "Registrar ingresos te ayuda a saber exactamente con cuánto cuentas.",
+        "La fuente de la felicidad... digo, liquidez. ¡Ingresos!",
       ],
       'ahorros': [
         "¡Mis favoritos: los bolsillos de ahorro! ¿Cómo van tus metas?",
         "Ahorrar aunque sea un poquito cada mes hace una gran diferencia.",
         "Cada peso en ahorro es una versión futura de ti que te lo agradece.",
+        "El rincón de los sueños financiados. ¡Tus ahorros!",
       ],
       'tarjetas': [
         "Tarjetas de crédito. Úsalas con inteligencia, no con impulso.",
         "¿Tu cupo disponible es suficiente? Aquí puedes llevar el control.",
         "Recuerda: el mínimo de tarjeta nunca es suficiente para salir de deudas.",
+        "Mantén tus tarjetas bajo control antes de que ellas te controlen a ti.",
       ],
       'suscripciones': [
         "Suscripciones activas. ¿Estás usando todas las que tienes?",
         "A veces olvidamos suscripciones activas. ¿Hay alguna que ya no necesitas?",
         "Cada suscripción que no usas es dinero que se pierde cada mes.",
+        "Cuidado con los pagos silenciosos. Revisa tus suscripciones.",
       ],
       'analitica': [
         "Modo analítico activado. Los números no mienten.",
         "¿Ves algún patrón interesante en tus gastos? Yo sí lo veo...",
         "La analítica te ayuda a entender tus hábitos financieros reales.",
+        "Miremos los gráficos. Una imagen vale más que mil tickets de compra.",
       ],
       'cobrar': [
         "Sección de cobros. Es hora de recuperar lo prestado.",
         "¿Alguien te debe dinero? Anótalo aquí para no olvidarlo.",
         "Prestar dinero a amigos a veces es difícil, cobrarles también. ¡Yo te ayudo!",
+        "La memoria falla, mis registros no. ¡A cobrar!",
       ]
     };
 
