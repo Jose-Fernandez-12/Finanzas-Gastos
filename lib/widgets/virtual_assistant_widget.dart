@@ -177,17 +177,17 @@ class _PixelArtPainter extends CustomPainter {
   _PixelArtPainter({required this.color});
 
   static const List<String> sprite = [
-    "  ##########  ", // 0 (Head top)
-    "  ##########  ", // 1
-    "  ##########  ", // 2
-    "  ## #### ##  ", // 3 (Eye top)
-    "  ## #### ##  ", // 4 (Eye mid)
-    "#### #### ####", // 5 (Eye bottom + Arm top)
-    "##############", // 6 (Body + Arm mid)
-    "##############", // 7 (Body + Arm bottom)
-    "  # #    # #  ", // 8 (Legs)
-    "  # #    # #  ", // 9 (Legs)
-    "  # #    # #  ", // 10 (Legs)
+    "  ##########  ", // 3 filas para la frente alta
+    "  ##########  ", 
+    "  ##########  ", 
+    "  ## #### ##  ", // 3 filas para los ojos estirados
+    "  ## #### ##  ", 
+    "#### #### ####", // Aquí arrancan los brazos
+    "##############", // 2 filas sólidas debajo de los ojos
+    "  ##########  ", // 1 fila sólida de cuerpo antes de piernas
+    "   # #  # #   ", // 3 filas para las piernas largas
+    "   # #  # #   ", 
+    "   # #  # #   ", 
   ];
 
   @override
