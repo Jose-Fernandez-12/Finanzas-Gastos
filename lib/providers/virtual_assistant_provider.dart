@@ -55,13 +55,13 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     switch(actionType) {
       case 'NUEVO_GASTO':
         final frases = [
-          "Malo malo malo. Dinero ido. Duele billetera.",
-          "Gasto nuevo. ¿Por qué salir dinero, pregunta?",
-          "Registrado. Cuidar dinero es importante importante importante.",
-          "Dinero gastado. Yo vigilo presupuesto. No gastar más.",
+          "¡Auch! Eso dolió un poco en la billetera. 💸",
+          "Otro gasto registrado. Espero que no haya sido un gasto hormiga.",
+          "Gasto guardado. Vigilaré que no te pases del presupuesto este mes.",
+          "Registrado. A veces hay que gastar, pero con responsabilidad.",
           amount != null && amount > 100000 
-            ? "Malo malo malo. Gasto muy grande. ¿Estaba planeado, pregunta?" 
-            : "Gasto pequeño. Muchos gastos pequeños hacen vaso vacío."
+            ? "¡Vaya gasto grande! Espero que lo tuvieras planeado." 
+            : "Pequeño gasto registrado. Recuerda que de a poco se llena el vaso... o se vacía."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.shake, AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
@@ -70,10 +70,10 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
       case 'NUEVO_INGRESO':
         final frases = [
-          "Feliz feliz feliz. Dinero nuevo. Buen trabajo.",
-          "Dinero entra. Salud financiera sube sube sube.",
-          "Ingreso listo. ¿Guardar porcentaje en ahorro, pregunta?",
-          "Bien bien bien. Día grande para finanzas."
+          "¡Dinero nuevo! 💰 Esto me pone muy feliz.",
+          "¡Excelente! Más gasolina para nuestra salud financiera.",
+          "Ingreso registrado. ¿Qué tal si guardamos un % en los bolsillos de ahorro?",
+          "¡Cha-ching! 🤑 Un gran día para tus finanzas."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.nod];
@@ -82,9 +82,9 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
       case 'PAGO_TARJETA':
         final frases = [
-          "Bien hecho. Pagar a tiempo evita intereses. Inteligente inteligente inteligente.",
-          "Deuda baja. Historial sube. Buen humano.",
-          "Sentimiento bueno. Deuda pequeña ahora, ¿verdad pregunta?"
+          "¡Bien hecho! Pagar a tiempo te ahorra intereses.",
+          "Un paso más para mantener ese historial crediticio impecable.",
+          "Deuda reducida. Es una gran sensación, ¿verdad?"
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.spin, AssistantAnimation.nod];
@@ -93,9 +93,9 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
       case 'NUEVO_AHORRO':
         final frases = [
-          "Feliz feliz feliz. Pagar a ti mismo es mejor inversión.",
-          "Meta cerca. Seguir así es bueno bueno bueno.",
-          "Ahorrar necesita disciplina. Tú tienes disciplina."
+          "¡Me encanta esto! Pagarte a ti mismo en el futuro es la mejor inversión.",
+          "Un paso más cerca de tu meta. Sigue así.",
+          "Ahorrar requiere disciplina, y tú la tienes. 🚀"
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.nod, AssistantAnimation.stretch, AssistantAnimation.glowGreen];
@@ -104,8 +104,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
       case 'NUEVA_DEUDA_A_COBRAR':
         final frases = [
-          "Dinero prestado. Yo vigilo. Espero devuelvan pronto.",
-          "Anotado. ¿Recuerdas cobrar en fecha, pregunta?"
+          "Dinero prestado... Ojalá te paguen pronto. Yo estaré vigilando.",
+          "Registrado. No olvides cobrar cuando llegue la fecha."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.shrink, AssistantAnimation.nod];
@@ -114,8 +114,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         
       case 'COBRO_RECIBIDO':
         final frases = [
-          "¡Dinero vuelve! Pago recibido. Bien bien bien.",
-          "Justicia ocurre. Deuda saldada. Feliz."
+          "¡Por fin pagaron! Dinero recuperado con éxito.",
+          "Justicia divina. Deuda saldada."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.jump];
@@ -123,7 +123,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         break;
 
       default:
-        msg = "Nota tomada. Entendido.";
+        msg = "He tomado nota de eso.";
         anim = AssistantAnimation.idle;
     }
 

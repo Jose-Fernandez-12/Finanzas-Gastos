@@ -152,23 +152,16 @@ class _PixelArtPainter extends CustomPainter {
   final Color color;
   _PixelArtPainter({required this.color});
 
-  // Matriz del Sprite (Exactamente como la imagen de referencia)
+  // Matriz del Sprite (Space Invader clásico)
   static const List<String> sprite = [
-    "   ##################   ",
-    "   ##################   ",
-    "   ##################   ",
-    "   ###   ######   ###   ",
-    "   ###   ######   ###   ",
-    "   ###   ######   ###   ",
-    "   ###   ######   ###   ",
-    "########################",
-    "########################",
-    "########################",
-    "   ##################   ",
-    "   ##################   ",
-    "   ##  ##      ##  ##   ",
-    "   ##  ##      ##  ##   ",
-    "   ##  ##      ##  ##   ",
+    "  #     #  ",
+    "   #   #   ",
+    "  #######  ",
+    " ## ### ## ",
+    "###########",
+    "# ####### #",
+    "# #     # #",
+    "   ## ##   ",
   ];
 
   @override
