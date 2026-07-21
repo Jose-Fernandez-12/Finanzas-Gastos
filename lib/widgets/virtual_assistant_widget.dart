@@ -177,20 +177,14 @@ class _PixelArtPainter extends CustomPainter {
   _PixelArtPainter({required this.color});
 
   static const List<String> sprite = [
-    "  ################  ", // 0
-    "  ################  ", // 1
-    "  ##  ########  ##  ", // 2 (Eyes top)
-    "  ##  ########  ##  ", // 3
-    "####  ########  ####", // 4 (Eyes bottom + Arms)
-    "####  ########  ####", // 5
-    "  ################  ", // 6 (Solid body below eyes/arms)
-    "  ################  ", // 7
-    "  ##  ##    ##  ##  ", // 8 (Legs)
-    "  ##  ##    ##  ##  ", // 9
-    "  ##  ##    ##  ##  ", // 10
-    "  ##  ##    ##  ##  ", // 11
-    "  ##  ##    ##  ##  ", // 12
-    "  ##  ##    ##  ##  ", // 13
+    "  ##########  ", // 0
+    "  ##########  ", // 1
+    "  ##########  ", // 2
+    "  ## #### ##  ", // 3 (Eye top)
+    "#### #### ####", // 4 (Eye bottom + Arm)
+    "##############", // 5 (Body + Arm bottom)
+    "  # #    # #  ", // 6 (Legs)
+    "  # #    # #  ", // 7 (Legs)
   ];
 
   @override
@@ -207,8 +201,8 @@ class _PixelArtPainter extends CustomPainter {
     final rows = sprite.length;
     final cols = sprite[0].length;
     
-    // Forzar píxeles perfectamente cuadrados (4x4) para el grid de 20x14
-    const double pixelSize = 4.0; 
+    // Forzar píxeles perfectamente cuadrados (5x5) para el grid de 14x8
+    const double pixelSize = 5.0; 
     final double spriteW = cols * pixelSize; 
     final double spriteH = rows * pixelSize; 
     
