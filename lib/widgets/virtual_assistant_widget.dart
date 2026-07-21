@@ -176,21 +176,21 @@ class _PixelArtPainter extends CustomPainter {
   final Color color;
   _PixelArtPainter({required this.color});
 
-  // Sprite exacto de Rocky (igual a la imagen de referencia)
   static const List<String> sprite = [
-    "   ##################   ",
-    "   ##################   ",
-    "   ##################   ",
-    "   ##  ##########  ##   ",
-    "   ##  ##########  ##   ",
-    "#####  ##########  #####",
-    "#####  ##########  #####",
-    "########################",
-    "########################",
-    "   ##  ##      ##  ##   ",
-    "   ##  ##      ##  ##   ",
-    "   ##  ##      ##  ##   ",
-    "   ##  ##      ##  ##   ",
+    "  ################  ", // 0
+    "  ################  ", // 1
+    "  ##  ########  ##  ", // 2 (Eyes top)
+    "  ##  ########  ##  ", // 3
+    "####  ########  ####", // 4 (Eyes bottom + Arms)
+    "####  ########  ####", // 5
+    "  ################  ", // 6 (Solid body below eyes/arms)
+    "  ################  ", // 7
+    "  ##  ##    ##  ##  ", // 8 (Legs)
+    "  ##  ##    ##  ##  ", // 9
+    "  ##  ##    ##  ##  ", // 10
+    "  ##  ##    ##  ##  ", // 11
+    "  ##  ##    ##  ##  ", // 12
+    "  ##  ##    ##  ##  ", // 13
   ];
 
   @override
@@ -207,8 +207,8 @@ class _PixelArtPainter extends CustomPainter {
     final rows = sprite.length;
     final cols = sprite[0].length;
     
-    // Forzar píxeles perfectamente cuadrados (3x3)
-    const double pixelSize = 3.0; 
+    // Forzar píxeles perfectamente cuadrados (4x4) para el grid de 20x14
+    const double pixelSize = 4.0; 
     final double spriteW = cols * pixelSize; 
     final double spriteH = rows * pixelSize; 
     
