@@ -13,6 +13,7 @@ import 'screens/ahorros_screen.dart';
 import 'screens/suscripciones_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 import 'screens/notificaciones/gasto_detectado_dialog.dart';
+import 'widgets/virtual_assistant_widget.dart';
 
 import 'core/notification_service.dart';
 
@@ -43,6 +44,14 @@ class FinanzasApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: const MainNavigation(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            const GlobalVirtualAssistant(),
+          ],
+        );
+      },
     );
   }
 }

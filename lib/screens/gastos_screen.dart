@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/gastos_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/gasto_fijo.dart';
 
 class GastosScreen extends ConsumerStatefulWidget {
@@ -106,9 +107,12 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder:            (_) => _FormGasto(
         gastoExistente: gasto,
-        onSave: () {
+        onSave: (monto) {
           ref.invalidate(gastosProvider(_mes));
           ref.invalidate(dashboardProvider);
+          if (gasto == null) {
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', monto);
+          }
         },
       ),
     );
@@ -298,6 +302,7 @@ class _GastoItem extends ConsumerWidget {
                         ref.invalidate(gastosProvider(currentMonth)); // Assuming _mes is currentMonth here roughly, or just reload current
                         ref.invalidate(dashboardProvider);
                       }
+                      onDelete(); // Dummy call if necessary to conform to signature changes
                     } catch (e) {
                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al pagar: $e')));
                     }
@@ -323,7 +328,7 @@ class _GastoItem extends ConsumerWidget {
 }
 
 class _FormGasto extends StatefulWidget {
-  final VoidCallback onSave;
+  final Function(double) onSave;
   final GastoFijo? gastoExistente;
   const _FormGasto({required this.onSave, this.gastoExistente});
 
@@ -458,7 +463,7 @@ class _FormGastoState extends State<_FormGasto> {
       } else {
         await LocalRepository.instance.createGastoFijo(data);
       }
-      if (mounted) { Navigator.pop(context); widget.onSave(); }
+      if (mounted) { Navigator.pop(context); widget.onSave(double.parse(_monto.text)); }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
     } finally {

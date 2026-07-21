@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/ingresos_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/ingreso.dart';
 
 class IngresosScreen extends ConsumerStatefulWidget {
@@ -105,9 +106,12 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder:            (_) => _FormIngreso(
         ingreso: ingreso,
-        onSave: () {
+        onSave: (monto) {
           ref.invalidate(ingresosProvider(_mes));
           ref.invalidate(dashboardProvider);
+          if (ingreso == null && monto > 0) {
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
+          }
         }
       ),
     );
@@ -268,7 +272,7 @@ class _IngresoItem extends ConsumerWidget {
 
 class _FormIngreso extends StatefulWidget {
   final Ingreso? ingreso;
-  final VoidCallback onSave;
+  final Function(double) onSave;
   const _FormIngreso({this.ingreso, required this.onSave});
 
   @override
@@ -422,7 +426,7 @@ class _FormIngresoState extends State<_FormIngreso> {
                 await LocalRepository.instance.deleteIngreso(widget.ingreso!.id);
                 if (mounted) {
                   Navigator.pop(context);
-                  widget.onSave();
+                  widget.onSave(0.0);
                 }
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
@@ -460,7 +464,7 @@ class _FormIngresoState extends State<_FormIngreso> {
           await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);
         }
       }
-      if (mounted) { Navigator.pop(context); widget.onSave(); }
+      if (mounted) { Navigator.pop(context); widget.onSave(monto); }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
     } finally {
