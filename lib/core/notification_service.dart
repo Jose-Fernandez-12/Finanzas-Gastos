@@ -182,8 +182,61 @@ class NotificationService {
           }
         }
       }
+      // 4. Suscripciones activas con cobro proximo segun su recordatorio_dias
+      final suscripcionesList = await repo.getSuscripciones();
+      for (var s in suscripcionesList) {
+        final diaCobro = (s['dia_cobro'] as num?)?.toInt() ?? 1;
+        final recordatorioDias = (s['recordatorio_dias'] as num?)?.toInt() ?? 1;
+        final nombre   = s['nombre'] ?? 'Suscripcion';
+        final monto    = (s['monto'] as num?)?.toDouble() ?? 0.0;
+
+        // Calcular la fecha de cobro este mes; si ya paso, usar el mes siguiente
+        DateTime fechaCobro = DateTime(now.year, now.month, diaCobro.clamp(1, 28));
+        if (fechaCobro.isBefore(DateTime(now.year, now.month, now.day))) {
+          fechaCobro = DateTime(now.year, now.month + 1, diaCobro.clamp(1, 28));
+        }
+
+        final diasRestantes = fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
+
+        if (diasRestantes <= recordatorioDias && diasRestantes >= 0) {
+          final textoTiempo = diasRestantes == 0
+              ? 'hoy'
+              : diasRestantes == 1
+                  ? 'manana'
+                  : 'en $diasRestantes dias';
+
+          await showNotification(
+            id: notificationId++,
+            title: 'Suscripcion por cobrar: $nombre',
+            body: 'Se te cobrara \$${monto.toStringAsFixed(0)} $textoTiempo (dia $diaCobro).',
+          );
+        }
+      }
+      // 5. Metas de ahorro
+      final ahorrosRes = await repo.getAhorros();
+      if (ahorrosRes['ok'] == true) {
+        final listAhorros = ahorrosRes['data'] as List<dynamic>? ?? [];
+        for (var a in listAhorros) {
+          final Map<String, dynamic> ahorro = Map<String, dynamic>.from(a);
+          final meta = (ahorro['meta_monto'] as num?)?.toDouble() ?? 0.0;
+          final actual = (ahorro['monto_actual'] as num?)?.toDouble() ?? 0.0;
+          final cuota = (ahorro['cuota_monto'] as num?)?.toDouble() ?? 0.0;
+          final nombre = ahorro['nombre'] ?? 'Meta de ahorro';
+          
+          if (meta > 0 && actual < meta && cuota > 0) {
+            // Un recordatorio para que no olvide separar su cuota
+            await showNotification(
+              id: notificationId++,
+              title: '¡No olvides tu meta: $nombre!',
+              body: 'Recuerda separar tu cuota de \$${cuota.toStringAsFixed(0)} para seguir acercandote a tu meta.',
+            );
+          }
+        }
+      }
+
     } catch (_) {
-      // Ignorar silenciosamente en producción
+      // Ignorar silenciosamente en produccion
     }
   }
 }
+

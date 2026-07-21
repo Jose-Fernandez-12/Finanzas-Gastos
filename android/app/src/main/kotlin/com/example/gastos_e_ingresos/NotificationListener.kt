@@ -86,7 +86,7 @@ class NotificationListener : NotificationListenerService() {
             "com.rappi.pay" to listOf(
                 Triple(
                     Regex("""(?:[\$\$]|COP[\$\s]*)\s*([\d.,]+)""", RegexOption.IGNORE_CASE),
-                    Regex("""en\s+(.+?)(?:\s+con|\s*$)""", RegexOption.IGNORE_CASE),
+                    Regex("""en\s+(.+?)(?:\s+por|\s*$)""", RegexOption.IGNORE_CASE),
                     "credito"
                 )
             ),
