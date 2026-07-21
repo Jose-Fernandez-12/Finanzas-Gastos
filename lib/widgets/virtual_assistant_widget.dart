@@ -178,28 +178,19 @@ class _PixelArtPainter extends CustomPainter {
 
   // Sprite exacto de Rocky (igual a la imagen de referencia)
   static const List<String> sprite = [
-    "      ############################      ", // 0
-    "      ############################      ", // 1
-    "      ############################      ", // 2
-    "      ############################      ", // 3
-    "      ####    ############    ####      ", // 4 (Eyes)
-    "      ####    ############    ####      ", // 5
-    "      ####    ############    ####      ", // 6
-    "      ####    ############    ####      ", // 7
-    "      ####    ############    ####      ", // 8
-    "      ####    ############    ####      ", // 9
-    "      ############################      ", // 10 (Body below eyes)
-    "      ############################      ", // 11
-    "########################################", // 12 (Arms + body)
-    "########################################", // 13
-    "########################################", // 14
-    "########################################", // 15
-    "      ####    ####    ####    ####      ", // 16 (Legs)
-    "      ####    ####    ####    ####      ", // 17
-    "      ####    ####    ####    ####      ", // 18
-    "      ####    ####    ####    ####      ", // 19
-    "      ####    ####    ####    ####      ", // 20
-    "      ####    ####    ####    ####      ", // 21
+    "   ##################   ", // 0
+    "   ##################   ", // 1
+    "   ##################   ", // 2
+    "   ##  ##########  ##   ", // 3
+    "   ##  ##########  ##   ", // 4
+    "#####  ##########  #####", // 5
+    "#####  ##########  #####", // 6
+    "########################", // 7
+    "########################", // 8
+    "   ##  ##      ##  ##   ", // 9
+    "   ##  ##      ##  ##   ", // 10
+    "   ##  ##      ##  ##   ", // 11
+    "   ##  ##      ##  ##   ", // 12
   ];
 
   @override
@@ -215,15 +206,22 @@ class _PixelArtPainter extends CustomPainter {
 
     final rows = sprite.length;
     final cols = sprite[0].length;
-    final cellW = size.width / cols;
-    final cellH = size.height / rows;
+    
+    // Forzar píxeles perfectamente cuadrados (3x3)
+    const double pixelSize = 3.0; 
+    final double spriteW = cols * pixelSize; 
+    final double spriteH = rows * pixelSize; 
+    
+    // Centrar el sprite dentro del canvas
+    final double offsetX = (size.width - spriteW) / 2;
+    final double offsetY = (size.height - spriteH) / 2;
 
     final path = Path();
 
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         if (sprite[y][x] == '#') {
-          path.addRect(Rect.fromLTWH(x * cellW, y * cellH, cellW, cellH));
+          path.addRect(Rect.fromLTWH(offsetX + x * pixelSize, offsetY + y * pixelSize, pixelSize, pixelSize));
         }
       }
     }
@@ -325,23 +323,22 @@ class AnimatedAvatar extends StatelessWidget {
         Color filterColor = const Color(0xFFD4B886);
         
         final v = controller.value;
-        final fastV = (v * 2) % 1.0; 
         
         switch (animation) {
           case AssistantAnimation.jump:
-            transY = -math.sin(v * math.pi) * 15.0;
+            transY = -math.sin(v * math.pi) * 20.0;
             break;
           case AssistantAnimation.shake:
-            transX = math.sin(v * math.pi * 8) * 6.0;
+            transX = math.sin(v * math.pi * 12) * 8.0;
             break;
           case AssistantAnimation.stretch:
-            scaleY = 1.0 + math.sin(v * math.pi * 2) * 0.3;
-            scaleX = 1.0 - math.sin(v * math.pi * 2) * 0.15;
+            scaleY = 1.0 + math.sin(v * math.pi) * 0.5;
+            scaleX = 1.0 - math.sin(v * math.pi) * 0.3;
             break;
           case AssistantAnimation.shrink:
-            scaleY = 1.0 - math.sin(v * math.pi * 2) * 0.3;
-            scaleX = 1.0 + math.sin(v * math.pi * 2) * 0.15;
-            transY = floatOffset + 8;
+            scaleY = 1.0 - math.sin(v * math.pi) * 0.5;
+            scaleX = 1.0 + math.sin(v * math.pi) * 0.3;
+            transY = floatOffset + 15;
             break;
           case AssistantAnimation.spin:
             rotZ = v * 2 * math.pi;
@@ -350,18 +347,20 @@ class AnimatedAvatar extends StatelessWidget {
             rotY = v * 2 * math.pi;
             break;
           case AssistantAnimation.glowGreen:
-            filterColor = Color.lerp(const Color(0xFFD4B886), Colors.greenAccent, math.sin(v * math.pi * 2))!;
+            filterColor = Color.lerp(const Color(0xFFD4B886), Colors.greenAccent, math.sin(v * math.pi))!;
+            scaleX = 1.0 + math.sin(v * math.pi) * 0.2;
+            scaleY = 1.0 + math.sin(v * math.pi) * 0.2;
             break;
           case AssistantAnimation.glowRed:
-            filterColor = Color.lerp(const Color(0xFFD4B886), Colors.redAccent, math.sin(v * math.pi * 2))!;
-            transX = math.sin(v * math.pi * 6) * 3.0; 
+            filterColor = Color.lerp(const Color(0xFFD4B886), Colors.redAccent, math.sin(v * math.pi))!;
+            transX = math.sin(v * math.pi * 12) * 5.0; 
             break;
           case AssistantAnimation.nod:
-            rotZ = math.sin(v * math.pi * 4) * 0.4;
+            rotZ = math.sin(v * math.pi * 6) * 0.4;
             break;
           case AssistantAnimation.glitch:
-            transX = (math.Random().nextDouble() - 0.5) * 10.0;
-            transY = floatOffset + (math.Random().nextDouble() - 0.5) * 10.0;
+            transX = (math.Random().nextDouble() - 0.5) * 15.0;
+            transY = floatOffset + (math.Random().nextDouble() - 0.5) * 15.0;
             filterColor = math.Random().nextBool() ? Colors.cyanAccent : Colors.redAccent;
             break;
           case AssistantAnimation.idle:
@@ -378,7 +377,7 @@ class AnimatedAvatar extends StatelessWidget {
           alignment: Alignment.center,
           child: SizedBox(
             width: 80,
-            height: 44,
+            height: 80,
             child: CustomPaint(
               painter: _PixelArtPainter(color: filterColor),
             ),
