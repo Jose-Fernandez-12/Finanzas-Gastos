@@ -137,33 +137,10 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
               ),
 
             // El Avatar animado Pixel Art
-            Stack(
-              alignment: Alignment.topRight,
-              children: [
-                AnimatedAvatar(
-                  animation: state.animation,
-                  controller: _controller,
-                ),
-                if (state.themeIcon != null && state.isVisible)
-                  Positioned(
-                    top: -10,
-                    right: -10,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Text(
-                            state.themeIcon!,
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
+            AnimatedAvatar(
+              animation: state.animation,
+              controller: _controller,
+              themeIcon: state.isVisible ? state.themeIcon : null,
             ),
           ],
         ),
@@ -177,15 +154,16 @@ class _PixelArtPainter extends CustomPainter {
   _PixelArtPainter({required this.color});
 
   static const List<String> sprite = [
-    "  ##########  ", // 3 filas para la frente alta
     "  ##########  ", 
     "  ##########  ", 
-    "  ## #### ##  ", // 3 filas para los ojos estirados
+    "  ##########  ", 
     "  ## #### ##  ", 
-    "#### #### ####", // Aquí arrancan los brazos
-    "##############", // 2 filas sólidas debajo de los ojos
-    "  ##########  ", // 1 fila sólida de cuerpo antes de piernas
-    "   # #  # #   ", // 3 filas para las piernas largas
+    "  ## #### ##  ", 
+    "#### #### ####", 
+    "##############", 
+    "  ##########  ", 
+    "  ##########  ", 
+    "   # #  # #   ", 
     "   # #  # #   ", 
     "   # #  # #   ", 
   ];
@@ -301,8 +279,14 @@ class _TypingTextState extends State<TypingText> {
 class AnimatedAvatar extends StatelessWidget {
   final AssistantAnimation animation;
   final AnimationController controller;
+  final String? themeIcon;
   
-  const AnimatedAvatar({super.key, required this.animation, required this.controller});
+  const AnimatedAvatar({
+    super.key, 
+    required this.animation, 
+    required this.controller,
+    this.themeIcon,
+  });
   
   @override
   Widget build(BuildContext context) {
@@ -375,8 +359,34 @@ class AnimatedAvatar extends StatelessWidget {
           child: SizedBox(
             width: 80,
             height: 80,
-            child: CustomPaint(
-              painter: _PixelArtPainter(color: filterColor),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _PixelArtPainter(color: filterColor),
+                  ),
+                ),
+                if (themeIcon != null)
+                  Positioned(
+                    top: -5,
+                    right: -5,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Text(
+                            themeIcon!,
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
         );
