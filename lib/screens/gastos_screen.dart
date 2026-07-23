@@ -243,23 +243,31 @@ class _GastoItem extends ConsumerWidget {
     final IconData icon = isPaidThisMonth ? Icons.check_circle_rounded : getCategoryIcon(catIconName);
     final Color itemColor = isPaidThisMonth ? Colors.green : color;
 
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isPaidThisMonth ? Colors.green.withAlpha(12) : AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isPaidThisMonth ? Colors.green.withAlpha(50) : AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(4),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
+    return GestureDetector(
+      onTap: () {
+        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
+          'gasto',
+          gasto.monto,
+          gasto.nombre,
+        );
+      },
+      child: Container(
+        margin:  const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isPaidThisMonth ? Colors.green.withAlpha(12) : AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isPaidThisMonth ? Colors.green.withAlpha(50) : AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
           Container(
             width: 46,
             height: 46,
@@ -328,6 +336,7 @@ class _GastoItem extends ConsumerWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

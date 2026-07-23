@@ -13,38 +13,20 @@ class GlobalVirtualAssistant extends ConsumerStatefulWidget {
 }
 
 class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  
   // Posición inicial (abajo a la derecha)
   double _x = 0;
   double _y = 0;
   bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
       final size = MediaQuery.of(context).size;
-      // Posicionar inicialmente en la esquina inferior derecha, dejando espacio para la nav bar
       _x = size.width - 70;
       _y = size.height - 180;
       _initialized = true;
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -60,8 +42,6 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
           setState(() {
             _x += details.delta.dx;
             _y += details.delta.dy;
-            
-            // Mantener dentro de los limites de la pantalla
             if (_x < 0) _x = 0;
             if (_x > size.width - 50) _x = size.width - 50;
             if (_y < 40) _y = 40;
@@ -73,11 +53,10 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
           clipBehavior: Clip.none,
           alignment: Alignment.bottomRight,
           children: [
-            // Burbuja de chat flotante
             if (state.isVisible)
               Positioned(
-                bottom: 60, // Encima del marciano
-                right: (_x > size.width / 2) ? 0 : null, // Mostrar hacia la izquierda o derecha segun posicion
+                bottom: 60,
+                right: (_x > size.width / 2) ? 0 : null,
                 left: (_x <= size.width / 2) ? 0 : null,
                 child: Material(
                   color: Colors.transparent,
@@ -89,7 +68,7 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E), // Dark terminal style
+                        color: const Color(0xFF1E1E1E), 
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
                           topRight: const Radius.circular(16),
@@ -113,10 +92,7 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
                             children: [
                               const Icon(Icons.smart_toy_rounded, color: Color(0xFFD4B886), size: 14),
                               const SizedBox(width: 6),
-                              Text(
-                                'Asistente 8-Bit',
-                                style: AppTheme.monoStyle(color: const Color(0xFFD4B886), fontSize: 11),
-                              ),
+                              Text('Rocky', style: AppTheme.monoStyle(color: const Color(0xFFD4B886), fontSize: 11)),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -136,24 +112,9 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
                 ),
               ),
 
-            // El Avatar animado Pixel Art
             SizedBox(
               width: 72,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const ClawdWidget(),
-                  if (state.isVisible && state.themeIcon != null)
-                    Positioned(
-                      top: -5,
-                      right: -5,
-                      child: Text(
-                        state.themeIcon!,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                ],
-              ),
+              child: ClawdWidget(animation: state.animation),
             ),
           ],
         ),
@@ -162,40 +123,40 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
   }
 }
 
-/// Mascota Clawd animada. Mantiene la proporcion 3:2 (72x48) del pixel art
-/// original sin importar el tamano en el que se use.
-///
-/// Uso:
-///   SizedBox(width: 120, child: ClawdWidget())
 class ClawdWidget extends StatefulWidget {
-  const ClawdWidget({super.key});
+  final AssistantAnimation animation;
+  const ClawdWidget({super.key, this.animation = AssistantAnimation.idle});
 
   @override
   State<ClawdWidget> createState() => _ClawdWidgetState();
 }
 
-class _ClawdWidgetState extends State<ClawdWidget>
-    with TickerProviderStateMixin {
+class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin {
   late final AnimationController _bounceController;
   late final AnimationController _blinkController;
+  late final AnimationController _actionController;
   bool _disposed = false;
+  final _random = math.Random();
 
   @override
   void initState() {
     super.initState();
-
-    // Idle bounce: loop continuo, sube y baja.
-    _bounceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-
-    // Parpadeo: dispara en momentos aleatorios, no en loop fijo.
-    _blinkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 160),
-    );
+    _bounceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
+    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 160));
+    _actionController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    
     _scheduleNextBlink();
+    if (widget.animation != AssistantAnimation.idle) {
+      _actionController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void didUpdateWidget(ClawdWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animation != oldWidget.animation && widget.animation != AssistantAnimation.idle) {
+      _actionController.forward(from: 0.0);
+    }
   }
 
   void _scheduleNextBlink() {
@@ -214,25 +175,76 @@ class _ClawdWidgetState extends State<ClawdWidget>
     _disposed = true;
     _bounceController.dispose();
     _blinkController.dispose();
+    _actionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // AspectRatio bloquea el 3:2 (72:48) sin importar el ancho que le den
-    // desde afuera (SizedBox, Expanded, etc). Nunca lo envuelvas en algo
-    // que fuerce un alto distinto sin pasar por aca.
     return AspectRatio(
       aspectRatio: 72 / 48,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_bounceController, _blinkController]),
+        animation: Listenable.merge([_bounceController, _blinkController, _actionController]),
         builder: (context, _) {
           final bounce = Curves.easeInOut.transform(_bounceController.value);
-          return Transform.translate(
-            offset: Offset(0, -bounce * 2), // solo eje Y, nunca escala X/Y por separado
+          final action = _actionController.value;
+          final isActing = _actionController.isAnimating || action > 0 && action < 1;
+          
+          double dx = 0;
+          double dy = -bounce * 2;
+          double scaleX = 1.0;
+          double scaleY = 1.0;
+          Color? glowColor;
+
+          if (isActing) {
+            final sinPi = math.sin(action * math.pi);
+            switch (widget.animation) {
+              case AssistantAnimation.jump:
+                dy -= sinPi * 15;
+                break;
+              case AssistantAnimation.shake:
+                dx += math.sin(action * math.pi * 6) * 4;
+                break;
+              case AssistantAnimation.stretch:
+                scaleY += sinPi * 0.3;
+                scaleX -= sinPi * 0.1;
+                break;
+              case AssistantAnimation.shrink:
+                scaleY -= sinPi * 0.3;
+                scaleX += sinPi * 0.1;
+                break;
+              case AssistantAnimation.nod:
+                dy += math.sin(action * math.pi * 2) * 3;
+                break;
+              case AssistantAnimation.glitch:
+                dx += (_random.nextDouble() - 0.5) * 6 * sinPi;
+                dy += (_random.nextDouble() - 0.5) * 6 * sinPi;
+                break;
+              case AssistantAnimation.glowGreen:
+                glowColor = Colors.greenAccent.withAlpha((sinPi * 200).toInt());
+                dy -= sinPi * 5; // pequeño salto también
+                break;
+              case AssistantAnimation.glowRed:
+                glowColor = Colors.redAccent.withAlpha((sinPi * 200).toInt());
+                dx += math.sin(action * math.pi * 4) * 2; // pequeña sacudida
+                break;
+              case AssistantAnimation.spin:
+                // Simulamos spin haciendo shrink horizontal y volviendo
+                scaleX = math.cos(action * math.pi * 2).abs();
+                break;
+              default:
+                break;
+            }
+          }
+
+          return Transform(
+            alignment: Alignment.bottomCenter,
+            transform: Matrix4.identity()
+              ..translate(dx, dy)
+              ..scale(scaleX, scaleY),
             child: CustomPaint(
               size: Size.infinite,
-              painter: _ClawdPainter(blink: _blinkController.value),
+              painter: _ClawdPainter(blink: _blinkController.value, glowColor: glowColor),
             ),
           );
         },
@@ -242,29 +254,36 @@ class _ClawdWidgetState extends State<ClawdWidget>
 }
 
 class _ClawdPainter extends CustomPainter {
-  final double blink; // 0 = ojos abiertos, 1 = ojos cerrados
+  final double blink; 
+  final Color? glowColor;
 
-  _ClawdPainter({required this.blink});
+  _ClawdPainter({required this.blink, this.glowColor});
 
-  static const Color body = Color(0xFFD77757);
+  static const Color body = Color(0xFF6C63FF);
   static const Color eye = Color(0xFF111111);
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Escala uniforme: el mismo factor para X e Y. Escalarlos distinto
-    // deforma el sprite y rompe las proporciones.
     final scale = size.width / 72;
     canvas.save();
     canvas.scale(scale, scale);
 
-    final paint = Paint()..isAntiAlias = false; // bordes nitidos, sin blur
+    final paint = Paint()..isAntiAlias = false;
+    
+    if (glowColor != null) {
+      paint.imageFilter = null;
+      // Añadir sombra para el glow
+      canvas.drawRect(
+        const Rect.fromLTWH(0, 0, 72, 48), 
+        Paint()..color = glowColor!..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10)
+      );
+    }
 
     void rect(double x, double y, double w, double h, Color c) {
       paint.color = c;
       canvas.drawRect(Rect.fromLTWH(x, y, w, h), paint);
     }
 
-    // Cuerpo (coordenadas de la cuadricula original 72x48)
     rect(9, 0, 54, 10, body);
     rect(9, 10, 54, 9, body);
     rect(0, 19, 72, 10, body);
@@ -274,7 +293,6 @@ class _ClawdPainter extends CustomPainter {
     rect(45, 38, 4, 10, body);
     rect(54, 38, 4, 10, body);
 
-    // Ojos: la altura se reduce hacia el centro vertical cuando blink -> 1
     final eyeH = 9 * (1 - blink);
     final eyeY = 10 + (9 - eyeH) / 2;
     rect(18, eyeY, 4, eyeH, eye);
@@ -284,7 +302,7 @@ class _ClawdPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ClawdPainter old) => old.blink != blink;
+  bool shouldRepaint(covariant _ClawdPainter old) => old.blink != blink || old.glowColor != glowColor;
 }
 
 class TypingText extends StatefulWidget {
@@ -353,5 +371,3 @@ class _TypingTextState extends State<TypingText> {
     );
   }
 }
-
-

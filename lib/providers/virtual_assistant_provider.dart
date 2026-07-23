@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard_provider.dart';
+import '../core/formatters.dart';
 
 enum AssistantAnimation {
   idle, jump, shake, stretch, shrink, spin, flip, glowGreen, glowRed, nod, glitch
@@ -11,23 +12,20 @@ class AssistantState {
   final bool isVisible;
   final bool isAction;
   final AssistantAnimation animation;
-  final String? themeIcon;
 
   AssistantState({
     required this.message, 
     this.isVisible = false, 
     this.isAction = false,
     this.animation = AssistantAnimation.idle,
-    this.themeIcon,
   });
 
-  AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation, String? themeIcon}) {
+  AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation}) {
     return AssistantState(
       message: message ?? this.message,
       isVisible: isVisible ?? this.isVisible,
       isAction: isAction ?? this.isAction,
       animation: animation ?? this.animation,
-      themeIcon: themeIcon ?? this.themeIcon,
     );
   }
 }
@@ -38,10 +36,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
   @override
   AssistantState build() {
-    // Escuchar los cambios del dashboard para análisis general
     ref.listen(dashboardProvider, (previous, next) {
       if (next.hasValue && next.value != null) {
-        // Solo analizamos el dashboard si no estamos mostrando un mensaje de acción
         if (!state.isAction || !state.isVisible) {
           _analyzeDashboardData(next.value!);
         }
@@ -51,6 +47,150 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     return AssistantState(message: "Iniciando sistemas financieros...", isVisible: false);
   }
 
+  void analyzeTransactionItem(String tipo, double monto, String nombre) {
+    String msg = "";
+    AssistantAnimation anim = AssistantAnimation.idle;
+
+    if (tipo == 'gasto') {
+      msg = "El gasto '$nombre' es de ${formatCOP(monto)}. Asegúrate de que estaba contemplado en el presupuesto de este mes.";
+      anim = monto > 100000 ? AssistantAnimation.shrink : AssistantAnimation.nod;
+    } else if (tipo == 'ingreso') {
+      msg = "Ingreso registrado: '$nombre' por ${formatCOP(monto)}. Una excelente oportunidad para aumentar tus ahorros.";
+      anim = AssistantAnimation.jump;
+    } else if (tipo == 'pago') {
+      msg = "Has registrado el pago de '$nombre' por ${formatCOP(monto)}. Menos deudas, más tranquilidad.";
+      anim = AssistantAnimation.glowGreen;
+    } else if (tipo == 'cuota') {
+      msg = "Esta cuota de '$nombre' es de ${formatCOP(monto)}. ¿Ya consideraste si puedes abonar a capital para salir de ella más rápido?";
+      anim = AssistantAnimation.stretch;
+    } else {
+      msg = "Registro de '$nombre' analizado.";
+      anim = AssistantAnimation.nod;
+    }
+
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide(8);
+  }
+
+  void analyzeChart(String chartType, Map<String, dynamic> data) {
+    String msg = "";
+    AssistantAnimation anim = AssistantAnimation.idle;
+
+    switch (chartType) {
+      case 'termometro':
+        final double disponible = (data['disponible_real'] as num?)?.toDouble() ?? 0.0;
+        final double diario = (data['diario_seguro'] as num?)?.toDouble() ?? 0.0;
+        final String estado = data['estado'] as String? ?? 'Sano';
+        
+        if (estado == 'Déficit') {
+          msg = "Estás en déficit. Tienes menos de lo necesario para cubrir tus gastos. Frena todo gasto no esencial inmediatamente.";
+          anim = AssistantAnimation.shake;
+        } else if (estado == 'Ajustado') {
+          msg = "Tu presupuesto está muy ajustado. Tienes un disponible real de ${formatCOP(disponible)}. No te excedas de ${formatCOP(diario)} por día.";
+          anim = AssistantAnimation.shrink;
+        } else {
+          msg = "Tu salud financiera es buena. Puedes gastar hasta ${formatCOP(diario)} al día sin afectar tus compromisos. Excelente trabajo.";
+          anim = AssistantAnimation.jump;
+        }
+        break;
+
+      case 'camino_cero_deuda':
+        final mesLibre = data['mesLibreDeDeuda']?.toString() ?? 'pronto';
+        msg = "Si mantienes este nivel de pagos y abonos extra, proyectamos que serás completamente libre de deudas en $mesLibre. Sigue así.";
+        anim = AssistantAnimation.stretch;
+        break;
+
+      case 'interes_quemado':
+        final double pctIngresos = (data['pct_de_ingresos'] as num?)?.toDouble() ?? 0.0;
+        final double totalAnual = (data['total_anual'] as num?)?.toDouble() ?? 0.0;
+        
+        if (pctIngresos > 10) {
+          msg = "Estás quemando un $pctIngresos% de tus ingresos solo en intereses. Es urgente consolidar o refinanciar esa deuda.";
+          anim = AssistantAnimation.shake;
+        } else {
+          msg = "El banco se está llevando ${formatCOP(totalAnual)} tuyos al año. Considera hacer abonos a capital para reducir esto.";
+          anim = AssistantAnimation.nod;
+        }
+        break;
+        
+      case 'estres_efectivo':
+        final bool alerta = data['alerta'] as bool? ?? false;
+        final int diaPico = data['dia_pico'] as int? ?? 15;
+        
+        if (alerta) {
+          msg = "Atención: Hay alta presión financiera alrededor del día $diaPico. Guarda liquidez antes de esa fecha.";
+          anim = AssistantAnimation.glitch;
+        } else {
+          msg = "Tu flujo de pagos está bien distribuido este mes. No veo días de estrés extremo.";
+          anim = AssistantAnimation.nod;
+        }
+        break;
+        
+      case 'endeudamiento':
+        final double pct = (data['pct'] as num?)?.toDouble() ?? 0.0;
+        if (pct > 60) {
+          msg = "Tu endeudamiento está en un ${pct.toStringAsFixed(1)}%. Es un nivel crítico que limita tu libertad financiera.";
+          anim = AssistantAnimation.shake;
+        } else {
+          msg = "Tienes un endeudamiento del ${pct.toStringAsFixed(1)}%. Mantenlo bajo control.";
+          anim = AssistantAnimation.nod;
+        }
+        break;
+      case 'esclavitud_financiera':
+        final libres = (data['dias_libres'] as num?)?.toDouble() ?? 0;
+        if (libres > 15) {
+          msg = "¡Tienes $libres días libres! Eres dueño de la mayor parte de tu mes. Excelente.";
+          anim = AssistantAnimation.jump;
+        } else {
+          msg = "Trabajas muchos días solo para pagar obligaciones. Tienes $libres días libres. ¡Hay que liberar tu tiempo!";
+          anim = AssistantAnimation.shrink;
+        }
+        break;
+      case 'resumen':
+        msg = "Tus ingresos y gastos del mes en un vistazo. Si la barra de ingresos es más grande, vamos bien.";
+        anim = AssistantAnimation.nod;
+        break;
+      case 'flujo_caja':
+        msg = "El flujo de caja te muestra la tendencia. Trata de mantener la barra verde siempre encima de la roja.";
+        anim = AssistantAnimation.stretch;
+        break;
+      case 'categorias':
+        msg = "Aquí puedes ver a dónde se va tu dinero exactamente. ¿Hay alguna categoría que te sorprenda?";
+        anim = AssistantAnimation.spin;
+        break;
+      case 'eficiencia_ahorro':
+        final tasa = (data['tasa_ahorro'] as num?)?.toDouble() ?? 0;
+        if (tasa >= 20) {
+          msg = "Tu tasa de ahorro es del $tasa%. ¡Eres un maestro del ahorro!";
+          anim = AssistantAnimation.glowGreen;
+        } else {
+          msg = "Tu tasa de ahorro es $tasa%. Intenta llevarla al menos al 20% reduciendo gastos variables.";
+          anim = AssistantAnimation.nod;
+        }
+        break;
+      default:
+        msg = "He analizado esta gráfica. Estos números te ayudan a entender mejor tus finanzas.";
+        anim = AssistantAnimation.idle;
+    }
+
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide(8);
+  }
+
+  void analyzeCuota(double monto, String banco, double interes) {
+    String msg = "";
+    AssistantAnimation anim = AssistantAnimation.stretch;
+    if (interes > 25) {
+      msg = "Esa tasa de interés del $interes% en $banco es muy alta. Considera comprar esa cartera.";
+      anim = AssistantAnimation.shake;
+    } else {
+      msg = "Esta cuota en $banco es manejable. Mantén el ritmo de pagos.";
+      anim = AssistantAnimation.nod;
+    }
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide(8);
+  }
+
   void registerAction(String actionType, [double? amount, String? extraContext]) {
     String msg = "";
     AssistantAnimation anim = AssistantAnimation.idle;
@@ -58,82 +198,39 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     switch(actionType) {
       case 'NUEVO_GASTO':
         final frases = [
-          "¡Auch! Eso dolió un poco en la billetera. 💸",
           "Otro gasto registrado. Espero que no haya sido un gasto hormiga.",
           "Gasto guardado. Vigilaré que no te pases del presupuesto este mes.",
           "Registrado. A veces hay que gastar, pero con responsabilidad.",
-          "Menos dinero en la cuenta, pero al menos está anotado. 📝",
-          "¡Anotado! Cada peso cuenta para el balance mensual.",
-          "Gasto capturado. ¿Era realmente necesario? 🤔",
           amount != null && amount > 100000 
-            ? "¡Vaya gasto grande! Espero que lo tuvieras planeado." 
-            : "Pequeño gasto registrado. Recuerda que de a poco se llena el vaso... o se vacía."
+            ? "Vaya gasto grande. Espero que lo tuvieras planeado." 
+            : "Pequeño gasto registrado. Recuerda que de a poco se llena el vaso o se vacía."
         ];
         msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.shake, AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
+        final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
         anim = anims[_random.nextInt(anims.length)];
         break;
 
       case 'NUEVO_INGRESO':
         final frases = [
-          "¡Dinero nuevo! 💰 Esto me pone muy feliz.",
-          "¡Excelente! Más gasolina para nuestra salud financiera.",
-          "Ingreso registrado. ¿Qué tal si guardamos un % en los bolsillos de ahorro?",
-          "¡Cha-ching! 🤑 Un gran día para tus finanzas.",
-          "Sube el nivel de energía financiera. ¡Buen trabajo!",
-          "¡Ingreso detectado! Los números verdes son mis favoritos. 💚",
-          "Aumentando reservas de liquidez. ¡A celebrar (sin gastarlo todo)!"
+          "Dinero nuevo. Esto me pone muy feliz.",
+          "Excelente. Más gasolina para nuestra salud financiera.",
+          "Ingreso registrado. ¿Qué tal si guardamos un porcentaje en los ahorros?",
+          "Aumentando reservas de liquidez. Buen trabajo."
         ];
         msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.nod];
+        final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin];
         anim = anims[_random.nextInt(anims.length)];
         break;
 
       case 'PAGO_TARJETA':
         final frases = [
-          "¡Bien hecho! Pagar a tiempo te ahorra intereses.",
+          "Bien hecho. Pagar a tiempo te ahorra intereses.",
           "Un paso más para mantener ese historial crediticio impecable.",
-          "Deuda reducida. Es una gran sensación, ¿verdad?",
-          "Las tarjetas de crédito te temen. ¡Buen pago!",
+          "Deuda reducida. Es una gran sensación.",
           "Pago registrado. Adiós a esos intereses abusivos."
         ];
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.jump, AssistantAnimation.spin, AssistantAnimation.nod];
-        anim = anims[_random.nextInt(anims.length)];
-        break;
-
-      case 'NUEVO_AHORRO':
-        final frases = [
-          "¡Me encanta esto! Pagarte a ti mismo en el futuro es la mejor inversión.",
-          "Un paso más cerca de tu meta. Sigue así.",
-          "Ahorrar requiere disciplina, y tú la tienes. 🚀",
-          "Ahorro protegido. Tu futuro financiero se ve más brillante.",
-          "Píxel a píxel se construye un castillo, y peso a peso un gran ahorro."
-        ];
-        msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.jump, AssistantAnimation.nod, AssistantAnimation.stretch, AssistantAnimation.glowGreen];
-        anim = anims[_random.nextInt(anims.length)];
-        break;
-
-      case 'NUEVA_DEUDA_A_COBRAR':
-        final frases = [
-          "Dinero prestado... Ojalá te paguen pronto. Yo estaré vigilando.",
-          "Registrado. No olvides cobrar cuando llegue la fecha.",
-          "Eres una buena persona prestando dinero. Ahora hay que ser buenos cobrando."
-        ];
-        msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.shrink, AssistantAnimation.nod];
-        anim = anims[_random.nextInt(anims.length)];
-        break;
-        
-      case 'COBRO_RECIBIDO':
-        final frases = [
-          "¡Por fin pagaron! Dinero recuperado con éxito.",
-          "Justicia divina. Deuda saldada.",
-          "El universo financiero vuelve a estar en equilibrio. ¡Cobro recibido!"
-        ];
-        msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.glowGreen, AssistantAnimation.spin, AssistantAnimation.jump];
         anim = anims[_random.nextInt(anims.length)];
         break;
 
@@ -142,14 +239,8 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         anim = AssistantAnimation.idle;
     }
 
-    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim, themeIcon: '✨');
-    
-    // Auto ocultar más rápido para acciones
-    Future.delayed(const Duration(seconds: 8), () {
-      if (state.message == msg) {
-        hideMessage();
-      }
-    });
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide(8);
   }
 
   void _analyzeDashboardData(Map<String, dynamic> response) {
@@ -164,139 +255,81 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     final pctEndeudamiento = (cap['porcentaje_endeudamiento'] as num).toDouble();
     final liquidez = (cap['liquidez_disponible'] as num).toDouble();
     
-    final cuentasMora = data['cuentas_en_mora'] as List<dynamic>;
-    final proximasCuotas = data['proximas_cuotas'] as List<dynamic>;
-
-    String newMessage = _generateMessage(pctEndeudamiento, liquidez, cuentasMora, proximasCuotas);
+    String newMessage = _generateMessage(pctEndeudamiento, liquidez);
     
-    state = AssistantState(message: newMessage, isVisible: true, isAction: false, themeIcon: '📊');
-    
-    Future.delayed(const Duration(seconds: 12), () {
-      if (state.message == newMessage) {
-        hideMessage();
-      }
-    });
+    state = AssistantState(message: newMessage, isVisible: true, isAction: false);
+    _autoHide(12);
   }
 
-  String _generateMessage(double endeudamiento, double liquidez, List<dynamic> mora, List<dynamic> cuotas) {
+  String _generateMessage(double endeudamiento, double liquidez) {
     List<String> options = [];
 
     if (endeudamiento > 60) {
-      options.add("Tu nivel de endeudamiento está por encima del 60%. ¡Es hora de congelar esas tarjetas!");
-      options.add("Alerta roja con las deudas. Te recomiendo no registrar más gastos innecesarios este mes.");
+      options.add("Tu nivel de endeudamiento está por encima del 60%. Es hora de congelar esas tarjetas.");
     }
-
-    if (mora.isNotEmpty) {
-      options.add("Veo que tienes deudores en mora. ¡No dejes que se queden con tu dinero, hazles un cobro amigable!");
-    }
-
     if (liquidez > 500000 && endeudamiento < 30) {
       options.add("Tu liquidez se ve excelente este mes. ¿Has pensado en mover algo a tu bolsillo de ahorros?");
     } else if (liquidez < 0) {
       options.add("Tus gastos fijos y deudas superan tus ingresos mensuales. Necesitas revisar tu presupuesto urgentemente.");
     }
 
-    int cuotasCercanas = 0;
-    final now = DateTime.now();
-    for (var c in cuotas) {
-      final f = DateTime.tryParse(c['fecha_vencimiento']?.toString() ?? '');
-      if (f != null && f.difference(now).inDays <= 5) {
-        cuotasCercanas++;
-      }
-    }
-
-    if (cuotasCercanas > 0) {
-      options.add("Tienes $cuotasCercanas cuota(s) a punto de vencer. Que no se te pase la fecha de pago.");
-    }
-
     if (options.isEmpty) {
       options.addAll([
         "Todo parece estar en orden por aquí. Sigue registrando tus movimientos.",
         "Aquí estoy analizando tus datos. Tu salud financiera parece estable hoy.",
-        "Recuerda categorizar bien tus gastos para que mis análisis sean más precisos.",
-        "Un buen control financiero te dará paz mental. ¡Vas por buen camino!"
+        "Recuerda categorizar bien tus gastos para que mis análisis sean más precisos."
       ]);
     }
-
     return options[_random.nextInt(options.length)];
   }
 
-  /// Registra la vista actual para mensajes contextuales por pantalla
   void setCurrentView(String viewName) {
-    if (state.isAction && state.isVisible) return; // No interrumpir acciones
+    if (state.isAction && state.isVisible) return; 
 
     final Map<String, List<String>> viewMessages = {
       'dashboard': [
         "Aquí está el resumen de todo. ¿Cómo vas con el presupuesto de este mes?",
         "Vista general lista. Tus números cuentan una historia, ¿la ves?",
-        "Tu dashboard financiero al día. Los pequeños datos hacen las grandes diferencias.",
-        "Monitoreando la central de mando financiero. ¡Todo bajo control!",
       ],
       'gastos': [
         "En gastos. Recuerda: cada peso que sale, se registra aquí.",
-        "¡Ojo! El control de gastos es el primer paso para ahorrar más.",
-        "Revisando gastos. ¿Ves algún gasto que puedas eliminar este mes?",
-        "Tip del día: categoriza bien cada gasto para tener mejores reportes.",
-        "Sección de gastos. Mantenlos bajos y tu paz mental alta.",
+        "El control de gastos es el primer paso para ahorrar más.",
       ],
       'ingresos': [
-        "¡Área de ingresos! Aquí entra la magia (o sea, el dinero).",
-        "¿Llegó algún ingreso nuevo? No lo dejes sin registrar.",
+        "Área de ingresos. Aquí entra el dinero.",
         "Registrar ingresos te ayuda a saber exactamente con cuánto cuentas.",
-        "La fuente de la felicidad... digo, liquidez. ¡Ingresos!",
-      ],
-      'ahorros': [
-        "¡Mis favoritos: los bolsillos de ahorro! ¿Cómo van tus metas?",
-        "Ahorrar aunque sea un poquito cada mes hace una gran diferencia.",
-        "Cada peso en ahorro es una versión futura de ti que te lo agradece.",
-        "El rincón de los sueños financiados. ¡Tus ahorros!",
-      ],
-      'tarjetas': [
-        "Tarjetas de crédito. Úsalas con inteligencia, no con impulso.",
-        "¿Tu cupo disponible es suficiente? Aquí puedes llevar el control.",
-        "Recuerda: el mínimo de tarjeta nunca es suficiente para salir de deudas.",
-        "Mantén tus tarjetas bajo control antes de que ellas te controlen a ti.",
-      ],
-      'suscripciones': [
-        "Suscripciones activas. ¿Estás usando todas las que tienes?",
-        "A veces olvidamos suscripciones activas. ¿Hay alguna que ya no necesitas?",
-        "Cada suscripción que no usas es dinero que se pierde cada mes.",
-        "Cuidado con los pagos silenciosos. Revisa tus suscripciones.",
       ],
       'analitica': [
-        "Modo analítico activado. Los números no mienten.",
-        "¿Ves algún patrón interesante en tus gastos? Yo sí lo veo...",
-        "La analítica te ayuda a entender tus hábitos financieros reales.",
-        "Miremos los gráficos. Una imagen vale más que mil tickets de compra.",
+        "Modo analítico activado. Toca cualquiera de las gráficas para que te dé un análisis detallado.",
+        "Los números no mienten. Toca una tarjeta para interpretar los datos.",
+      ],
+      'tarjetas': [
+        "Gestión de tarjetas de crédito. Toca una cuota para ver qué opino.",
+        "Aquí vemos tus tarjetas. Cuidado con el interés.",
+      ],
+      'ahorros': [
+        "Tus metas y bolsillos de ahorro. ¡Esta es la mejor parte!",
+        "Aquí construimos tu futuro financiero paso a paso.",
+      ],
+      'suscripciones': [
+        "Tus suscripciones. A veces pagamos por cosas que no usamos, ¡revisa bien!",
+        "Los gastos hormiga recurrentes están aquí. Mantén el control.",
       ],
       'cobrar': [
-        "Sección de cobros. Es hora de recuperar lo prestado.",
-        "¿Alguien te debe dinero? Anótalo aquí para no olvidarlo.",
-        "Prestar dinero a amigos a veces es difícil, cobrarles también. ¡Yo te ayudo!",
-        "La memoria falla, mis registros no. ¡A cobrar!",
-      ]
+        "Dinero que te deben o que debes. Mantén tus cuentas claras.",
+        "Préstamos y deudas personales. Que no se te escape ninguna.",
+      ],
     };
 
     final Map<String, AssistantAnimation> viewAnims = {
       'dashboard': AssistantAnimation.spin,
       'gastos': AssistantAnimation.shrink,
       'ingresos': AssistantAnimation.jump,
-      'ahorros': AssistantAnimation.glowGreen,
-      'tarjetas': AssistantAnimation.glitch,
-      'suscripciones': AssistantAnimation.nod,
       'analitica': AssistantAnimation.stretch,
-      'cobrar': AssistantAnimation.shake,
-    };
-
-    final Map<String, String> viewIcons = {
-      'dashboard': '🏠',
-      'gastos': '💸',
-      'ingresos': '💰',
-      'ahorros': '🌱',
-      'tarjetas': '💳',
-      'suscripciones': '📺',
-      'analitica': '📈',
-      'cobrar': '🤝',
+      'tarjetas': AssistantAnimation.shake,
+      'ahorros': AssistantAnimation.glowGreen,
+      'suscripciones': AssistantAnimation.glitch,
+      'cobrar': AssistantAnimation.flip,
     };
 
     final frases = viewMessages[viewName];
@@ -308,20 +341,14 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       isVisible: true, 
       isAction: false, 
       animation: viewAnims[viewName] ?? AssistantAnimation.idle,
-      themeIcon: viewIcons[viewName],
     );
-
-    Future.delayed(const Duration(seconds: 10), () {
-      if (state.message == msg) hideMessage();
-    });
+    _autoHide(10);
   }
 
   void toggleVisibility() {
     state = state.copyWith(isVisible: !state.isVisible);
     if (state.isVisible) {
-      Future.delayed(const Duration(seconds: 10), () {
-        if (state.isVisible) hideMessage();
-      });
+      _autoHide(10);
     }
   }
 
@@ -331,8 +358,15 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
 
   void showMessage(String msg) {
     state = AssistantState(message: msg, isVisible: true, isAction: false);
-    Future.delayed(const Duration(seconds: 8), () {
-      if (state.message == msg) hideMessage();
+    _autoHide(8);
+  }
+
+  void _autoHide(int seconds) {
+    final currentMsg = state.message;
+    Future.delayed(Duration(seconds: seconds), () {
+      if (state.message == currentMsg) {
+        hideMessage();
+      }
     });
   }
 }

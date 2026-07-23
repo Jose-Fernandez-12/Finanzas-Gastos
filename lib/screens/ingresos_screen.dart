@@ -210,23 +210,31 @@ class _IngresoItem extends ConsumerWidget {
     final String catIconName = ingreso.categoriaIcono ?? 'trending_up';
     final IconData icon = getCategoryIcon(catIconName);
 
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(4),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
+    return GestureDetector(
+      onTap: () {
+        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
+          'ingreso',
+          ingreso.monto,
+          ingreso.descripcion ?? 'Ingreso',
+        );
+      },
+      child: Container(
+        margin:  const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
           Container(
             width: 46,
             height: 46,
@@ -271,6 +279,7 @@ class _IngresoItem extends ConsumerWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

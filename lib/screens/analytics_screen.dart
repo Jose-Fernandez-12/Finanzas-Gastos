@@ -220,7 +220,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
           // Termómetro
           if (modulos.contains(AnalyticsModuleIds.termometro) && adv != null && adv['termometro'] != null) ...[
-            _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('termometro', adv['termometro'] as Map<String, dynamic>),
+              child: _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -228,7 +231,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.estresCash) && adv != null && adv['estres'] != null) ...[
             const _SectionTitle(title: 'Calendario de Estrés de Efectivo'),
             const SizedBox(height: 10),
-            _buildCalendarioEstresCard(adv['estres'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('estres_efectivo', adv['estres'] as Map<String, dynamic>),
+              child: _buildCalendarioEstresCard(adv['estres'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -236,7 +242,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.endeudamiento)) ...[
             const _SectionTitle(title: 'Estado de Endeudamiento'),
             const SizedBox(height: 10),
-            _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('endeudamiento', {'pct': endeudamientoPct, 'nivel': nivelRiesgo}),
+              child: _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -252,13 +261,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.interesQuemado) && adv != null && adv['interes_quemado'] != null) ...[
             const _SectionTitle(title: 'Interés Quemado (Dinero al Banco)'),
             const SizedBox(height: 10),
-            _buildInteresQuemadoCard(adv['interes_quemado'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('interes_quemado', adv['interes_quemado'] as Map<String, dynamic>),
+              child: _buildInteresQuemadoCard(adv['interes_quemado'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
           // Resumen cards
           if (modulos.contains(AnalyticsModuleIds.resumenCards)) ...[
-            _buildResumenCards(_mesIngresos, _mesEgresos),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('resumen', {}),
+              child: _buildResumenCards(_mesIngresos, _mesEgresos),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -266,7 +281,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.eficienciaAhorro) && adv != null && adv['eficiencia_ahorro'] != null) ...[
             const _SectionTitle(title: 'Eficiencia de Ahorro'),
             const SizedBox(height: 10),
-            _buildEficienciaAhorroCard(adv['eficiencia_ahorro'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('eficiencia_ahorro', adv['eficiencia_ahorro'] as Map<String, dynamic>),
+              child: _buildEficienciaAhorroCard(adv['eficiencia_ahorro'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -274,7 +292,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.dependenciaTarjetas) && adv != null && adv['dependencia_tarjetas'] != null) ...[
             const _SectionTitle(title: 'Dependencia por Tarjeta / Banco'),
             const SizedBox(height: 10),
-            _buildDependenciaTarjetasCard(adv['dependencia_tarjetas'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dependencia_tarjetas', adv['dependencia_tarjetas'] as Map<String, dynamic>),
+              child: _buildDependenciaTarjetasCard(adv['dependencia_tarjetas'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -282,7 +303,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.radarHormiga) && adv != null && adv['radar_hormiga'] != null) ...[
             const _SectionTitle(title: 'Radar de Gastos Hormiga & Pequeñas Fugas'),
             const SizedBox(height: 10),
-            _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('interes_quemado', adv['radar_hormiga'] as Map<String, dynamic>), // We can reuse logic or create a new one, but for now we mapped it roughly. Wait, let's just pass 'radar_hormiga'
+              child: _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -290,7 +314,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.flujoCaja)) ...[
             const _SectionTitle(title: 'Flujo de Caja'),
             const SizedBox(height: 10),
-            _buildBarChart(historical),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('flujo_caja', {}),
+              child: _buildBarChart(historical),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -299,7 +326,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Simulador Inteligente de Pagos'),
             const SizedBox(height: 10),
             if ((adv['simulador']['deudas'] as List).isNotEmpty)
-              _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>)
+              GestureDetector(
+                onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto'}),
+                child: _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>),
+              )
             else
               _buildEmptySimulador(),
             const SizedBox(height: 20),
@@ -311,7 +341,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(height: 10),
             _buildAbonoExtraSlider(),
             const SizedBox(height: 16),
-            _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? ''),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto'}),
+              child: _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? ''),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -319,7 +352,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.categorias)) ...[
             const _SectionTitle(title: 'Gastos por Categoría'),
             const SizedBox(height: 10),
-            _buildCategoriasCard(),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('categorias', {}),
+              child: _buildCategoriasCard(),
+            ),
             const SizedBox(height: 20),
           ],
 
