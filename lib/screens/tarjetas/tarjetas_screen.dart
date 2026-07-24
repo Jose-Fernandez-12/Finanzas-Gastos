@@ -197,7 +197,7 @@ class TarjetasScreen extends ConsumerWidget {
                 }
                 final banco = tarjeta?.banco ?? 'la tarjeta';
                 final interes = (c['tasa_interes'] as num?)?.toDouble() ?? 0.0;
-                ref.read(virtualAssistantProvider.notifier).analyzeCuota(cuotaVal, banco, interes);
+                ref.read(virtualAssistantProvider.notifier).analyzeCuota(cuotaVal, banco, interes, tarjeta?.fechaPago);
 
                 if (tarjeta != null) {
                   Navigator.push(

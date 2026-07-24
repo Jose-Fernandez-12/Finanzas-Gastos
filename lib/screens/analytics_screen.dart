@@ -250,10 +250,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ],
 
           // Días de esclavitud financiera
-          if (modulos.contains(AnalyticsModuleIds.esclavitudFinanciera) && adv != null && adv['esclavitud_financiera'] != null) ...[
-            const _SectionTitle(title: 'Días de Trabajo vs Deuda'),
+          if (modulos.contains(AnalyticsModuleIds.esclavitudFinanciera) && adv != null && adv['dias_esclavitud'] != null) ...[
+            const _SectionTitle(title: 'Días de Trabajo vs Obligaciones'),
             const SizedBox(height: 10),
-            _buildEsclavitudFinancieraCard(adv['esclavitud_financiera'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dias_trabajo', adv['dias_esclavitud'] as Map<String, dynamic>),
+              child: _buildEsclavitudFinancieraCard(adv['dias_esclavitud'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -271,7 +274,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           // Resumen cards
           if (modulos.contains(AnalyticsModuleIds.resumenCards)) ...[
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('resumen', {}),
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('resumen', {'ingresos': _mesIngresos, 'egresos': _mesEgresos}),
               child: _buildResumenCards(_mesIngresos, _mesEgresos),
             ),
             const SizedBox(height: 20),
@@ -304,7 +307,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Radar de Gastos Hormiga & Pequeñas Fugas'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('interes_quemado', adv['radar_hormiga'] as Map<String, dynamic>), // We can reuse logic or create a new one, but for now we mapped it roughly. Wait, let's just pass 'radar_hormiga'
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('radar_hormiga', adv['radar_hormiga'] as Map<String, dynamic>),
               child: _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -315,7 +318,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Flujo de Caja'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('flujo_caja', {}),
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('flujo_caja', {'historical': historical}),
               child: _buildBarChart(historical),
             ),
             const SizedBox(height: 20),
@@ -337,13 +340,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
           // Camino a cero deuda
           if (modulos.contains(AnalyticsModuleIds.caminoDeuda) && proyeccion.isNotEmpty) ...[
-            const _SectionTitle(title: 'Camino a Cero Deuda'),
-            const SizedBox(height: 10),
-            _buildAbonoExtraSlider(),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto'}),
-              child: _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? ''),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle(title: 'Camino a Cero Deuda'),
+                const SizedBox(height: 10),
+                _buildAbonoExtraSlider(provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto', 'pctAbono': _pctAbonoExtra}),
+                  child: _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
           ],
@@ -957,7 +965,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: (pctIngresos / 100).clamp(0.0, 1.0),
+                            value: (pctDeuda / 100).clamp(0.0, 1.0),
                             minHeight: 6,
                             backgroundColor: AppTheme.borderLight,
                             valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -965,10 +973,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text('${pctIngresos.toStringAsFixed(0)}%', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+                      Text('${pctDeuda.toStringAsFixed(0)}%', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 2),
-                    Text('Saldo: ${formatCOP(saldo)} — ${pctDeuda.toStringAsFixed(0)}% de tu deuda total',
+                    Text('Saldo: ${formatCOP(saldo)} — Cuota toma ${pctIngresos.toStringAsFixed(0)}% de tus ingresos',
                         style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                   ],
                 ),
@@ -1462,7 +1470,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   // ─── Camino a Cero Deuda ────────────────────────────────────────────────────
 
-  Widget _buildAbonoExtraSlider() {
+  Widget _buildAbonoExtraSlider(String mesLibre) {
     return StatefulBuilder(
       builder: (context, setStateSlider) {
         return Container(
@@ -1496,7 +1504,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   max: 100,
                   divisions: 20,
                   onChanged: (val) { setStateSlider(() => _pctAbonoExtra = val); },
-                  onChangeEnd: (val) { setState(() { _pctAbonoExtra = val; }); },
+                  onChangeEnd: (val) { 
+                    setState(() { _pctAbonoExtra = val; }); 
+                    ref.read(virtualAssistantProvider.notifier).analyzeChart('abono_extra', {'pct': val, 'mesLibre': mesLibre});
+                  },
                 ),
               ),
               const Text('Destina un porcentaje de tu dinero libre al pago acelerado de tus deudas para calcular cuándo terminarías de pagar.',

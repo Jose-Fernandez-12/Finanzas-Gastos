@@ -285,16 +285,16 @@ class _IngresoItem extends ConsumerWidget {
   }
 }
 
-class _FormIngreso extends StatefulWidget {
+class _FormIngreso extends ConsumerStatefulWidget {
   final Ingreso? ingreso;
   final Function(double) onSave;
   const _FormIngreso({this.ingreso, required this.onSave});
 
   @override
-  State<_FormIngreso> createState() => _FormIngresoState();
+  ConsumerState<_FormIngreso> createState() => _FormIngresoState();
 }
 
-class _FormIngresoState extends State<_FormIngreso> {
+class _FormIngresoState extends ConsumerState<_FormIngreso> {
   final _form        = GlobalKey<FormState>();
   final _desc        = TextEditingController();
   final _monto       = TextEditingController();
@@ -474,6 +474,7 @@ class _FormIngresoState extends State<_FormIngreso> {
         if (widget.ingreso == null) {
           if (monto > 0) {
             await LocalRepository.instance.createIngreso(reqData);
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
           }
         } else {
           await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);

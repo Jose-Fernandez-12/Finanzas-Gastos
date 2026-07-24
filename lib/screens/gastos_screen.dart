@@ -312,11 +312,11 @@ class _GastoItem extends ConsumerWidget {
                   if (val == 'pay') {
                     try {
                       await LocalRepository.instance.pagarGastoFijo(gasto.id);
+                      ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', gasto.monto);
                       if (context.mounted) {
-                        ref.invalidate(gastosProvider(currentMonth)); // Assuming _mes is currentMonth here roughly, or just reload current
+                        ref.invalidate(gastosProvider(currentMonth));
                         ref.invalidate(dashboardProvider);
                       }
-                      onDelete(); // Dummy call if necessary to conform to signature changes
                     } catch (e) {
                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al pagar: $e')));
                     }
@@ -342,16 +342,16 @@ class _GastoItem extends ConsumerWidget {
   }
 }
 
-class _FormGasto extends StatefulWidget {
-  final Function(double) onSave;
+class _FormGasto extends ConsumerStatefulWidget {
   final GastoFijo? gastoExistente;
-  const _FormGasto({required this.onSave, this.gastoExistente});
+  final Function(double) onSave;
+  const _FormGasto({this.gastoExistente, required this.onSave});
 
   @override
-  State<_FormGasto> createState() => _FormGastoState();
+  ConsumerState<_FormGasto> createState() => _FormGastoState();
 }
 
-class _FormGastoState extends State<_FormGasto> {
+class _FormGastoState extends ConsumerState<_FormGasto> {
   final _form   = GlobalKey<FormState>();
   final _nombre = TextEditingController();
   final _monto  = TextEditingController();
@@ -477,6 +477,7 @@ class _FormGastoState extends State<_FormGasto> {
         await LocalRepository.instance.updateGastoFijo(widget.gastoExistente!.id, data);
       } else {
         await LocalRepository.instance.createGastoFijo(data);
+        ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', double.tryParse(_monto.text));
       }
       if (mounted) { Navigator.pop(context); widget.onSave(double.parse(_monto.text)); }
     } catch (e) {

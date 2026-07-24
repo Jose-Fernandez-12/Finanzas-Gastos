@@ -252,8 +252,9 @@ class CuotaRow extends StatelessWidget {
   final Map<String, dynamic> cuota;
   final bool                 esPagada;
   final VoidCallback?        onPagar;
+  final VoidCallback?        onTapCuota;
 
-  const CuotaRow({super.key, required this.cuota, this.esPagada = false, this.onPagar});
+  const CuotaRow({super.key, required this.cuota, this.esPagada = false, this.onPagar, this.onTapCuota});
 
   @override
   Widget build(BuildContext context) {
@@ -262,17 +263,19 @@ class CuotaRow extends StatelessWidget {
                  : estado == 'MORA'     ? AppTheme.colorMora
                  : AppTheme.textPrimary;
 
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color:        AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border:       Border.all(
-          color: estado == 'MORA' ? AppTheme.colorMora.withAlpha(80) : AppTheme.borderLight,
+    return GestureDetector(
+      onTap: onTapCuota,
+      child: Container(
+        margin:  const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color:        AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border:       Border.all(
+            color: estado == 'MORA' ? AppTheme.colorMora.withAlpha(80) : AppTheme.borderLight,
+          ),
         ),
-      ),
-      child: Row(
+        child: Row(
         children: [
           Container(
             width: 32, height: 32,
@@ -330,7 +333,7 @@ class CuotaRow extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

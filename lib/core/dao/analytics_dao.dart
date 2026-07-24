@@ -89,11 +89,21 @@ class AnalyticsDao {
       }
     }
 
+    String mesLibreStr = 'pronto';
+    if (mesLibre > 0) {
+      final mFree = DateTime(now.year, now.month + mesLibre);
+      mesLibreStr = "${mFree.month}/${mFree.year}";
+    } else if (tempDeuda > 0) {
+      final mFree = DateTime(now.year, now.month + 60);
+      mesLibreStr = "${mFree.month}/${mFree.year}";
+    }
+
     return {
       'historical': [],
       'proyeccion': proyeccion,
       'deuda_tarjetas': deudaTarjetas,
-      'cuentas_por_cobrar': cuentasCobrar
+      'cuentas_por_cobrar': cuentasCobrar,
+      'mesLibreDeDeuda': mesLibreStr,
     };
   }
 
@@ -381,7 +391,7 @@ class AnalyticsDao {
         });
       }
     }
-    dependenciaLista.sort((a, b) => (b['pct_ingresos'] as double).compareTo(a['pct_ingresos'] as double));
+    dependenciaLista.sort((a, b) => (b['pct_deuda_total'] as double).compareTo(a['pct_deuda_total'] as double));
     final dependenciaTarjetas = {
       'lista': dependenciaLista,
       'total_cuotas_mes': cuotasTarjetas,
