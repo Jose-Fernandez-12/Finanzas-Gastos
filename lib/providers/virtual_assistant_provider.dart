@@ -34,10 +34,18 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
   final _random = Random();
   String _lastDashboardDataHash = '';
 
+  bool _hasGreeted = false;
+  final DateTime _startupTime = DateTime.now();
+
   @override
   AssistantState build() {
     ref.listen(dashboardProvider, (previous, next) {
       if (next.hasValue && next.value != null) {
+        if (!_hasGreeted) {
+          _hasGreeted = true;
+          return;
+        }
+        if (DateTime.now().difference(_startupTime).inSeconds < 12) return;
         if (!state.isAction || !state.isVisible) {
           _analyzeDashboardData(next.value!);
         }
@@ -90,16 +98,16 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       anim = AssistantAnimation.idle;
     }
     
-    state = AssistantState(
+    final initialState = AssistantState(
       message: msg, 
       isVisible: true, 
       isAction: false, 
       animation: anim,
     );
     
-    _autoHide();
+    Future.microtask(() => _autoHide());
 
-    return AssistantState(message: msg, isVisible: true, isAction: false);
+    return initialState;
   }
 
   void analyzeTransactionItem(String tipo, double monto, String nombre) {
@@ -524,6 +532,17 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         msg = frases[_random.nextInt(frases.length)];
         final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
         anim = anims[_random.nextInt(anims.length)];
+        break;
+
+      case 'GASTO_PAGADO':
+        final frasesPagado = [
+          "Gasto marcado como pagado. ¡Excelente responsabilidad!",
+          "Una obligación menos. Buen trabajo manteniendo tus cuentas al día.",
+          "¡Gasto pagado! Qué alivio ir saliendo de esas deudas mensuales."
+        ];
+        msg = frasesPagado[_random.nextInt(frasesPagado.length)];
+        final animsPagado = [AssistantAnimation.happy, AssistantAnimation.jump, AssistantAnimation.glowGreen];
+        anim = animsPagado[_random.nextInt(animsPagado.length)];
         break;
 
       case 'NUEVO_INGRESO':

@@ -21,9 +21,6 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('gastos');
-    });
   }
 
   @override
@@ -312,7 +309,11 @@ class _GastoItem extends ConsumerWidget {
                   if (val == 'pay') {
                     try {
                       await LocalRepository.instance.pagarGastoFijo(gasto.id);
-                      ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', gasto.monto);
+                      Future.delayed(const Duration(milliseconds: 1200), () {
+                        if (context.mounted) {
+                          ref.read(virtualAssistantProvider.notifier).registerAction('GASTO_PAGADO', gasto.monto);
+                        }
+                      });
                       if (context.mounted) {
                         ref.invalidate(gastosProvider(currentMonth));
                         ref.invalidate(dashboardProvider);
@@ -477,7 +478,12 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
         await LocalRepository.instance.updateGastoFijo(widget.gastoExistente!.id, data);
       } else {
         await LocalRepository.instance.createGastoFijo(data);
-        ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', double.tryParse(_monto.text));
+        final montoVal = double.tryParse(_monto.text);
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (context.mounted) {
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', montoVal);
+          }
+        });
       }
       if (mounted) { Navigator.pop(context); widget.onSave(double.parse(_monto.text)); }
     } catch (e) {

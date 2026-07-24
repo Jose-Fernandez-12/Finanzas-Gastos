@@ -19,9 +19,6 @@ class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('ahorros');
-    });
   }
 
   @override
