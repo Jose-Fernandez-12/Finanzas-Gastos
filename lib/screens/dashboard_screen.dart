@@ -24,9 +24,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('dashboard');
-    });
   }
 
   @override

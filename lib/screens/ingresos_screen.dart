@@ -21,9 +21,6 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('ingresos');
-    });
   }
 
   @override
@@ -474,7 +471,11 @@ class _FormIngresoState extends ConsumerState<_FormIngreso> {
         if (widget.ingreso == null) {
           if (monto > 0) {
             await LocalRepository.instance.createIngreso(reqData);
-            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
+            Future.delayed(const Duration(milliseconds: 1200), () {
+              if (context.mounted) {
+                ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
+              }
+            });
           }
         } else {
           await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);

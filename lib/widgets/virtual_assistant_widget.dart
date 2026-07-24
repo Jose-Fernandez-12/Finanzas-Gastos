@@ -81,12 +81,12 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
           onTap: () => ref.read(virtualAssistantProvider.notifier).toggleVisibility(),
           child: AnimatedOpacity(
             duration: const Duration(milliseconds: 300),
-            opacity: isKeyboardOpen ? 0.25 : 1.0,
+            opacity: (isKeyboardOpen && !state.isAction) ? 0.25 : 1.0,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomRight,
               children: [
-                if (state.isVisible && !isKeyboardOpen)
+                if (state.isVisible && (!isKeyboardOpen || state.isAction))
                   Positioned(
                     bottom: 60,
                     right: (displayX > size.width / 2) ? 0 : null,

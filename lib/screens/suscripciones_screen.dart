@@ -21,9 +21,6 @@ class _SuscripcionesScreenState extends ConsumerState<SuscripcionesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('suscripciones');
-    });
   }
 
   @override
