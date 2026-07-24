@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/gastos_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/gasto_fijo.dart';
 
 class GastosScreen extends ConsumerStatefulWidget {
@@ -17,7 +18,13 @@ class GastosScreen extends ConsumerStatefulWidget {
 class _GastosScreenState extends ConsumerState<GastosScreen> {
   final String _mes = mesActual();
 
-  // initState removed as Riverpod handles initial load on watch
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('gastos');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,9 +113,12 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder:            (_) => _FormGasto(
         gastoExistente: gasto,
-        onSave: () {
+        onSave: (monto) {
           ref.invalidate(gastosProvider(_mes));
           ref.invalidate(dashboardProvider);
+          if (gasto == null) {
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', monto);
+          }
         },
       ),
     );
@@ -233,23 +243,31 @@ class _GastoItem extends ConsumerWidget {
     final IconData icon = isPaidThisMonth ? Icons.check_circle_rounded : getCategoryIcon(catIconName);
     final Color itemColor = isPaidThisMonth ? Colors.green : color;
 
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isPaidThisMonth ? Colors.green.withAlpha(12) : AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isPaidThisMonth ? Colors.green.withAlpha(50) : AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(4),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
+    return GestureDetector(
+      onTap: () {
+        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
+          'gasto',
+          gasto.monto,
+          gasto.nombre,
+        );
+      },
+      child: Container(
+        margin:  const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isPaidThisMonth ? Colors.green.withAlpha(12) : AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isPaidThisMonth ? Colors.green.withAlpha(50) : AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
           Container(
             width: 46,
             height: 46,
@@ -294,8 +312,9 @@ class _GastoItem extends ConsumerWidget {
                   if (val == 'pay') {
                     try {
                       await LocalRepository.instance.pagarGastoFijo(gasto.id);
+                      ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', gasto.monto);
                       if (context.mounted) {
-                        ref.invalidate(gastosProvider(currentMonth)); // Assuming _mes is currentMonth here roughly, or just reload current
+                        ref.invalidate(gastosProvider(currentMonth));
                         ref.invalidate(dashboardProvider);
                       }
                     } catch (e) {
@@ -318,20 +337,21 @@ class _GastoItem extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
 
-class _FormGasto extends StatefulWidget {
-  final VoidCallback onSave;
+class _FormGasto extends ConsumerStatefulWidget {
   final GastoFijo? gastoExistente;
-  const _FormGasto({required this.onSave, this.gastoExistente});
+  final Function(double) onSave;
+  const _FormGasto({this.gastoExistente, required this.onSave});
 
   @override
-  State<_FormGasto> createState() => _FormGastoState();
+  ConsumerState<_FormGasto> createState() => _FormGastoState();
 }
 
-class _FormGastoState extends State<_FormGasto> {
+class _FormGastoState extends ConsumerState<_FormGasto> {
   final _form   = GlobalKey<FormState>();
   final _nombre = TextEditingController();
   final _monto  = TextEditingController();
@@ -457,8 +477,9 @@ class _FormGastoState extends State<_FormGasto> {
         await LocalRepository.instance.updateGastoFijo(widget.gastoExistente!.id, data);
       } else {
         await LocalRepository.instance.createGastoFijo(data);
+        ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', double.tryParse(_monto.text));
       }
-      if (mounted) { Navigator.pop(context); widget.onSave(); }
+      if (mounted) { Navigator.pop(context); widget.onSave(double.parse(_monto.text)); }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
     } finally {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../widgets/common_widgets.dart';
 import 'tarjetas/tarjeta_detalle_screen.dart';
 import 'analytics_screen.dart';
@@ -19,6 +20,14 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('dashboard');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

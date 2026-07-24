@@ -5,6 +5,7 @@ import '../../core/formatters.dart';
 import '../../core/local_repository.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/virtual_assistant_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
 
@@ -26,6 +27,9 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
   void initState() {
     super.initState();
     _recargarTodo();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('tarjetas');
+    });
   }
 
   Future<void> _recargarTodo() async {
@@ -122,6 +126,9 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
                     initialExpand: widget.initialCompraId != null && c['id'] == widget.initialCompraId,
                     onPagoCuota: _recargarTodo,
                     onEdit: (compraToEdit) => _showFormCompra(context, compra: compraToEdit),
+                    onTapCuota: (cuota) {
+                      ref.read(virtualAssistantProvider.notifier).analyzeCuotaIndividual(cuota);
+                    },
                   )),
                 const SizedBox(height: 80),
               ],
@@ -222,19 +229,20 @@ class _TarjetaVisual extends StatelessWidget {
   }
 }
 
-class _CompraCard extends StatefulWidget {
+class _CompraCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> compra;
   final int tarjetaId;
   final VoidCallback onPagoCuota;
   final Function(Map<String, dynamic>) onEdit;
+  final Function(Map<String, dynamic>) onTapCuota;
   final bool initialExpand;
-  const _CompraCard({required this.compra, required this.tarjetaId, required this.onPagoCuota, required this.onEdit, this.initialExpand = false});
+  const _CompraCard({required this.compra, required this.tarjetaId, required this.onPagoCuota, required this.onEdit, required this.onTapCuota, this.initialExpand = false});
 
   @override
-  State<_CompraCard> createState() => _CompraCardState();
+  ConsumerState<_CompraCard> createState() => _CompraCardState();
 }
 
-class _CompraCardState extends State<_CompraCard> {
+class _CompraCardState extends ConsumerState<_CompraCard> {
   late bool _expandida;
 
   @override
@@ -317,8 +325,10 @@ class _CompraCardState extends State<_CompraCard> {
                   const SizedBox(height: 10),
                   ...cuotas.map((cuota) => CuotaRow(
                     cuota: cuota,
+                    onTapCuota: () => widget.onTapCuota(cuota),
                     onPagar: cuota['estado'] == 'PENDIENTE' ? () async {
                       await LocalRepository.instance.pagarCuota(widget.tarjetaId, c['id'] as int, cuota['id'] as int);
+                      ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
                       widget.onPagoCuota();
                     } : null,
                   )),

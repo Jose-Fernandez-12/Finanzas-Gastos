@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../core/local_repository.dart';
 import '../providers/ahorros_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/bolsillo_ahorro.dart';
 
 
@@ -15,6 +16,14 @@ class AhorrosScreen extends ConsumerStatefulWidget {
 }
 
 class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('ahorros');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final ahorrosAsync = ref.watch(ahorrosProvider);
@@ -115,6 +124,7 @@ class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
                 Navigator.pop(context);
                 ref.invalidate(ahorrosProvider);
                 ref.invalidate(dashboardProvider);
+                ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_AHORRO', double.parse(montoCtrl.text));
               }
             },
             child: const Text('Abonar'),

@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/ingresos_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/ingreso.dart';
 
 class IngresosScreen extends ConsumerStatefulWidget {
@@ -17,7 +18,13 @@ class IngresosScreen extends ConsumerStatefulWidget {
 class _IngresosScreenState extends ConsumerState<IngresosScreen> {
   final String _mes = mesActual();
 
-  // initState not needed since watch handles initial load
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('ingresos');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,9 +112,12 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder:            (_) => _FormIngreso(
         ingreso: ingreso,
-        onSave: () {
+        onSave: (monto) {
           ref.invalidate(ingresosProvider(_mes));
           ref.invalidate(dashboardProvider);
+          if (ingreso == null && monto > 0) {
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
+          }
         }
       ),
     );
@@ -200,23 +210,31 @@ class _IngresoItem extends ConsumerWidget {
     final String catIconName = ingreso.categoriaIcono ?? 'trending_up';
     final IconData icon = getCategoryIcon(catIconName);
 
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(4),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
+    return GestureDetector(
+      onTap: () {
+        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
+          'ingreso',
+          ingreso.monto,
+          ingreso.descripcion ?? 'Ingreso',
+        );
+      },
+      child: Container(
+        margin:  const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
           Container(
             width: 46,
             height: 46,
@@ -262,20 +280,21 @@ class _IngresoItem extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
 
-class _FormIngreso extends StatefulWidget {
+class _FormIngreso extends ConsumerStatefulWidget {
   final Ingreso? ingreso;
-  final VoidCallback onSave;
+  final Function(double) onSave;
   const _FormIngreso({this.ingreso, required this.onSave});
 
   @override
-  State<_FormIngreso> createState() => _FormIngresoState();
+  ConsumerState<_FormIngreso> createState() => _FormIngresoState();
 }
 
-class _FormIngresoState extends State<_FormIngreso> {
+class _FormIngresoState extends ConsumerState<_FormIngreso> {
   final _form        = GlobalKey<FormState>();
   final _desc        = TextEditingController();
   final _monto       = TextEditingController();
@@ -422,7 +441,7 @@ class _FormIngresoState extends State<_FormIngreso> {
                 await LocalRepository.instance.deleteIngreso(widget.ingreso!.id);
                 if (mounted) {
                   Navigator.pop(context);
-                  widget.onSave();
+                  widget.onSave(0.0);
                 }
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
@@ -455,12 +474,13 @@ class _FormIngresoState extends State<_FormIngreso> {
         if (widget.ingreso == null) {
           if (monto > 0) {
             await LocalRepository.instance.createIngreso(reqData);
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
           }
         } else {
           await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);
         }
       }
-      if (mounted) { Navigator.pop(context); widget.onSave(); }
+      if (mounted) { Navigator.pop(context); widget.onSave(monto); }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));
     } finally {

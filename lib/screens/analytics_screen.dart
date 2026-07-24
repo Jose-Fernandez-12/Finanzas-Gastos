@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/analytics_profile_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
@@ -33,6 +34,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchGastosDelMes();
+      ref.read(virtualAssistantProvider.notifier).setCurrentView('analitica');
     });
   }
 
@@ -218,7 +220,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
           // Termómetro
           if (modulos.contains(AnalyticsModuleIds.termometro) && adv != null && adv['termometro'] != null) ...[
-            _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('termometro', adv['termometro'] as Map<String, dynamic>),
+              child: _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -226,7 +231,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.estresCash) && adv != null && adv['estres'] != null) ...[
             const _SectionTitle(title: 'Calendario de Estrés de Efectivo'),
             const SizedBox(height: 10),
-            _buildCalendarioEstresCard(adv['estres'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('estres_efectivo', adv['estres'] as Map<String, dynamic>),
+              child: _buildCalendarioEstresCard(adv['estres'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -234,15 +242,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.endeudamiento)) ...[
             const _SectionTitle(title: 'Estado de Endeudamiento'),
             const SizedBox(height: 10),
-            _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('endeudamiento', {'pct': endeudamientoPct, 'nivel': nivelRiesgo}),
+              child: _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
+            ),
             const SizedBox(height: 20),
           ],
 
           // Días de esclavitud financiera
-          if (modulos.contains(AnalyticsModuleIds.esclavitudFinanciera) && adv != null && adv['esclavitud_financiera'] != null) ...[
-            const _SectionTitle(title: 'Días de Trabajo vs Deuda'),
+          if (modulos.contains(AnalyticsModuleIds.esclavitudFinanciera) && adv != null && adv['dias_esclavitud'] != null) ...[
+            const _SectionTitle(title: 'Días de Trabajo vs Obligaciones'),
             const SizedBox(height: 10),
-            _buildEsclavitudFinancieraCard(adv['esclavitud_financiera'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dias_trabajo', adv['dias_esclavitud'] as Map<String, dynamic>),
+              child: _buildEsclavitudFinancieraCard(adv['dias_esclavitud'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -250,13 +264,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.interesQuemado) && adv != null && adv['interes_quemado'] != null) ...[
             const _SectionTitle(title: 'Interés Quemado (Dinero al Banco)'),
             const SizedBox(height: 10),
-            _buildInteresQuemadoCard(adv['interes_quemado'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('interes_quemado', adv['interes_quemado'] as Map<String, dynamic>),
+              child: _buildInteresQuemadoCard(adv['interes_quemado'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
           // Resumen cards
           if (modulos.contains(AnalyticsModuleIds.resumenCards)) ...[
-            _buildResumenCards(_mesIngresos, _mesEgresos),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('resumen', {'ingresos': _mesIngresos, 'egresos': _mesEgresos}),
+              child: _buildResumenCards(_mesIngresos, _mesEgresos),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -264,7 +284,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.eficienciaAhorro) && adv != null && adv['eficiencia_ahorro'] != null) ...[
             const _SectionTitle(title: 'Eficiencia de Ahorro'),
             const SizedBox(height: 10),
-            _buildEficienciaAhorroCard(adv['eficiencia_ahorro'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('eficiencia_ahorro', adv['eficiencia_ahorro'] as Map<String, dynamic>),
+              child: _buildEficienciaAhorroCard(adv['eficiencia_ahorro'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -272,7 +295,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.dependenciaTarjetas) && adv != null && adv['dependencia_tarjetas'] != null) ...[
             const _SectionTitle(title: 'Dependencia por Tarjeta / Banco'),
             const SizedBox(height: 10),
-            _buildDependenciaTarjetasCard(adv['dependencia_tarjetas'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dependencia_tarjetas', adv['dependencia_tarjetas'] as Map<String, dynamic>),
+              child: _buildDependenciaTarjetasCard(adv['dependencia_tarjetas'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -280,7 +306,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.radarHormiga) && adv != null && adv['radar_hormiga'] != null) ...[
             const _SectionTitle(title: 'Radar de Gastos Hormiga & Pequeñas Fugas'),
             const SizedBox(height: 10),
-            _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('radar_hormiga', adv['radar_hormiga'] as Map<String, dynamic>),
+              child: _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -288,7 +317,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.flujoCaja)) ...[
             const _SectionTitle(title: 'Flujo de Caja'),
             const SizedBox(height: 10),
-            _buildBarChart(historical),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('flujo_caja', {'historical': historical}),
+              child: _buildBarChart(historical),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -297,7 +329,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Simulador Inteligente de Pagos'),
             const SizedBox(height: 10),
             if ((adv['simulador']['deudas'] as List).isNotEmpty)
-              _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>)
+              GestureDetector(
+                onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto'}),
+                child: _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>),
+              )
             else
               _buildEmptySimulador(),
             const SizedBox(height: 20),
@@ -305,11 +340,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
           // Camino a cero deuda
           if (modulos.contains(AnalyticsModuleIds.caminoDeuda) && proyeccion.isNotEmpty) ...[
-            const _SectionTitle(title: 'Camino a Cero Deuda'),
-            const SizedBox(height: 10),
-            _buildAbonoExtraSlider(),
-            const SizedBox(height: 16),
-            _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? ''),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle(title: 'Camino a Cero Deuda'),
+                const SizedBox(height: 10),
+                _buildAbonoExtraSlider(provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto', 'pctAbono': _pctAbonoExtra}),
+                  child: _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -317,7 +360,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           if (modulos.contains(AnalyticsModuleIds.categorias)) ...[
             const _SectionTitle(title: 'Gastos por Categoría'),
             const SizedBox(height: 10),
-            _buildCategoriasCard(),
+            GestureDetector(
+              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('categorias', {}),
+              child: _buildCategoriasCard(),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -919,7 +965,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: (pctIngresos / 100).clamp(0.0, 1.0),
+                            value: (pctDeuda / 100).clamp(0.0, 1.0),
                             minHeight: 6,
                             backgroundColor: AppTheme.borderLight,
                             valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -927,10 +973,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text('${pctIngresos.toStringAsFixed(0)}%', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+                      Text('${pctDeuda.toStringAsFixed(0)}%', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 2),
-                    Text('Saldo: ${formatCOP(saldo)} — ${pctDeuda.toStringAsFixed(0)}% de tu deuda total',
+                    Text('Saldo: ${formatCOP(saldo)} — Cuota toma ${pctIngresos.toStringAsFixed(0)}% de tus ingresos',
                         style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                   ],
                 ),
@@ -1424,7 +1470,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   // ─── Camino a Cero Deuda ────────────────────────────────────────────────────
 
-  Widget _buildAbonoExtraSlider() {
+  Widget _buildAbonoExtraSlider(String mesLibre) {
     return StatefulBuilder(
       builder: (context, setStateSlider) {
         return Container(
@@ -1458,7 +1504,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   max: 100,
                   divisions: 20,
                   onChanged: (val) { setStateSlider(() => _pctAbonoExtra = val); },
-                  onChangeEnd: (val) { setState(() { _pctAbonoExtra = val; }); },
+                  onChangeEnd: (val) { 
+                    setState(() { _pctAbonoExtra = val; }); 
+                    ref.read(virtualAssistantProvider.notifier).analyzeChart('abono_extra', {'pct': val, 'mesLibre': mesLibre});
+                  },
                 ),
               ),
               const Text('Destina un porcentaje de tu dinero libre al pago acelerado de tus deudas para calcular cuándo terminarías de pagar.',

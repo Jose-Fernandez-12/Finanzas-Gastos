@@ -13,6 +13,8 @@ import 'screens/ahorros_screen.dart';
 import 'screens/suscripciones_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 import 'screens/notificaciones/gasto_detectado_dialog.dart';
+import 'widgets/virtual_assistant_widget.dart';
+import 'providers/virtual_assistant_provider.dart';
 
 import 'core/notification_service.dart';
 
@@ -43,6 +45,14 @@ class FinanzasApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: const MainNavigation(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            const GlobalVirtualAssistant(),
+          ],
+        );
+      },
     );
   }
 }
@@ -160,6 +170,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           onDestinationSelected: (i) {
             setState(() => _currentIndex = i);
+            final views = ['dashboard', 'ingresos', 'gastos', 'tarjetas', 'ahorros', 'suscripciones', 'cobrar'];
+            if (i < views.length) {
+              ref.read(virtualAssistantProvider.notifier).setCurrentView(views[i]);
+            }
           },
           destinations: const [
             NavigationDestination(icon: Icon(Icons.dashboard_rounded),         label: 'Inicio'),
