@@ -512,7 +512,7 @@ class _SuscripcionCard extends StatelessWidget {
                               child: Row(children: [
                                 Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.colorIngresos),
                                 SizedBox(width: 8),
-                                Text('Marcar cobrado'),
+                                Text('Marcar pagado'),
                               ]),
                             ),
                           const PopupMenuItem(

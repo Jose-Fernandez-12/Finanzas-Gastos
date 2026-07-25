@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/virtual_assistant_provider.dart';
 import '../core/theme.dart';
@@ -147,7 +148,7 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
 
                 SizedBox(
                   width: 72,
-                  child: ClawdWidget(animation: state.animation),
+                  child: ClawdWidget(animation: state.animation, actionId: state.actionId),
                 ),
               ],
             ),
@@ -160,7 +161,8 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
 
 class ClawdWidget extends StatefulWidget {
   final AssistantAnimation animation;
-  const ClawdWidget({super.key, this.animation = AssistantAnimation.idle});
+  final String actionId;
+  const ClawdWidget({super.key, this.animation = AssistantAnimation.idle, this.actionId = ''});
 
   @override
   State<ClawdWidget> createState() => _ClawdWidgetState();
@@ -173,6 +175,10 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
   bool _disposed = false;
   final _random = math.Random();
   AssistantAnimation _currentIdleAnim = AssistantAnimation.idle;
+  
+  // Parametros para vuelo aleatorio
+  double _flyTargetX = 0;
+  double _flyPeakY = 0;
 
   @override
   void initState() {
@@ -191,8 +197,24 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
   @override
   void didUpdateWidget(ClawdWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.animation != oldWidget.animation && widget.animation != AssistantAnimation.idle) {
+    if ((widget.animation != oldWidget.animation || widget.actionId != oldWidget.actionId) && widget.animation != AssistantAnimation.idle) {
+      if (widget.animation == AssistantAnimation.flyingStars) {
+        _actionController.duration = const Duration(milliseconds: 4000);
+        // Generar nueva ruta aleatoria pero manteniendolo dentro de la pantalla
+        _flyTargetX = (_random.nextDouble() > 0.5 ? 1 : -1) * (80.0 + _random.nextDouble() * 80.0); // Entre 80 y 160 px (no sale de pantalla)
+        _flyPeakY = -150.0 - _random.nextDouble() * 100.0; // Altura pico controlada entre -150 y -250
+      } else {
+        _actionController.duration = const Duration(milliseconds: 800);
+      }
       _actionController.forward(from: 0.0);
+      
+      if (widget.animation == AssistantAnimation.warningSevere || widget.animation == AssistantAnimation.alert) {
+        HapticFeedback.heavyImpact();
+      } else if (widget.animation == AssistantAnimation.celebration || widget.animation == AssistantAnimation.wealthy) {
+        HapticFeedback.mediumImpact();
+      } else {
+        HapticFeedback.lightImpact();
+      }
     }
   }
 
@@ -254,9 +276,10 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
             isSleeping = true;
           }
 
+          final activeAnim = widget.animation != AssistantAnimation.idle ? widget.animation : _currentIdleAnim;
+
           if (isActing) {
             final sinPi = math.sin(action * math.pi);
-            final activeAnim = widget.animation != AssistantAnimation.idle ? widget.animation : _currentIdleAnim;
 
             switch (activeAnim) {
               case AssistantAnimation.jump:
@@ -306,10 +329,68 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
                 rotation = math.sin(action * math.pi * 4) * 0.2; // Wobble
                 dx += math.sin(action * math.pi * 2) * 5;
                 break;
+              case AssistantAnimation.confused:
+                rotation = math.sin(action * math.pi * 4) * 0.3; // Fuerte wobble
+                dx += math.sin(action * math.pi * 2) * 5;
+                break;
+              case AssistantAnimation.celebration:
+                glowColor = Colors.purpleAccent.withAlpha((sinPi * 200).toInt());
+                scaleX = math.cos(action * math.pi * 2).abs(); // Spin
+                dy -= sinPi * 20; // Alto salto
+                break;
+              case AssistantAnimation.warningSevere:
+                glowColor = Colors.red.withAlpha((sinPi * 255).toInt());
+                dx += math.sin(action * math.pi * 20) * 8; // Shake muy violento
+                scaleX += math.sin(action * math.pi * 10).abs() * 0.2; // Latido
+                scaleY += math.sin(action * math.pi * 10).abs() * 0.2;
+                break;
+              case AssistantAnimation.sad:
+                glowColor = Colors.blueGrey.withAlpha((sinPi * 150).toInt());
+                scaleY -= sinPi * 0.5; // Encogimiento extremo
+                scaleX += sinPi * 0.2;
+                dy += sinPi * 10; // Se hunde
+                break;
+              case AssistantAnimation.wealthy:
+                glowColor = Colors.amberAccent.withAlpha((sinPi * 200).toInt());
+                scaleY += sinPi * 0.4; // Se estira
+                dy -= sinPi * 10;
+                break;
+              case AssistantAnimation.hide:
+                dy += math.sin(action * math.pi) * 30; // Baja casi escondiéndose
+                break;
+              case AssistantAnimation.workout:
+                glowColor = Colors.orangeAccent.withAlpha((sinPi * 150).toInt());
+                final pushupCycle = math.sin(action * math.pi * 6).abs(); 
+                dy += pushupCycle * 15;
+                scaleX += pushupCycle * 0.2;
+                scaleY -= pushupCycle * 0.2;
+                break;
+              case AssistantAnimation.flyingStars:
+                glowColor = Colors.white.withAlpha((sinPi * 200).toInt());
+                final smoothAction = Curves.easeInOutSine.transform(action);
+                
+                // Ruta base suave (arco hacia _flyTargetX)
+                dx += smoothAction * _flyTargetX;
+                dy += math.sin(smoothAction * math.pi) * _flyPeakY;
+                
+                // Movimientos organicos (sweeps)
+                dx += math.sin(action * math.pi * 2) * 50 * (1 - action);
+                dy += math.sin(action * math.pi * 4) * 30 * (1 - action);
+                
+                // Micro turbulencia o aleteo rápido
+                dx += math.sin(action * math.pi * 20) * 5;
+                dy += math.cos(action * math.pi * 15) * 5;
+                
+                rotation = math.sin(action * math.pi * 6) * 0.4;
+                scaleX = 1.0 - math.sin(action * math.pi * 8).abs() * 0.3; // Flapping/Spinning
+                break;
               case AssistantAnimation.sleep:
-                // handled in continuous above, but if triggered as action we can add a snore
                 scaleY += sinPi * 0.1;
                 scaleX += sinPi * 0.05;
+                break;
+              case AssistantAnimation.flip:
+                dy -= sinPi * 50; 
+                rotation = action * math.pi * 2; // Giro 360 grados
                 break;
               default:
                 break;
@@ -328,6 +409,8 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
                 blink: isSleeping ? 0.9 : _blinkController.value, 
                 glowColor: glowColor,
                 isSleeping: isSleeping,
+                activeAnim: isActing ? activeAnim : AssistantAnimation.idle,
+                actionProgress: action,
               ),
             ),
           );
@@ -341,8 +424,16 @@ class _ClawdPainter extends CustomPainter {
   final double blink; 
   final Color? glowColor;
   final bool isSleeping;
+  final AssistantAnimation activeAnim;
+  final double actionProgress;
 
-  _ClawdPainter({required this.blink, this.glowColor, this.isSleeping = false});
+  _ClawdPainter({
+    required this.blink, 
+    this.glowColor, 
+    this.isSleeping = false,
+    this.activeAnim = AssistantAnimation.idle,
+    this.actionProgress = 0.0,
+  });
 
   static const Color body = Color(0xFF6C63FF);
   static const Color eye = Color(0xFF111111);
@@ -398,11 +489,63 @@ class _ClawdPainter extends CustomPainter {
       textPainter2.paint(canvas, const Offset(62, -15));
     }
 
+    if (activeAnim == AssistantAnimation.confused) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: '?', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(26, -30 - (math.sin(actionProgress * math.pi) * 10)));
+      
+      final textPainter2 = TextPainter(
+        text: TextSpan(text: '?', style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold)),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter2.layout();
+      textPainter2.paint(canvas, Offset(5, -15 - (math.sin(actionProgress * math.pi) * 5)));
+      textPainter2.paint(canvas, Offset(55, -20 - (math.sin(actionProgress * math.pi) * 12)));
+    } else if (activeAnim == AssistantAnimation.wealthy) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: '\$', style: TextStyle(color: Colors.greenAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+        textDirection: TextDirection.ltr,
+      );
+      final textPainterBig = TextPainter(
+        text: TextSpan(text: '\$', style: TextStyle(color: Colors.lightGreen, fontSize: 22, fontWeight: FontWeight.bold)),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainterBig.layout();
+      textPainter.paint(canvas, Offset(-10, -5 - (actionProgress * 25)));
+      textPainterBig.paint(canvas, Offset(28, -35 - (actionProgress * 30)));
+      textPainter.paint(canvas, Offset(70, -10 - (actionProgress * 20)));
+      textPainter.paint(canvas, Offset(15, -15 - (actionProgress * 15)));
+      textPainter.paint(canvas, Offset(50, 0 - (actionProgress * 35)));
+    } else if (activeAnim == AssistantAnimation.celebration) {
+      final paintStar = Paint()..color = Colors.yellowAccent;
+      canvas.drawCircle(Offset(10 + (math.cos(actionProgress * math.pi * 4) * 20), -10 - (actionProgress * 20)), 2, paintStar);
+      canvas.drawCircle(Offset(60 + (math.sin(actionProgress * math.pi * 4) * 20), -5 - (actionProgress * 15)), 2, paintStar);
+      canvas.drawCircle(Offset(35, -20 - (actionProgress * 25)), 3, paintStar);
+    } else if (activeAnim == AssistantAnimation.flyingStars) {
+      final paintStar = Paint()..color = Colors.white;
+      for (int i = 0; i < 6; i++) {
+        canvas.drawCircle(
+          Offset(36 + (math.cos(actionProgress * math.pi * 6 + i) * 35), 10 + (math.sin(actionProgress * math.pi * 6 + i) * 25)), 
+          1.5 + (i % 2), 
+          paintStar
+        );
+      }
+    }
+
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _ClawdPainter old) => old.blink != blink || old.glowColor != glowColor || old.isSleeping != isSleeping;
+  bool shouldRepaint(covariant _ClawdPainter old) => 
+    old.blink != blink || 
+    old.glowColor != glowColor || 
+    old.isSleeping != isSleeping ||
+    old.activeAnim != activeAnim ||
+    old.actionProgress != actionProgress;
 }
 
 class TypingText extends StatefulWidget {

@@ -112,9 +112,6 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
         onSave: (monto) {
           ref.invalidate(ingresosProvider(_mes));
           ref.invalidate(dashboardProvider);
-          if (ingreso == null && monto > 0) {
-            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
-          }
         }
       ),
     );
@@ -470,10 +467,11 @@ class _FormIngresoState extends ConsumerState<_FormIngreso> {
         };
         if (widget.ingreso == null) {
           if (monto > 0) {
+            final nombreIngreso = _desc.text.trim();
             await LocalRepository.instance.createIngreso(reqData);
             Future.delayed(const Duration(milliseconds: 1200), () {
               if (context.mounted) {
-                ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto);
+                ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto, nombreIngreso);
               }
             });
           }

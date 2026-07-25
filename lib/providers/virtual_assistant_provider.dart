@@ -4,7 +4,8 @@ import 'dashboard_provider.dart';
 import '../core/formatters.dart';
 
 enum AssistantAnimation {
-  idle, jump, shake, stretch, shrink, spin, flip, glowGreen, glowRed, nod, glitch, sleep, alert, happy, thinking
+  idle, jump, shake, stretch, shrink, nod, glitch, glowGreen, glowRed, spin, alert, happy, thinking, sleep, flip,
+  confused, celebration, warningSevere, sad, wealthy, hide, workout, flyingStars
 }
 
 class AssistantState {
@@ -12,12 +13,14 @@ class AssistantState {
   final bool isVisible;
   final bool isAction;
   final AssistantAnimation animation;
+  final String actionId;
 
   AssistantState({
     required this.message, 
     this.isVisible = false, 
     this.isAction = false,
     this.animation = AssistantAnimation.idle,
+    this.actionId = '',
   });
 
   AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation}) {
@@ -115,17 +118,34 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     AssistantAnimation anim = AssistantAnimation.idle;
 
     if (tipo == 'gasto') {
-      msg = "El gasto '$nombre' es de ${formatCOP(monto)}. Asegúrate de que estaba contemplado en el presupuesto de este mes.";
-      anim = monto > 100000 ? AssistantAnimation.shrink : AssistantAnimation.nod;
+      if (monto > 500000) {
+        msg = "¡Alerta de Gasto Fuerte! '$nombre' es de ${formatCOP(monto)}. Revisa que no afecte tu liquidez mensual crítica.";
+        anim = AssistantAnimation.warningSevere;
+      } else if (nombre.toLowerCase().contains("comida") || nombre.toLowerCase().contains("cerveza") || nombre.toLowerCase().contains("domicilio") || nombre.toLowerCase().contains("antojo")) {
+        msg = "Gasto registrado: '$nombre'. ¿Era estrictamente necesario? ¡Cuidado con el gasto hormiga!";
+        anim = AssistantAnimation.hide;
+      } else {
+        msg = "El gasto '$nombre' es de ${formatCOP(monto)}. Asegúrate de que estaba contemplado en el presupuesto.";
+        anim = monto > 200000 ? AssistantAnimation.confused : AssistantAnimation.nod;
+      }
     } else if (tipo == 'ingreso') {
-      msg = "Ingreso registrado: '$nombre' por ${formatCOP(monto)}. Una excelente oportunidad para aumentar tus ahorros.";
-      anim = AssistantAnimation.jump;
+      final nomLow = nombre.toLowerCase();
+      if (nomLow.contains("presta") || nomLow.contains("prestó") || nomLow.contains("cobro") || nomLow.contains("deuda")) {
+        msg = "¡Has recuperado el dinero de '$nombre' por ${formatCOP(monto)}! Excelente, ese dinero vuelve a casa.";
+        anim = AssistantAnimation.flyingStars;
+      } else if (monto > 1500000) {
+        msg = "¡Ingreso gigante registrado: '$nombre' por ${formatCOP(monto)}! Es el momento perfecto para invertir o guardar en ahorros.";
+        anim = AssistantAnimation.wealthy;
+      } else {
+        msg = "Ingreso registrado: '$nombre' por ${formatCOP(monto)}. Una excelente oportunidad para aumentar tus ahorros.";
+        anim = AssistantAnimation.jump;
+      }
     } else if (tipo == 'pago') {
       msg = "Has registrado el pago de '$nombre' por ${formatCOP(monto)}. Menos deudas, más tranquilidad.";
-      anim = AssistantAnimation.glowGreen;
+      anim = AssistantAnimation.celebration;
     } else if (tipo == 'cuota') {
       msg = "Esta cuota de '$nombre' es de ${formatCOP(monto)}. ¿Ya consideraste si puedes abonar a capital para salir de ella más rápido?";
-      anim = AssistantAnimation.stretch;
+      anim = AssistantAnimation.thinking;
     } else {
       msg = "Registro de '$nombre' analizado.";
       anim = AssistantAnimation.nod;
@@ -152,7 +172,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "¡Peligro! Tus compromisos superan tus ingresos actuales. Hay que recortar ya."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.shake;
+          anim = AssistantAnimation.warningSevere;
         } else if (estado == 'Ajustado') {
           final opciones = [
             "Tu presupuesto está muy ajustado. Tienes un disponible real de ${formatCOP(disponible)}.",
@@ -160,7 +180,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Margen de error pequeño. Trata de no gastar de más los próximos días."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.shrink;
+          anim = AssistantAnimation.sad;
         } else {
           final opciones = [
             "Salud financiera buena. Puedes gastar hasta ${formatCOP(diario)} al día con tranquilidad.",
@@ -168,7 +188,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Todo bajo control. Sigues teniendo buen margen de maniobra."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.jump;
+          anim = AssistantAnimation.workout;
         }
         break;
 
@@ -177,7 +197,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         final pctAbono = (data['pctAbono'] as num?)?.toDouble() ?? 0.0;
         if (pctAbono > 0) {
           msg = "Simulando... Con un abono extra del $pctAbono%, serás libre de deudas en $mesLibre. ¡Excelente esfuerzo!";
-          anim = AssistantAnimation.happy;
+          anim = AssistantAnimation.celebration;
         } else {
           msg = "Si no haces abonos extra, terminarás de pagar en $mesLibre. ¿Probamos a subir un poco la barra?";
           anim = AssistantAnimation.thinking;
@@ -202,7 +222,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Estás pagando mucho al banco. Necesitamos un plan de rescate para esas deudas altas."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.shake;
+          anim = AssistantAnimation.sad;
         } else {
           final opciones = [
             "El banco se lleva ${formatCOP(totalAnual)} al año. Considera hacer abonos a capital.",
@@ -242,7 +262,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         final String nivel = data['nivel']?.toString() ?? 'Bajo';
         if (nivel == 'Alto') {
            msg = "¡Alerta! Tu nivel de endeudamiento es $nivel (${pct.toStringAsFixed(1)}%). Recomiendo frenar nuevos créditos y priorizar pagos de capital.";
-           anim = AssistantAnimation.alert;
+           anim = AssistantAnimation.warningSevere;
         } else if (nivel == 'Medio') {
            msg = "Estás en un nivel $nivel (${pct.toStringAsFixed(1)}%). Mantén un ojo en las cuotas para que no se te salgan de las manos.";
            anim = AssistantAnimation.nod;
@@ -266,7 +286,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Tu independencia financiera es alta con $libres días completamente tuyos."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.jump;
+          anim = AssistantAnimation.workout;
         } else {
           final opciones = [
             "Solo tienes $libres días libres. Trabajas mucho para pagar deudas. ¡Cámbialo!",
@@ -274,7 +294,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Tus compromisos consumen gran parte de tu mes. Vamos a intentar subir esos $libres días libres."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.shrink;
+          anim = AssistantAnimation.sad;
         }
         break;
 
@@ -346,7 +366,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Guardar el $tasa% de tus ingresos demuestra gran disciplina. ¡Sigue así!"
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.glowGreen;
+          anim = AssistantAnimation.workout;
         } else {
           final opciones = [
             "Tu tasa de ahorro es $tasa%. Intenta llevarla al 20% reduciendo gastos variables.",
@@ -354,7 +374,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "¿Podríamos subir este $tasa% el próximo mes? Revisa los gastos hormiga."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.nod;
+          anim = tasa < 5 ? AssistantAnimation.sad : AssistantAnimation.nod;
         }
         break;
 
@@ -376,7 +396,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         } else {
           msg = "Tienes fugas por ${formatCOP(anual)} al año. Esos micro-gastos terminan haciendo un agujero grande.";
         }
-        anim = AssistantAnimation.flip;
+        anim = anual > 500000 ? AssistantAnimation.sad : AssistantAnimation.flip;
         break;
 
       case 'dependencia_tarjetas':
@@ -394,7 +414,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Mucha dependencia de tarjetas. Esa deuda con $topBanco limita tus movimientos mensuales."
           ];
           msg = opciones[_random.nextInt(opciones.length)];
-          anim = AssistantAnimation.shake;
+          anim = dependencia > 40 ? AssistantAnimation.warningSevere : AssistantAnimation.shake;
         } else {
           final opciones = [
             "Tus cuotas de tarjeta toman el ${dependencia.toStringAsFixed(1)}% de tus ingresos. Es manejable.",
@@ -488,10 +508,11 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     if (estado == 'PAGADA') {
       final opciones = [
         "Esta cuota ya está pagada. ¡Menos peso encima! 🎉",
-        "Excelente, ya saliste de la cuota $numero.",
+        "Excelente, ya saliste de la cuota $numero de esta compra. Un respiro más.",
+        "Cuota pagada, ¡felicidades por mantenerte al día!"
       ];
       msg = opciones[_random.nextInt(opciones.length)];
-      anim = AssistantAnimation.happy;
+      anim = AssistantAnimation.celebration;
     } else {
       String fechaStr = cuota['fecha_vencimiento']?.toString() ?? '';
       String dateInfo = '';
@@ -521,17 +542,27 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     
     switch(actionType) {
       case 'NUEVO_GASTO':
-        final frases = [
-          "Otro gasto registrado. Espero que no haya sido un gasto hormiga.",
-          "Gasto guardado. Vigilaré que no te pases del presupuesto este mes.",
-          "Registrado. A veces hay que gastar, pero con responsabilidad.",
-          amount != null && amount > 100000 
-            ? "Vaya gasto grande. Espero que lo tuvieras planeado." 
-            : "Pequeño gasto registrado. Recuerda que de a poco se llena el vaso o se vacía."
-        ];
-        msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
-        anim = anims[_random.nextInt(anims.length)];
+        final nombre = (extraContext ?? '').toLowerCase();
+        if (amount != null && amount > 500000) {
+          msg = "¡Vaya! Registraste un gasto enorme de ${formatCOP(amount)}. Revisa que no afecte tu liquidez mensual.";
+          anim = AssistantAnimation.warningSevere;
+        } else if (nombre.contains("comida") || nombre.contains("cerveza") || nombre.contains("domicilio") || nombre.contains("antojo")) {
+          msg = "Gasto registrado: '${extraContext ?? 'Gasto'}'. ¿Era estrictamente necesario? ¡Cuidado con el gasto hormiga!";
+          anim = AssistantAnimation.hide;
+        } else if (amount != null && amount > 200000) {
+          msg = "El gasto '${extraContext ?? 'Gasto'}' es de ${formatCOP(amount)}. Asegúrate de que estaba contemplado en tu presupuesto.";
+          anim = AssistantAnimation.confused;
+        } else {
+          final frases = [
+            "Otro gasto registrado. Espero que no haya sido un gasto hormiga.",
+            "Gasto guardado. Vigilaré que no te pases del presupuesto este mes.",
+            "Registrado. A veces hay que gastar, pero con responsabilidad.",
+            "Pequeño gasto registrado. Recuerda que de a poco se vacía el vaso."
+          ];
+          msg = frases[_random.nextInt(frases.length)];
+          final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
+          anim = anims[_random.nextInt(anims.length)];
+        }
         break;
 
       case 'GASTO_PAGADO':
@@ -541,20 +572,28 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "¡Gasto pagado! Qué alivio ir saliendo de esas deudas mensuales."
         ];
         msg = frasesPagado[_random.nextInt(frasesPagado.length)];
-        final animsPagado = [AssistantAnimation.happy, AssistantAnimation.jump, AssistantAnimation.glowGreen];
+        final animsPagado = [AssistantAnimation.happy, AssistantAnimation.celebration, AssistantAnimation.glowGreen];
         anim = animsPagado[_random.nextInt(animsPagado.length)];
         break;
 
       case 'NUEVO_INGRESO':
-        final frases = [
-          "Dinero nuevo. Esto me pone muy feliz.",
-          "Excelente. Más gasolina para nuestra salud financiera.",
-          "Ingreso registrado. ¿Qué tal si guardamos un porcentaje en los ahorros?",
-          "Aumentando reservas de liquidez. Buen trabajo."
-        ];
-        msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin];
-        anim = anims[_random.nextInt(anims.length)];
+        final nomLow = (extraContext ?? '').toLowerCase();
+        if (nomLow.contains("presta") || nomLow.contains("prestó") || nomLow.contains("cobro") || nomLow.contains("deuda")) {
+          msg = "¡Has recuperado el dinero de '${extraContext ?? 'Préstamo'}' por ${formatCOP(amount ?? 0)}! Excelente, ese dinero vuelve a casa.";
+          anim = AssistantAnimation.flyingStars;
+        } else if (amount != null && amount > 1500000) {
+          msg = "Dinero nuevo y abundante. Esto me pone muy feliz.";
+          anim = AssistantAnimation.wealthy;
+        } else {
+          final frases = [
+            "Excelente. Más gasolina para nuestra salud financiera.",
+            "Ingreso registrado. ¿Qué tal si guardamos un porcentaje en los ahorros?",
+            "Aumentando reservas de liquidez. Buen trabajo."
+          ];
+          msg = frases[_random.nextInt(frases.length)];
+          final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin];
+          anim = anims[_random.nextInt(anims.length)];
+        }
         break;
 
       case 'PAGO_TARJETA':
@@ -565,8 +604,23 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "Pago registrado. Adiós a esos intereses abusivos."
         ];
         msg = frases[_random.nextInt(frases.length)];
-        final anims = [AssistantAnimation.jump, AssistantAnimation.spin, AssistantAnimation.nod];
-        anim = anims[_random.nextInt(anims.length)];
+        anim = AssistantAnimation.celebration;
+        break;
+
+      case 'NUEVO_AHORRO':
+        final frasesAhorro = [
+          "¡Excelente! Cada centavo ahorrado es un paso a la libertad financiera.",
+          "Meta de ahorro impulsada. Me encanta verte crecer.",
+          "¡Ese es el espíritu! Ahorrar hoy para disfrutar mañana.",
+          "Muy bien hecho. Construyendo tu imperio poco a poco."
+        ];
+        msg = frasesAhorro[_random.nextInt(frasesAhorro.length)];
+        anim = AssistantAnimation.workout;
+        break;
+
+      case 'CUENTA_COBRAR_PAGADA':
+        msg = "¡Por fin te pagaron ese dinero! De vuelta al bolsillo.";
+        anim = AssistantAnimation.flyingStars;
         break;
 
       default:
@@ -574,7 +628,24 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         anim = AssistantAnimation.idle;
     }
 
-    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    state = AssistantState(
+      message: msg, 
+      isVisible: true, 
+      isAction: true, 
+      animation: anim,
+      actionId: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+    _autoHide();
+  }
+
+  void forceAnimation(AssistantAnimation anim, String msg) {
+    state = AssistantState(
+      message: msg,
+      isVisible: true,
+      isAction: true,
+      animation: anim,
+      actionId: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
     _autoHide();
   }
 

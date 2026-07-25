@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/cuentas_cobrar_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/virtual_assistant_provider.dart';
 import '../models/cuenta_cobrar.dart';
 
 class CuentasCobrarScreen extends ConsumerStatefulWidget {
@@ -83,9 +84,10 @@ class _CuentasCobrarScreenState extends ConsumerState<CuentasCobrarScreen> {
                           itemCount: cuentasList.length,
                           itemBuilder: (ctx, i) => _CuentaItem(
                             cuenta: cuentasList[i],
-                            onPago: () {
+                            onPago: (monto) {
                               ref.invalidate(cuentasCobrarProvider);
                               ref.invalidate(dashboardProvider);
+                              ref.read(virtualAssistantProvider.notifier).registerAction('CUENTA_COBRAR_PAGADA', monto);
                             },
                             onEdit: () => _showForm(context, ref, cuenta: cuentasList[i]),
                           ),
@@ -173,7 +175,7 @@ class _SummaryCard extends StatelessWidget {
 
 class _CuentaItem extends StatelessWidget {
   final CuentaCobrar cuenta;
-  final VoidCallback onPago;
+  final Function(double) onPago;
   final VoidCallback onEdit;
   const _CuentaItem({required this.cuenta, required this.onPago, required this.onEdit});
 
@@ -336,7 +338,7 @@ class _CuentaItem extends StatelessWidget {
     );
   }
 
-  void _showPagoDialog(BuildContext context, CuentaCobrar cuenta, VoidCallback onPago) {
+  void _showPagoDialog(BuildContext context, CuentaCobrar cuenta, Function(double) onPago) {
     final montoCtrl = TextEditingController();
     showDialog(
       context: context,
@@ -364,7 +366,10 @@ class _CuentaItem extends StatelessWidget {
                   'monto_pagado': double.parse(montoCtrl.text),
                   'fecha_pago':   DateTime.now().toIso8601String().split('T')[0],
                 });
-                if (context.mounted) { Navigator.pop(context); onPago(); }
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  onPago(double.parse(montoCtrl.text));
+                }
               } catch (e) {
                 if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.colorGastos));

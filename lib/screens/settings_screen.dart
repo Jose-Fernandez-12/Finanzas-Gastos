@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'animaciones_test_screen.dart';
 
 /// Pantalla de configuracion
 class SettingsScreen extends StatefulWidget {
@@ -367,6 +368,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // ─── Seccion: Desarrollo y Pruebas ──────────────────────
+            _SectionHeader(title: 'Desarrollo y Pruebas', icon: Icons.developer_mode_rounded),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AnimacionesTestScreen()));
+              },
+              child: _InfoCard(
+                child: Row(
+                  children: [
+                    Icon(Icons.theater_comedy_rounded, color: Colors.purpleAccent),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text('Probar Animaciones de Rocky', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                  ],
+                ),
               ),
             ),
 

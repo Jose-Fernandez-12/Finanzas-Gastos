@@ -113,9 +113,6 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
         onSave: (monto) {
           ref.invalidate(gastosProvider(_mes));
           ref.invalidate(dashboardProvider);
-          if (gasto == null) {
-            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', monto);
-          }
         },
       ),
     );
@@ -479,9 +476,10 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
       } else {
         await LocalRepository.instance.createGastoFijo(data);
         final montoVal = double.tryParse(_monto.text);
+        final nombreGasto = _nombre.text.trim();
         Future.delayed(const Duration(milliseconds: 1200), () {
           if (context.mounted) {
-            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', montoVal);
+            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', montoVal, nombreGasto);
           }
         });
       }
