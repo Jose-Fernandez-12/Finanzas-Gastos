@@ -201,12 +201,297 @@ class RockyAnimationSpec {
     return current;
   }
 
+  List<PixelObject> _generateParticles(double t) {
+    if (particleType == null) return const [];
+    if (!particleContinuous && t < particleTriggerT) return const [];
+
+    final List<PixelObject> objs = [];
+    final p = (particleContinuous ? t : ((t - particleTriggerT) / (1.0 - particleTriggerT)).clamp(0.0, 1.0));
+
+    switch (particleType!) {
+      case ParticleType.coins:
+      case ParticleType.billFlutter:
+        final offsets = [Offset(-18, -10), Offset(8, -30), Offset(28, -12), Offset(-5, -38), Offset(42, -20)];
+        for (int i = 0; i < offsets.length; i++) {
+          final localP = ((p - i * 0.08) % 1.0).clamp(0.0, 1.0);
+          objs.add(PixelObject(
+            type: particleType == ParticleType.billFlutter ? 'bill' : 'coin',
+            x: 36 + offsets[i].dx,
+            y: offsets[i].dy - localP * 20,
+            progress: localP,
+            color: particleType == ParticleType.billFlutter ? const Color(0xFF4CD964) : const Color(0xFFFFCC00),
+          ));
+        }
+        break;
+
+      case ParticleType.greenSparkles:
+      case ParticleType.sparks:
+      case ParticleType.sparksAtFists:
+        final positions = particleType == ParticleType.sparksAtFists
+            ? [Offset(-20, 20), Offset(80, 20)]
+            : [Offset(-15, -5), Offset(75, -5), Offset(30, -35), Offset(-5, -20), Offset(60, -20)];
+        final color = particleType == ParticleType.greenSparkles ? const Color(0xFF4CD964) : const Color(0xFFFFE066);
+        for (int i = 0; i < positions.length; i++) {
+          final localP = ((p + i * 0.15) % 1.0);
+          objs.add(PixelObject(
+            type: 'star4',
+            x: positions[i].dx + localP * 5,
+            y: positions[i].dy - localP * 15,
+            progress: localP,
+            color: color,
+          ));
+        }
+        break;
+
+      case ParticleType.redLightning:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.33) % 1.0);
+          objs.add(PixelObject(
+            type: 'lightning',
+            x: [-20, 70, 30][i].toDouble(),
+            y: -15 - lp * 10,
+            progress: lp,
+            color: const Color(0xFFFF3B30),
+          ));
+        }
+        break;
+
+      case ParticleType.yellowSparkles:
+        for (int i = 0; i < 4; i++) {
+          final lp = ((p + i * 0.25) % 1.0);
+          objs.add(PixelObject(
+            type: 'star4',
+            x: [-10, 70, 20, 55][i].toDouble(),
+            y: -20 - lp * 15,
+            progress: lp,
+            color: const Color(0xFFFFD60A),
+          ));
+        }
+        break;
+
+      case ParticleType.confetti:
+        final colors = [const Color(0xFFFF6B6B), const Color(0xFF4ECDC4), const Color(0xFFFFD93D), const Color(0xFF6BCB77), const Color(0xFFBB77FF)];
+        for (int i = 0; i < 8; i++) {
+          final lp = ((p + i * 0.12) % 1.0);
+          objs.add(PixelObject(
+            type: 'confetti',
+            x: -15 + i * 12.0,
+            y: -30 + lp * 50,
+            progress: lp,
+            color: colors[i % colors.length],
+          ));
+        }
+        break;
+
+      case ParticleType.hearts:
+        for (int i = 0; i < 4; i++) {
+          final lp = ((p + i * 0.22) % 1.0);
+          objs.add(PixelObject(
+            type: 'heart',
+            x: [-18, 68, 15, 50][i].toDouble(),
+            y: -10 - lp * 30,
+            progress: lp,
+            color: const Color(0xFFFF69B4),
+          ));
+        }
+        break;
+
+      case ParticleType.zzz:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.33) % 1.0);
+          objs.add(PixelObject(
+            type: 'zzz',
+            x: 52 + i * 8.0,
+            y: -5 - lp * 25,
+            progress: lp,
+            color: const Color(0xFF9B9BEF),
+          ));
+        }
+        break;
+
+      case ParticleType.musicNotes:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.33) % 1.0);
+          objs.add(PixelObject(
+            type: 'note',
+            x: [-18, 68, 26][i].toDouble(),
+            y: -10 - lp * 30,
+            progress: lp,
+            color: const Color(0xFFFFD60A),
+          ));
+        }
+        break;
+
+      case ParticleType.angerCloud:
+        objs.add(PixelObject(
+          type: 'angerCloud',
+          x: 22,
+          y: -28 + math.sin(p * math.pi * 4) * 4,
+          progress: p < 0.5 ? 0 : (p - 0.5) * 2,
+          color: const Color(0xFFFF6B6B),
+        ));
+        break;
+
+      case ParticleType.dustTrail:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.25) % 1.0);
+          objs.add(PixelObject(
+            type: 'dust',
+            x: -10 - i * 12.0,
+            y: 35 - lp * 10,
+            progress: lp,
+            color: const Color(0xFFB0B0B0),
+          ));
+        }
+        break;
+
+      case ParticleType.numbersCyanGreen:
+        for (int i = 0; i < 4; i++) {
+          final lp = ((p + i * 0.2) % 1.0);
+          objs.add(PixelObject(
+            type: 'number',
+            x: [-15, 70, 20, 50][i].toDouble(),
+            y: -10 - lp * 25,
+            progress: lp,
+            color: i % 2 == 0 ? const Color(0xFF00FFCC) : const Color(0xFF00FF88),
+          ));
+        }
+        break;
+
+      case ParticleType.shieldBlue:
+        objs.add(PixelObject(
+          type: 'shield',
+          x: 26,
+          y: -22 - math.sin(p * math.pi) * 5,
+          progress: p < 0.5 ? 0.0 : (p - 0.5) * 2,
+          color: const Color(0xFF4DA6FF),
+        ));
+        break;
+
+      case ParticleType.flame:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.2) % 1.0);
+          objs.add(PixelObject(
+            type: 'flame',
+            x: [20, 36, 50][i].toDouble(),
+            y: 38 + lp * 10,
+            progress: lp,
+            color: const Color(0xFFFF6D00),
+          ));
+        }
+        break;
+
+      case ParticleType.crownDescend:
+        objs.add(PixelObject(
+          type: 'crown',
+          x: 21,
+          y: -40 + p * 10,
+          progress: p < 0.5 ? 0 : (p - 0.5) * 2,
+          color: const Color(0xFFFFBF00),
+        ));
+        break;
+
+      case ParticleType.rainCloud:
+        // Nube encima
+        objs.add(PixelObject(
+          type: 'cloud',
+          x: 16,
+          y: -42,
+          progress: 0,
+          color: const Color(0xFF9DB8C8),
+        ));
+        // Gotas
+        for (int i = 0; i < 5; i++) {
+          final lp = ((p + i * 0.2) % 1.0);
+          objs.add(PixelObject(
+            type: 'drop',
+            x: 15 + i * 10.0,
+            y: -25 + lp * 35,
+            progress: lp > 0.8 ? (lp - 0.8) * 5 : 0,
+            color: const Color(0xFF6EB5E0),
+          ));
+        }
+        break;
+
+      case ParticleType.starTrail:
+        for (int i = 0; i < 5; i++) {
+          final lp = ((p + i * 0.15) % 1.0);
+          objs.add(PixelObject(
+            type: 'star4',
+            x: -18 + lp * 90,
+            y: -20 + i * 8.0,
+            progress: lp,
+            color: Colors.white,
+          ));
+        }
+        break;
+
+      case ParticleType.sweatDrops:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.3) % 1.0);
+          objs.add(PixelObject(
+            type: 'drop',
+            x: [-16, 68, 26][i].toDouble(),
+            y: -10 + lp * 20,
+            progress: lp > 0.7 ? (lp - 0.7) * 3 : 0,
+            color: const Color(0xFF6EB5E0),
+          ));
+        }
+        break;
+
+      case ParticleType.exclamation:
+        objs.add(PixelObject(
+          type: 'exclamation',
+          x: 28,
+          y: -40 + math.sin(p * math.pi * 4) * 5,
+          progress: p > 0.8 ? (p - 0.8) * 5 : 0,
+          color: const Color(0xFFFF3B30),
+        ));
+        break;
+
+      case ParticleType.questionMarks:
+        for (int i = 0; i < 3; i++) {
+          final lp = ((p + i * 0.3) % 1.0);
+          objs.add(PixelObject(
+            type: 'question',
+            x: [-15, 60, 22][i].toDouble(),
+            y: -25 - lp * 15,
+            progress: lp > 0.7 ? (lp - 0.7) * 3 : 0,
+            color: Colors.white,
+          ));
+        }
+        break;
+
+      case ParticleType.thoughtBubble:
+        objs.add(PixelObject(
+          type: 'thought',
+          x: 48,
+          y: -32,
+          progress: p < 0.4 ? 0 : (p - 0.4) / 0.6,
+          color: Colors.white,
+        ));
+        break;
+
+      case ParticleType.tear:
+        for (int i = 0; i < 2; i++) {
+          final lp = ((p + i * 0.4) % 1.0);
+          objs.add(PixelObject(
+            type: 'drop',
+            x: [14, 54][i].toDouble(),
+            y: 18 + lp * 20,
+            progress: lp > 0.8 ? (lp - 0.8) * 5 : 0,
+            color: const Color(0xFF6EB5E0),
+          ));
+        }
+        break;
+    }
+
+    return objs;
+  }
+
   RockyPose evaluate(double t) {
-    // Conversion de grados a radianes para los brazos
     final lArmDeg = evaluateTrack(leftArm, t, 0.0);
     final rArmDeg = evaluateTrack(rightArm, t, 0.0);
-    final lLegDeg = evaluateTrack(leftLeg, t, 0.0);
-    final rLegDeg = evaluateTrack(rightLeg, t, 0.0);
 
     return RockyPose(
       bodyScaleX: evaluateTrack(bodyScaleX, t, 1.0),
@@ -218,15 +503,15 @@ class RockyAnimationSpec {
       ),
       leftArmAngle: lArmDeg * (math.pi / 180.0),
       rightArmAngle: rArmDeg * (math.pi / 180.0),
-      leftLegAngle: lLegDeg * (math.pi / 180.0),
-      rightLegAngle: rLegDeg * (math.pi / 180.0),
       leftLegOffset: evaluateTrack(leftLeg, t, 0.0),
       rightLegOffset: evaluateTrack(rightLeg, t, 0.0),
       eyeState: evaluateEye(t),
       mouthState: mouthState,
       glowColor: glowColor,
+      particles: _generateParticles(t),
     );
   }
+
 }
 
 // 1. JUMP
@@ -782,13 +1067,22 @@ final billWaver = RockyAnimationSpec(
 final wave = RockyAnimationSpec(
   name: 'wave',
   duration: const Duration(milliseconds: 1200),
-  rightArm: const [
-    BoneKeyframe(0.0, 0, Curves.easeOut), BoneKeyframe(0.25, -110, Curves.easeInOut),
-    BoneKeyframe(0.45, -80, Curves.easeInOut), BoneKeyframe(0.65, -110, Curves.easeInOut),
-    BoneKeyframe(0.85, -80, Curves.easeInOut), BoneKeyframe(1.0, 0, Curves.easeIn),
+  bodyOffsetX: const [
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.2, -12, Curves.easeOut),
+    BoneKeyframe(0.8, -12), BoneKeyframe(1.0, 0, Curves.easeIn),
   ],
   bodyScaleY: const [
-    BoneKeyframe(0.0, 1.0), BoneKeyframe(0.2, 1.05, Curves.easeOut), BoneKeyframe(0.4, 1.0, Curves.easeIn),
+    BoneKeyframe(0.0, 1.0), BoneKeyframe(0.2, 1.06, Curves.easeOut),
+    BoneKeyframe(0.5, 1.0, Curves.easeIn), BoneKeyframe(0.7, 1.04, Curves.easeOut),
+    BoneKeyframe(1.0, 1.0, Curves.easeIn),
+  ],
+  rightArm: const [
+    BoneKeyframe(0.0, 0, Curves.easeOut),
+    BoneKeyframe(0.2, -135, Curves.easeInOut),
+    BoneKeyframe(0.4, -105, Curves.easeInOut),
+    BoneKeyframe(0.6, -135, Curves.easeInOut),
+    BoneKeyframe(0.8, -105, Curves.easeInOut),
+    BoneKeyframe(1.0, 0, Curves.easeIn),
   ],
   eyeState: EyeState.happy,
   mouthState: MouthState.smile,
@@ -816,24 +1110,27 @@ final dance = RockyAnimationSpec(
   duration: const Duration(milliseconds: 700),
   loop: true,
   bodyOffsetX: const [
-    BoneKeyframe(0.0, -10), BoneKeyframe(0.5, 10, Curves.easeInOut), BoneKeyframe(1.0, -10, Curves.easeInOut),
+    BoneKeyframe(0.0, -12), BoneKeyframe(0.5, 12, Curves.easeInOut), BoneKeyframe(1.0, -12, Curves.easeInOut),
   ],
   bodyOffsetY: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.25, -14, Curves.easeOut),
-    BoneKeyframe(0.5, 0, Curves.easeIn), BoneKeyframe(0.75, -14, Curves.easeOut),
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.25, -18, Curves.easeOut),
+    BoneKeyframe(0.5, 0, Curves.easeIn), BoneKeyframe(0.75, -18, Curves.easeOut),
     BoneKeyframe(1.0, 0, Curves.easeIn),
   ],
+  bodyRotation: const [
+    BoneKeyframe(0.0, -0.04), BoneKeyframe(0.5, 0.04, Curves.easeInOut), BoneKeyframe(1.0, -0.04, Curves.easeInOut),
+  ],
   leftArm: const [
-    BoneKeyframe(0.0, -90), BoneKeyframe(0.5, 90), BoneKeyframe(1.0, -90),
+    BoneKeyframe(0.0, -85), BoneKeyframe(0.5, 85, Curves.easeInOut), BoneKeyframe(1.0, -85, Curves.easeInOut),
   ],
   rightArm: const [
-    BoneKeyframe(0.0, 90), BoneKeyframe(0.5, -90), BoneKeyframe(1.0, 90),
+    BoneKeyframe(0.0, 85), BoneKeyframe(0.5, -85, Curves.easeInOut), BoneKeyframe(1.0, 85, Curves.easeInOut),
   ],
   leftLeg: const [
-    BoneKeyframe(0.0, -25), BoneKeyframe(0.5, 25), BoneKeyframe(1.0, -25),
+    BoneKeyframe(0.0, -10), BoneKeyframe(0.5, 10, Curves.easeInOut), BoneKeyframe(1.0, -10, Curves.easeInOut),
   ],
   rightLeg: const [
-    BoneKeyframe(0.0, 25), BoneKeyframe(0.5, -25), BoneKeyframe(1.0, 25),
+    BoneKeyframe(0.0, 10), BoneKeyframe(0.5, -10, Curves.easeInOut), BoneKeyframe(1.0, 10, Curves.easeInOut),
   ],
   eyeState: EyeState.happy,
   mouthState: MouthState.smile,
@@ -884,11 +1181,16 @@ final love = RockyAnimationSpec(
 final facepalm = RockyAnimationSpec(
   name: 'facepalm',
   duration: const Duration(milliseconds: 1000),
+  bodyOffsetX: const [
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.4, 14, Curves.easeOut), BoneKeyframe(1.0, 14),
+  ],
   rightArm: const [
-    BoneKeyframe(0.0, 0, Curves.easeIn), BoneKeyframe(0.5, -160, Curves.easeOut), BoneKeyframe(1.0, -160),
+    BoneKeyframe(0.0, 0, Curves.easeIn),
+    BoneKeyframe(0.5, -155, Curves.easeOut),
+    BoneKeyframe(1.0, -155),
   ],
   bodyRotation: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.6, -0.03, Curves.easeOut),
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.6, -0.05, Curves.easeOut),
   ],
   eyeSequence: const [
     MapEntry(0.0, EyeState.normal), MapEntry(0.6, EyeState.sad),
@@ -899,12 +1201,18 @@ final facepalm = RockyAnimationSpec(
 final thumbsUp = RockyAnimationSpec(
   name: 'thumbsUp',
   duration: const Duration(milliseconds: 700),
+  bodyOffsetX: const [
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.3, -14, Curves.easeOut),
+    BoneKeyframe(0.6, -14), BoneKeyframe(1.0, 0, Curves.easeIn),
+  ],
   rightArm: const [
-    BoneKeyframe(0.0, 0, Curves.easeOut), BoneKeyframe(0.4, -140, Curves.elasticOut), BoneKeyframe(1.0, -140),
+    BoneKeyframe(0.0, 0, Curves.easeOut),
+    BoneKeyframe(0.4, -145, Curves.elasticOut),
+    BoneKeyframe(1.0, -145),
   ],
   bodyScaleY: const [
     BoneKeyframe(0.0, 1.0), BoneKeyframe(0.2, 0.92, Curves.easeOut),
-    BoneKeyframe(0.4, 1.08, Curves.easeOut), BoneKeyframe(0.6, 1.0, Curves.easeIn),
+    BoneKeyframe(0.4, 1.1, Curves.easeOut), BoneKeyframe(0.6, 1.0, Curves.easeIn),
   ],
   eyeState: EyeState.happy,
   mouthState: MouthState.smile,
@@ -915,27 +1223,27 @@ final thumbsUp = RockyAnimationSpec(
 // 32. RUNNING
 final running = RockyAnimationSpec(
   name: 'running',
-  duration: const Duration(milliseconds: 400),
+  duration: const Duration(milliseconds: 350),
   loop: true,
   bodyOffsetY: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.25, -12, Curves.easeOut),
-    BoneKeyframe(0.5, 0, Curves.easeIn), BoneKeyframe(0.75, -12, Curves.easeOut),
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.25, -16, Curves.easeOut),
+    BoneKeyframe(0.5, 0, Curves.easeIn), BoneKeyframe(0.75, -16, Curves.easeOut),
     BoneKeyframe(1.0, 0, Curves.easeIn),
   ],
   bodyRotation: const [
     BoneKeyframe(0.0, -0.06), BoneKeyframe(1.0, -0.06),
   ],
   leftArm: const [
-    BoneKeyframe(0.0, 40), BoneKeyframe(0.5, -40), BoneKeyframe(1.0, 40),
+    BoneKeyframe(0.0, 55), BoneKeyframe(0.5, -55), BoneKeyframe(1.0, 55),
   ],
   rightArm: const [
-    BoneKeyframe(0.0, -40), BoneKeyframe(0.5, 40), BoneKeyframe(1.0, -40),
+    BoneKeyframe(0.0, -55), BoneKeyframe(0.5, 55), BoneKeyframe(1.0, -55),
   ],
   leftLeg: const [
-    BoneKeyframe(0.0, -35), BoneKeyframe(0.5, 35), BoneKeyframe(1.0, -35),
+    BoneKeyframe(0.0, -8), BoneKeyframe(0.5, 8), BoneKeyframe(1.0, -8),
   ],
   rightLeg: const [
-    BoneKeyframe(0.0, 35), BoneKeyframe(0.5, -35), BoneKeyframe(1.0, 35),
+    BoneKeyframe(0.0, 8), BoneKeyframe(0.5, -8), BoneKeyframe(1.0, 8),
   ],
   particleType: ParticleType.dustTrail,
   particleContinuous: true,
