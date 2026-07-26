@@ -270,7 +270,7 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
         builder: (context, _) {
           final bounce = Curves.easeInOut.transform(_bounceController.value);
           final action = _actionController.value;
-          final isActing = _actionController.isAnimating || action > 0;
+          final isActing = _actionController.isAnimating || (action > 0 && action < 1);
           
           double dx = 0;
           double dy = -bounce * 2;
@@ -290,6 +290,7 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
 
           double leftArmAngle = 0.0;
           double rightArmAngle = 0.0;
+          double rightArmOffsetX = 0.0;
           double leftLegOffset = 0.0;
           double rightLegOffset = 0.0;
           String eyeStyle = 'normal';
@@ -308,6 +309,7 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
               dy += pose.bodyOffset.dy;
               leftArmAngle = pose.leftArmAngle;
               rightArmAngle = pose.rightArmAngle;
+              rightArmOffsetX = pose.rightArmOffsetX;
               leftLegOffset = pose.leftLegOffset;
               rightLegOffset = pose.rightLegOffset;
               eyeStyle = pose.eyeState.name;
@@ -333,6 +335,7 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
                 actionProgress: action,
                 leftArmAngle: leftArmAngle,
                 rightArmAngle: rightArmAngle,
+                rightArmOffsetX: rightArmOffsetX,
                 leftLegOffset: leftLegOffset,
                 rightLegOffset: rightLegOffset,
                 eyeStyle: eyeStyle,
@@ -358,6 +361,7 @@ class _ClawdPainter extends CustomPainter {
   final double actionProgress;
   final double leftArmAngle;
   final double rightArmAngle;
+  final double rightArmOffsetX;
   final double leftLegOffset;
   final double rightLegOffset;
   final String eyeStyle;
@@ -372,6 +376,7 @@ class _ClawdPainter extends CustomPainter {
     this.actionProgress = 0.0,
     this.leftArmAngle = 0.0,
     this.rightArmAngle = 0.0,
+    this.rightArmOffsetX = 0.0,
     this.leftLegOffset = 0.0,
     this.rightLegOffset = 0.0,
     this.eyeStyle = 'normal',
@@ -569,9 +574,9 @@ class _ClawdPainter extends CustomPainter {
     }
 
     // ====== BRAZO DERECHO (ARTICULADO) ======
-    if (rightArmAngle != 0.0) {
+    if (rightArmAngle != 0.0 || rightArmOffsetX != 0.0) {
       canvas.save();
-      canvas.translate(63, 24);
+      canvas.translate(63 + rightArmOffsetX, 24);
       canvas.rotate(rightArmAngle);
       rect(0, -5, 9, 10, body);
       canvas.restore();

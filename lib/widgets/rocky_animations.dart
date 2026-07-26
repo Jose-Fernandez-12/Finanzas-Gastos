@@ -79,6 +79,7 @@ class RockyPose {
   final double bodyRotation;
   final double leftArmAngle;
   final double rightArmAngle;
+  final double rightArmOffsetX;
   final double leftLegAngle;
   final double rightLegAngle;
   final double leftLegOffset;
@@ -95,6 +96,7 @@ class RockyPose {
     this.bodyOffset = Offset.zero,
     this.leftArmAngle = 0.0,
     this.rightArmAngle = 0.0,
+    this.rightArmOffsetX = 0.0,
     this.leftLegAngle = 0.0,
     this.rightLegAngle = 0.0,
     this.leftLegOffset = 0.0,
@@ -113,6 +115,7 @@ class RockyPose {
       bodyOffset: Offset.lerp(bodyOffset, other.bodyOffset, t) ?? Offset.zero,
       leftArmAngle: lerpDouble(leftArmAngle, other.leftArmAngle, t) ?? 0.0,
       rightArmAngle: lerpDouble(rightArmAngle, other.rightArmAngle, t) ?? 0.0,
+      rightArmOffsetX: lerpDouble(rightArmOffsetX, other.rightArmOffsetX, t) ?? 0.0,
       leftLegAngle: lerpDouble(leftLegAngle, other.leftLegAngle, t) ?? 0.0,
       rightLegAngle: lerpDouble(rightLegAngle, other.rightLegAngle, t) ?? 0.0,
       leftLegOffset: lerpDouble(leftLegOffset, other.leftLegOffset, t) ?? 0.0,
@@ -136,12 +139,13 @@ class RockyAnimationSpec {
   final String name;
   final Duration duration;
   final bool loop;
-  final List<BoneKeyframe> leftArm, rightArm, leftLeg, rightLeg;
+  final List<BoneKeyframe> leftArm, rightArm, rightArmOffsetX, leftLeg, rightLeg;
   final List<BoneKeyframe> bodyScaleX, bodyScaleY, bodyRotation;
   final List<BoneKeyframe> bodyOffsetX, bodyOffsetY;
   final EyeState eyeState;
   final List<MapEntry<double, EyeState>>? eyeSequence;
   final MouthState mouthState;
+  final List<MapEntry<double, MouthState>>? mouthSequence;
   final Color? glowColor;
   final ParticleType? particleType;
   final double particleTriggerT;
@@ -153,6 +157,7 @@ class RockyAnimationSpec {
     this.loop = false,
     this.leftArm = const [],
     this.rightArm = const [],
+    this.rightArmOffsetX = const [],
     this.leftLeg = const [],
     this.rightLeg = const [],
     this.bodyScaleX = const [],
@@ -163,6 +168,7 @@ class RockyAnimationSpec {
     this.eyeState = EyeState.normal,
     this.eyeSequence,
     this.mouthState = MouthState.neutral,
+    this.mouthSequence,
     this.glowColor,
     this.particleType,
     this.particleTriggerT = 0.5,
@@ -190,10 +196,10 @@ class RockyAnimationSpec {
     return defaultValue;
   }
 
-  EyeState evaluateEye(double t) {
-    if (eyeSequence == null || eyeSequence!.isEmpty) return eyeState;
-    EyeState current = eyeState;
-    for (final entry in eyeSequence!) {
+  T _evaluateSequence<T>(double t, List<MapEntry<double, T>>? sequence, T defaultValue) {
+    if (sequence == null || sequence.isEmpty) return defaultValue;
+    T current = defaultValue;
+    for (final entry in sequence) {
       if (t >= entry.key) {
         current = entry.value;
       }
@@ -503,10 +509,11 @@ class RockyAnimationSpec {
       ),
       leftArmAngle: lArmDeg * (math.pi / 180.0),
       rightArmAngle: rArmDeg * (math.pi / 180.0),
+      rightArmOffsetX: evaluateTrack(rightArmOffsetX, t, 0.0),
       leftLegOffset: evaluateTrack(leftLeg, t, 0.0),
       rightLegOffset: evaluateTrack(rightLeg, t, 0.0),
-      eyeState: evaluateEye(t),
-      mouthState: mouthState,
+      eyeState: _evaluateSequence(t, eyeSequence, eyeState),
+      mouthState: _evaluateSequence(t, mouthSequence, mouthState),
       glowColor: glowColor,
       particles: _generateParticles(t),
     );
@@ -995,7 +1002,7 @@ final sleep = RockyAnimationSpec(
   bodyScaleY: const [
     BoneKeyframe(0.0, 1.0), BoneKeyframe(0.5, 1.05, Curves.easeInOut), BoneKeyframe(1.0, 1.0, Curves.easeInOut),
   ],
-  eyeState: EyeState.closed,
+  eyeState: EyeState.sleep,
   glowColor: const Color(0x334B0082),
   particleType: ParticleType.zzz,
   particleContinuous: true,
@@ -1180,44 +1187,60 @@ final love = RockyAnimationSpec(
 // 30. FACEPALM
 final facepalm = RockyAnimationSpec(
   name: 'facepalm',
-  duration: const Duration(milliseconds: 1000),
-  bodyOffsetX: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.4, 14, Curves.easeOut), BoneKeyframe(1.0, 14),
+  duration: const Duration(milliseconds: 1500),
+  rightArmOffsetX: const [
+    BoneKeyframe(0.0, 0, Curves.easeInOut),
+    BoneKeyframe(0.25, 15, Curves.easeInOut),
+    BoneKeyframe(0.45, 15, Curves.linear),
+    BoneKeyframe(0.7, 0, Curves.easeInOut),
+    BoneKeyframe(1.0, 0),
   ],
   rightArm: const [
-    BoneKeyframe(0.0, 0, Curves.easeIn),
-    BoneKeyframe(0.5, -155, Curves.easeOut),
+    BoneKeyframe(0.0, 0, Curves.easeInOut),
+    BoneKeyframe(0.25, -20, Curves.easeInOut), // Pequeño ángulo para acompañar el alejamiento
+    BoneKeyframe(0.45, -20, Curves.linear),
+    BoneKeyframe(0.7, -155, Curves.easeInOut), // Completa el facepalm
     BoneKeyframe(1.0, -155),
   ],
-  bodyRotation: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.6, -0.05, Curves.easeOut),
-  ],
   eyeSequence: const [
-    MapEntry(0.0, EyeState.normal), MapEntry(0.6, EyeState.sad),
+    MapEntry(0.0, EyeState.normal), MapEntry(0.7, EyeState.sad),
   ],
 );
 
 // 31. THUMBS UP
 final thumbsUp = RockyAnimationSpec(
   name: 'thumbsUp',
-  duration: const Duration(milliseconds: 700),
+  duration: const Duration(milliseconds: 1500),
   bodyOffsetX: const [
-    BoneKeyframe(0.0, 0), BoneKeyframe(0.3, -14, Curves.easeOut),
-    BoneKeyframe(0.6, -14), BoneKeyframe(1.0, 0, Curves.easeIn),
+    BoneKeyframe(0.0, 0), BoneKeyframe(0.4, -14, Curves.easeOut),
+    BoneKeyframe(0.8, -14), BoneKeyframe(1.0, 0, Curves.easeIn),
+  ],
+  rightArmOffsetX: const [
+    BoneKeyframe(0.0, 0, Curves.easeInOut),
+    BoneKeyframe(0.25, 15, Curves.easeInOut),
+    BoneKeyframe(0.45, 15, Curves.linear),
+    BoneKeyframe(0.7, 0, Curves.easeInOut),
+    BoneKeyframe(1.0, 0),
   ],
   rightArm: const [
-    BoneKeyframe(0.0, 0, Curves.easeOut),
-    BoneKeyframe(0.4, -145, Curves.elasticOut),
-    BoneKeyframe(1.0, -145),
+    BoneKeyframe(0.0, 0, Curves.easeInOut),
+    BoneKeyframe(0.25, -20, Curves.easeInOut), // Pequeño ángulo de apoyo
+    BoneKeyframe(0.45, -20, Curves.linear),    // Se detiene un instante
+    BoneKeyframe(0.7, -150, Curves.elasticOut),// Sube pulgar
+    BoneKeyframe(1.0, -150),
   ],
   bodyScaleY: const [
-    BoneKeyframe(0.0, 1.0), BoneKeyframe(0.2, 0.92, Curves.easeOut),
-    BoneKeyframe(0.4, 1.1, Curves.easeOut), BoneKeyframe(0.6, 1.0, Curves.easeIn),
+    BoneKeyframe(0.0, 1.0), BoneKeyframe(0.3, 0.92, Curves.easeOut),
+    BoneKeyframe(0.6, 1.1, Curves.easeOut), BoneKeyframe(0.8, 1.0, Curves.easeIn),
   ],
-  eyeState: EyeState.happy,
-  mouthState: MouthState.smile,
+  eyeSequence: const [
+    MapEntry(0.0, EyeState.normal), MapEntry(0.4, EyeState.happy), MapEntry(0.9, EyeState.normal),
+  ],
+  mouthSequence: const [
+    MapEntry(0.0, MouthState.none), MapEntry(0.4, MouthState.smile), MapEntry(0.9, MouthState.none),
+  ],
   particleType: ParticleType.yellowSparkles,
-  particleTriggerT: 0.4,
+  particleTriggerT: 0.6,
 );
 
 // 32. RUNNING
