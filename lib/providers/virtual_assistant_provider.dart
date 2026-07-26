@@ -5,7 +5,9 @@ import '../core/formatters.dart';
 
 enum AssistantAnimation {
   idle, jump, shake, stretch, shrink, nod, glitch, glowGreen, glowRed, spin, alert, happy, thinking, sleep, flip,
-  confused, celebration, warningSevere, sad, wealthy, hide, workout, flyingStars
+  confused, celebration, warningSevere, sad, wealthy, hide, workout, flyingStars,
+  // Nuevas animaciones articuladas
+  wave, clap, dance, angry, love, facepalm, thumbsUp, running, typing, shielding, rocket, crown, rainy, flexing, lookAround
 }
 
 class AssistantState {
@@ -82,7 +84,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         "Hola, soy Rocky. Aquí estoy para cuidar tu dinero."
       ];
       msg = opciones[_random.nextInt(opciones.length)];
-      anim = AssistantAnimation.idle;
+      anim = AssistantAnimation.wave;
     } else if (horaActual >= 13 && horaActual < 19) {
       final opciones = [
         "¡Buenas tardes! ¿Cómo va el presupuesto de hoy?",
@@ -98,7 +100,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
         "Un último vistazo a las cuentas antes de dormir nunca está de más."
       ];
       msg = opciones[_random.nextInt(opciones.length)];
-      anim = AssistantAnimation.idle;
+      anim = AssistantAnimation.wave;
     }
     
     final initialState = AssistantState(
@@ -544,6 +546,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       case 'NUEVO_GASTO':
         final nombre = (extraContext ?? '').toLowerCase();
         if (amount != null && amount > 500000) {
+          // Gasto enorme
           msg = "¡Vaya! Registraste un gasto enorme de ${formatCOP(amount)}. Revisa que no afecte tu liquidez mensual.";
           anim = AssistantAnimation.warningSevere;
         } else if (nombre.contains("comida") || nombre.contains("cerveza") || nombre.contains("domicilio") || nombre.contains("antojo")) {
@@ -560,7 +563,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Pequeño gasto registrado. Recuerda que de a poco se vacía el vaso."
           ];
           msg = frases[_random.nextInt(frases.length)];
-          final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip];
+          final anims = [AssistantAnimation.shrink, AssistantAnimation.glowRed, AssistantAnimation.glitch, AssistantAnimation.flip, AssistantAnimation.facepalm];
           anim = anims[_random.nextInt(anims.length)];
         }
         break;
@@ -572,7 +575,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "¡Gasto pagado! Qué alivio ir saliendo de esas deudas mensuales."
         ];
         msg = frasesPagado[_random.nextInt(frasesPagado.length)];
-        final animsPagado = [AssistantAnimation.happy, AssistantAnimation.celebration, AssistantAnimation.glowGreen];
+        final animsPagado = [AssistantAnimation.happy, AssistantAnimation.celebration, AssistantAnimation.glowGreen, AssistantAnimation.thumbsUp, AssistantAnimation.clap];
         anim = animsPagado[_random.nextInt(animsPagado.length)];
         break;
 
@@ -591,7 +594,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
             "Aumentando reservas de liquidez. Buen trabajo."
           ];
           msg = frases[_random.nextInt(frases.length)];
-          final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.glowGreen, AssistantAnimation.spin];
+          final anims = [AssistantAnimation.jump, AssistantAnimation.stretch, AssistantAnimation.dance, AssistantAnimation.clap, AssistantAnimation.spin];
           anim = anims[_random.nextInt(anims.length)];
         }
         break;
@@ -604,7 +607,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "Pago registrado. Adiós a esos intereses abusivos."
         ];
         msg = frases[_random.nextInt(frases.length)];
-        anim = AssistantAnimation.celebration;
+        anim = _random.nextBool() ? AssistantAnimation.celebration : AssistantAnimation.crown;
         break;
 
       case 'NUEVO_AHORRO':
@@ -615,12 +618,12 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
           "Muy bien hecho. Construyendo tu imperio poco a poco."
         ];
         msg = frasesAhorro[_random.nextInt(frasesAhorro.length)];
-        anim = AssistantAnimation.workout;
+        anim = _random.nextBool() ? AssistantAnimation.workout : AssistantAnimation.flexing;
         break;
 
       case 'CUENTA_COBRAR_PAGADA':
         msg = "¡Por fin te pagaron ese dinero! De vuelta al bolsillo.";
-        anim = AssistantAnimation.flyingStars;
+        anim = _random.nextBool() ? AssistantAnimation.flyingStars : AssistantAnimation.rocket;
         break;
 
       default:
@@ -742,26 +745,27 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       ],
     };
 
-    final Map<String, AssistantAnimation> viewAnims = {
-      'dashboard': AssistantAnimation.spin,
-      'gastos': AssistantAnimation.shrink,
-      'ingresos': AssistantAnimation.jump,
-      'analitica': AssistantAnimation.stretch,
-      'tarjetas': AssistantAnimation.shake,
-      'ahorros': AssistantAnimation.glowGreen,
-      'suscripciones': AssistantAnimation.glitch,
-      'cobrar': AssistantAnimation.flip,
+    final Map<String, List<AssistantAnimation>> viewAnimOptions = {
+      'dashboard': [AssistantAnimation.spin, AssistantAnimation.wave, AssistantAnimation.lookAround],
+      'gastos': [AssistantAnimation.shrink, AssistantAnimation.facepalm, AssistantAnimation.lookAround],
+      'ingresos': [AssistantAnimation.jump, AssistantAnimation.dance, AssistantAnimation.clap],
+      'analitica': [AssistantAnimation.stretch, AssistantAnimation.typing, AssistantAnimation.thinking],
+      'tarjetas': [AssistantAnimation.shake, AssistantAnimation.shielding, AssistantAnimation.angry],
+      'ahorros': [AssistantAnimation.glowGreen, AssistantAnimation.flexing, AssistantAnimation.crown],
+      'suscripciones': [AssistantAnimation.glitch, AssistantAnimation.rainy, AssistantAnimation.lookAround],
+      'cobrar': [AssistantAnimation.flip, AssistantAnimation.running, AssistantAnimation.thumbsUp],
     };
 
     final frases = viewMessages[viewName];
     if (frases == null) return;
 
     final msg = frases[_random.nextInt(frases.length)];
+    final animList = viewAnimOptions[viewName] ?? [AssistantAnimation.idle];
     state = AssistantState(
       message: msg, 
       isVisible: true, 
       isAction: false, 
-      animation: viewAnims[viewName] ?? AssistantAnimation.idle,
+      animation: animList[_random.nextInt(animList.length)],
     );
     _autoHide();
   }

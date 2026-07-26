@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/virtual_assistant_provider.dart';
 import '../core/theme.dart';
+import 'rocky_animations.dart';
 
 class GlobalVirtualAssistant extends ConsumerStatefulWidget {
   const GlobalVirtualAssistant({super.key});
@@ -198,15 +199,24 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
   void didUpdateWidget(ClawdWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if ((widget.animation != oldWidget.animation || widget.actionId != oldWidget.actionId) && widget.animation != AssistantAnimation.idle) {
-      if (widget.animation == AssistantAnimation.flyingStars) {
+      final spec = rockyAnimations[widget.animation.name];
+      _actionController.stop();
+      if (spec != null) {
+        _actionController.duration = spec.duration;
+        if (spec.loop) {
+          _actionController.repeat();
+        } else {
+          _actionController.forward(from: 0.0);
+        }
+      } else if (widget.animation == AssistantAnimation.flyingStars) {
         _actionController.duration = const Duration(milliseconds: 4000);
-        // Generar nueva ruta aleatoria pero manteniendolo dentro de la pantalla
-        _flyTargetX = (_random.nextDouble() > 0.5 ? 1 : -1) * (80.0 + _random.nextDouble() * 80.0); // Entre 80 y 160 px (no sale de pantalla)
-        _flyPeakY = -150.0 - _random.nextDouble() * 100.0; // Altura pico controlada entre -150 y -250
+        _flyTargetX = (_random.nextDouble() > 0.5 ? 1 : -1) * (80.0 + _random.nextDouble() * 80.0);
+        _flyPeakY = -150.0 - _random.nextDouble() * 100.0;
+        _actionController.forward(from: 0.0);
       } else {
         _actionController.duration = const Duration(milliseconds: 800);
+        _actionController.forward(from: 0.0);
       }
-      _actionController.forward(from: 0.0);
       
       if (widget.animation == AssistantAnimation.warningSevere || widget.animation == AssistantAnimation.alert) {
         HapticFeedback.heavyImpact();
@@ -260,7 +270,7 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
         builder: (context, _) {
           final bounce = Curves.easeInOut.transform(_bounceController.value);
           final action = _actionController.value;
-          final isActing = _actionController.isAnimating || action > 0 && action < 1;
+          final isActing = _actionController.isAnimating || (action > 0 && action < 1);
           
           double dx = 0;
           double dy = -bounce * 2;
@@ -278,122 +288,34 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
 
           final activeAnim = widget.animation != AssistantAnimation.idle ? widget.animation : _currentIdleAnim;
 
-          if (isActing) {
-            final sinPi = math.sin(action * math.pi);
+          double leftArmAngle = 0.0;
+          double rightArmAngle = 0.0;
+          double rightArmOffsetX = 0.0;
+          double leftLegOffset = 0.0;
+          double rightLegOffset = 0.0;
+          String eyeStyle = 'normal';
+          String mouthStyle = 'none';
+          List<PixelObject> pixelObjects = [];
 
-            switch (activeAnim) {
-              case AssistantAnimation.jump:
-                dy -= sinPi * 15;
-                break;
-              case AssistantAnimation.shake:
-                dx += math.sin(action * math.pi * 6) * 4;
-                break;
-              case AssistantAnimation.stretch:
-                scaleY += sinPi * 0.3;
-                scaleX -= sinPi * 0.1;
-                break;
-              case AssistantAnimation.shrink:
-                scaleY -= sinPi * 0.3;
-                scaleX += sinPi * 0.1;
-                break;
-              case AssistantAnimation.nod:
-                dy += math.sin(action * math.pi * 2) * 3;
-                break;
-              case AssistantAnimation.glitch:
-                dx += (_random.nextDouble() - 0.5) * 6 * sinPi;
-                dy += (_random.nextDouble() - 0.5) * 6 * sinPi;
-                break;
-              case AssistantAnimation.glowGreen:
-                glowColor = Colors.greenAccent.withAlpha((sinPi * 200).toInt());
-                dy -= sinPi * 5; // pequeño salto también
-                break;
-              case AssistantAnimation.glowRed:
-                glowColor = Colors.redAccent.withAlpha((sinPi * 200).toInt());
-                dx += math.sin(action * math.pi * 4) * 2; // pequeña sacudida
-                break;
-              case AssistantAnimation.spin:
-                // Simulamos spin haciendo shrink horizontal y volviendo
-                scaleX = math.cos(action * math.pi * 2).abs();
-                break;
-              case AssistantAnimation.alert:
-                glowColor = Colors.redAccent.withAlpha((sinPi * 200).toInt());
-                dx += math.sin(action * math.pi * 12) * 5; // Fast shake
-                scaleX += sinPi * 0.1;
-                scaleY -= sinPi * 0.1;
-                break;
-              case AssistantAnimation.happy:
-                glowColor = Colors.yellowAccent.withAlpha((sinPi * 200).toInt());
-                dy -= math.sin(action * math.pi * 4).abs() * 15; // Jumps
-                break;
-              case AssistantAnimation.thinking:
-                rotation = math.sin(action * math.pi * 4) * 0.2; // Wobble
-                dx += math.sin(action * math.pi * 2) * 5;
-                break;
-              case AssistantAnimation.confused:
-                rotation = math.sin(action * math.pi * 4) * 0.3; // Fuerte wobble
-                dx += math.sin(action * math.pi * 2) * 5;
-                break;
-              case AssistantAnimation.celebration:
-                glowColor = Colors.purpleAccent.withAlpha((sinPi * 200).toInt());
-                scaleX = math.cos(action * math.pi * 2).abs(); // Spin
-                dy -= sinPi * 20; // Alto salto
-                break;
-              case AssistantAnimation.warningSevere:
-                glowColor = Colors.red.withAlpha((sinPi * 255).toInt());
-                dx += math.sin(action * math.pi * 20) * 8; // Shake muy violento
-                scaleX += math.sin(action * math.pi * 10).abs() * 0.2; // Latido
-                scaleY += math.sin(action * math.pi * 10).abs() * 0.2;
-                break;
-              case AssistantAnimation.sad:
-                glowColor = Colors.blueGrey.withAlpha((sinPi * 150).toInt());
-                scaleY -= sinPi * 0.5; // Encogimiento extremo
-                scaleX += sinPi * 0.2;
-                dy += sinPi * 10; // Se hunde
-                break;
-              case AssistantAnimation.wealthy:
-                glowColor = Colors.amberAccent.withAlpha((sinPi * 200).toInt());
-                scaleY += sinPi * 0.4; // Se estira
-                dy -= sinPi * 10;
-                break;
-              case AssistantAnimation.hide:
-                dy += math.sin(action * math.pi) * 30; // Baja casi escondiéndose
-                break;
-              case AssistantAnimation.workout:
-                glowColor = Colors.orangeAccent.withAlpha((sinPi * 150).toInt());
-                final pushupCycle = math.sin(action * math.pi * 6).abs(); 
-                dy += pushupCycle * 15;
-                scaleX += pushupCycle * 0.2;
-                scaleY -= pushupCycle * 0.2;
-                break;
-              case AssistantAnimation.flyingStars:
-                glowColor = Colors.white.withAlpha((sinPi * 200).toInt());
-                final smoothAction = Curves.easeInOutSine.transform(action);
-                
-                // Ruta base suave (arco hacia _flyTargetX)
-                dx += smoothAction * _flyTargetX;
-                dy += math.sin(smoothAction * math.pi) * _flyPeakY;
-                
-                // Movimientos organicos (sweeps)
-                dx += math.sin(action * math.pi * 2) * 50 * (1 - action);
-                dy += math.sin(action * math.pi * 4) * 30 * (1 - action);
-                
-                // Micro turbulencia o aleteo rápido
-                dx += math.sin(action * math.pi * 20) * 5;
-                dy += math.cos(action * math.pi * 15) * 5;
-                
-                rotation = math.sin(action * math.pi * 6) * 0.4;
-                scaleX = 1.0 - math.sin(action * math.pi * 8).abs() * 0.3; // Flapping/Spinning
-                break;
-              case AssistantAnimation.sleep:
-                scaleY += sinPi * 0.1;
-                scaleX += sinPi * 0.05;
-                break;
-              case AssistantAnimation.flip:
-                dy -= sinPi * 50; 
-                rotation = action * math.pi * 2; // Giro 360 grados
-                break;
-              default:
-                break;
+          if (isActing) {
+            final spec = rockyAnimations[activeAnim.name];
+
+            if (spec != null) {
+              final pose = spec.evaluate(action);
+              scaleX = pose.bodyScaleX;
+              scaleY = pose.bodyScaleY;
+              rotation = pose.bodyRotation;
+              dx += pose.bodyOffset.dx;
+              dy += pose.bodyOffset.dy;
+              leftArmAngle = pose.leftArmAngle;
+              rightArmAngle = pose.rightArmAngle;
+              rightArmOffsetX = pose.rightArmOffsetX;
+              leftLegOffset = pose.leftLegOffset;
+              rightLegOffset = pose.rightLegOffset;
+              eyeStyle = pose.eyeState.name;
+              mouthStyle = pose.mouthState.name;
+              glowColor = pose.glowColor ?? glowColor;
+              pixelObjects = pose.particles;
             }
           }
 
@@ -411,6 +333,14 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
                 isSleeping: isSleeping,
                 activeAnim: isActing ? activeAnim : AssistantAnimation.idle,
                 actionProgress: action,
+                leftArmAngle: leftArmAngle,
+                rightArmAngle: rightArmAngle,
+                rightArmOffsetX: rightArmOffsetX,
+                leftLegOffset: leftLegOffset,
+                rightLegOffset: rightLegOffset,
+                eyeStyle: eyeStyle,
+                mouthStyle: mouthStyle,
+                pixelObjects: pixelObjects,
               ),
             ),
           );
@@ -421,11 +351,22 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
 }
 
 class _ClawdPainter extends CustomPainter {
+  static const Color body = Color(0xFF6C63FF);
+  static const Color eye = Color(0xFF111111);
+
   final double blink; 
   final Color? glowColor;
   final bool isSleeping;
   final AssistantAnimation activeAnim;
   final double actionProgress;
+  final double leftArmAngle;
+  final double rightArmAngle;
+  final double rightArmOffsetX;
+  final double leftLegOffset;
+  final double rightLegOffset;
+  final String eyeStyle;
+  final String mouthStyle;
+  final List<PixelObject> pixelObjects;
 
   _ClawdPainter({
     required this.blink, 
@@ -433,10 +374,171 @@ class _ClawdPainter extends CustomPainter {
     this.isSleeping = false,
     this.activeAnim = AssistantAnimation.idle,
     this.actionProgress = 0.0,
+    this.leftArmAngle = 0.0,
+    this.rightArmAngle = 0.0,
+    this.rightArmOffsetX = 0.0,
+    this.leftLegOffset = 0.0,
+    this.rightLegOffset = 0.0,
+    this.eyeStyle = 'normal',
+    this.mouthStyle = 'none',
+    this.pixelObjects = const [],
   });
 
-  static const Color body = Color(0xFF6C63FF);
-  static const Color eye = Color(0xFF111111);
+  void _drawEyes(Canvas canvas, Paint paint, String style, double blink) {
+    const px = 3.0;
+    const eyeColor = Color(0xFF111111);
+    switch (style) {
+      case 'happy':
+        paint.color = eyeColor;
+        canvas.drawRect(const Rect.fromLTWH(16, 14, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(19, 12, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(22, 14, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(47, 14, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(50, 12, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(53, 14, px, px), paint);
+        break;
+      case 'sad':
+        paint.color = eyeColor;
+        canvas.drawRect(const Rect.fromLTWH(16, 12, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(19, 14, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(22, 12, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(47, 12, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(50, 14, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(53, 12, px, px), paint);
+        break;
+      case 'angry':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = eyeColor;
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
+        paint.color = const Color(0xFF333333);
+        canvas.drawRect(const Rect.fromLTWH(15, 8, 10, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(17, 7, 4, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(47, 8, 10, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(52, 7, 4, 2), paint);
+        break;
+      case 'star':
+        _drawMiniStar(canvas, paint, 19, 13, Colors.yellowAccent);
+        _drawMiniStar(canvas, paint, 50, 13, Colors.yellowAccent);
+        break;
+      case 'dollar':
+        paint.color = Colors.greenAccent;
+        canvas.drawRect(const Rect.fromLTWH(17, 10, 6, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(17, 10 + px, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(17, 10 + px * 2, 6, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(20, 10 + px * 3, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(17, 10 + px * 4, 6, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 10, 6, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 10 + px, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 10 + px * 2, 6, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(51, 10 + px * 3, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 10 + px * 4, 6, px), paint);
+        break;
+      case 'heart':
+        _drawMiniHeart(canvas, paint, 17, 11, Colors.pinkAccent);
+        _drawMiniHeart(canvas, paint, 48, 11, Colors.pinkAccent);
+        break;
+      case 'dizzy':
+        paint.color = eyeColor;
+        canvas.drawRect(const Rect.fromLTWH(17, 11, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(23, 11, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(20, 13, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(17, 15, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(23, 15, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 11, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(54, 11, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(51, 13, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(48, 15, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(54, 15, px, px), paint);
+        break;
+      case 'closed':
+      case 'sleep':
+        paint.color = eyeColor;
+        canvas.drawRect(const Rect.fromLTWH(16, 14, 10, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(47, 14, 10, 2), paint);
+        break;
+      case 'lookLeft':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = eyeColor;
+        canvas.drawRect(Rect.fromLTWH(13, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(44, eyeY, 5, eyeH), paint);
+        break;
+      case 'lookRight':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = eyeColor;
+        canvas.drawRect(Rect.fromLTWH(23, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(54, eyeY, 5, eyeH), paint);
+        break;
+      default:
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = eyeColor;
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
+    }
+  }
+
+  void _drawMouth(Canvas canvas, Paint paint, String style) {
+    const px = 3.0;
+    switch (style) {
+      case 'smile':
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(28, 25, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(31, 27, 10, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(41, 25, px, px), paint);
+        break;
+      case 'frown':
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(28, 27, px, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(31, 25, 10, px), paint);
+        canvas.drawRect(const Rect.fromLTWH(41, 27, px, px), paint);
+        break;
+      case 'open':
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(30, 24, 12, 6), paint);
+        paint.color = const Color(0xFF661111);
+        canvas.drawRect(const Rect.fromLTWH(31, 25, 10, 4), paint);
+        break;
+      case 'teeth':
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(28, 24, 16, 6), paint);
+        paint.color = Colors.white;
+        canvas.drawRect(const Rect.fromLTWH(29, 24, 14, 2), paint);
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(33, 24, 1, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(37, 24, 1, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(41, 24, 1, 2), paint);
+        break;
+      case 'tight':
+        paint.color = const Color(0xFF222222);
+        canvas.drawRect(const Rect.fromLTWH(30, 26, 12, 2), paint);
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _drawMiniStar(Canvas canvas, Paint paint, double cx, double cy, Color c) {
+    const px = 3.0;
+    paint.color = c;
+    canvas.drawRect(Rect.fromLTWH(cx, cy - px, px, px), paint);
+    canvas.drawRect(Rect.fromLTWH(cx - px, cy, px, px), paint);
+    canvas.drawRect(Rect.fromLTWH(cx, cy, px, px), paint);
+    canvas.drawRect(Rect.fromLTWH(cx + px, cy, px, px), paint);
+    canvas.drawRect(Rect.fromLTWH(cx, cy + px, px, px), paint);
+  }
+
+  void _drawMiniHeart(Canvas canvas, Paint paint, double cx, double cy, Color c) {
+    paint.color = c;
+    canvas.drawRect(Rect.fromLTWH(cx + 1, cy, 2, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(cx + 5, cy, 2, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(cx, cy + 2, 8, 3), paint);
+    canvas.drawRect(Rect.fromLTWH(cx + 2, cy + 5, 4, 2), paint);
+    canvas.drawRect(Rect.fromLTWH(cx + 3, cy + 7, 2, 1), paint);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -460,19 +562,53 @@ class _ClawdPainter extends CustomPainter {
       canvas.drawRect(Rect.fromLTWH(x, y, w, h), paint);
     }
 
+    // ====== BRAZO IZQUIERDO (ARTICULADO) ======
+    if (leftArmAngle != 0.0) {
+      canvas.save();
+      canvas.translate(9, 24);
+      canvas.rotate(-leftArmAngle);
+      rect(-9, -5, 9, 10, body);
+      canvas.restore();
+    } else {
+      rect(0, 19, 9, 10, body);
+    }
+
+    // ====== BRAZO DERECHO (ARTICULADO) ======
+    if (rightArmAngle != 0.0 || rightArmOffsetX != 0.0) {
+      canvas.save();
+      canvas.translate(63 + rightArmOffsetX, 24);
+      canvas.rotate(rightArmAngle);
+      rect(0, -5, 9, 10, body);
+      canvas.restore();
+    } else {
+      rect(63, 19, 9, 10, body);
+    }
+
+    // ====== CABEZA Y TORSO BASE DE ROCKY ======
     rect(9, 0, 54, 10, body);
     rect(9, 10, 54, 9, body);
-    rect(0, 19, 72, 10, body);
+    rect(9, 19, 54, 10, body); // Torso central
     rect(9, 29, 54, 9, body);
-    rect(13, 38, 5, 10, body);
-    rect(22, 38, 5, 10, body);
-    rect(45, 38, 4, 10, body);
-    rect(54, 38, 4, 10, body);
 
-    final eyeH = 9 * (1 - blink);
-    final eyeY = 10 + (9 - eyeH) / 2;
-    rect(18, eyeY, 4, eyeH, eye);
-    rect(49, eyeY, 5, eyeH, eye);
+    // ====== PIERNAS (ARTICULADAS) ======
+    // leftLegOffset y rightLegOffset son grados de la animacion: negativo = pierna hacia adelante/arriba
+    final leftLiftY = (leftLegOffset < 0) ? (leftLegOffset * 0.35).clamp(-12.0, 0.0) : 0.0;
+    final rightLiftY = (rightLegOffset < 0) ? (rightLegOffset * 0.35).clamp(-12.0, 0.0) : 0.0;
+    final leftStepX = leftLegOffset * 0.15;
+    final rightStepX = rightLegOffset * 0.15;
+    // Pierna izquierda
+    rect(13 + leftStepX, 38 + leftLiftY, 5, 10 - leftLiftY.abs(), body);
+    rect(22 + leftStepX * 0.4, 38 + leftLiftY * 0.5, 5, 10 - leftLiftY.abs() * 0.5, body);
+    // Pierna derecha
+    rect(45 + rightStepX * 0.4, 38 + rightLiftY * 0.5, 4, 10 - rightLiftY.abs() * 0.5, body);
+    rect(54 + rightStepX, 38 + rightLiftY, 4, 10 - rightLiftY.abs(), body);
+
+
+    // ====== OJOS (expresivos) ======
+    _drawEyes(canvas, paint, eyeStyle, blink);
+
+    // ====== BOCA ======
+    _drawMouth(canvas, paint, mouthStyle);
 
     if (isSleeping) {
       final textPainter = TextPainter(
@@ -489,7 +625,11 @@ class _ClawdPainter extends CustomPainter {
       textPainter2.paint(canvas, const Offset(62, -15));
     }
 
-    if (activeAnim == AssistantAnimation.confused) {
+    if (pixelObjects.isNotEmpty) {
+      for (final obj in pixelObjects) {
+        _drawPixelObject(canvas, paint, obj);
+      }
+    } else if (activeAnim == AssistantAnimation.confused) {
       final textPainter = TextPainter(
         text: TextSpan(text: '?', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
         textDirection: TextDirection.ltr,
@@ -545,7 +685,151 @@ class _ClawdPainter extends CustomPainter {
     old.glowColor != glowColor || 
     old.isSleeping != isSleeping ||
     old.activeAnim != activeAnim ||
-    old.actionProgress != actionProgress;
+    old.actionProgress != actionProgress ||
+    old.leftArmAngle != leftArmAngle ||
+    old.rightArmAngle != rightArmAngle ||
+    old.leftLegOffset != leftLegOffset ||
+    old.rightLegOffset != rightLegOffset ||
+    old.eyeStyle != eyeStyle ||
+    old.mouthStyle != mouthStyle ||
+    old.pixelObjects.length != pixelObjects.length;
+
+  void _drawPixelObject(Canvas canvas, Paint paint, PixelObject obj) {
+    final x = obj.x;
+    final y = obj.y;
+    final alpha = ((1.0 - obj.progress) * 255).clamp(0, 255).toInt();
+    final fadeColor = obj.color.withAlpha(alpha);
+    paint.color = fadeColor;
+
+    switch (obj.type) {
+      case 'coin':
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 4, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 1, 6, 4), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 5, 4, 1), paint);
+        paint.color = Colors.yellow.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 2, 2, 2), paint);
+        break;
+      case 'bill':
+        canvas.drawRect(Rect.fromLTWH(x, y, 10, 5), paint);
+        paint.color = Colors.green.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 4, y + 2, 2, 1), paint);
+        break;
+      case 'heart':
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 2, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 4, y, 2, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 1, 7, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 3, 5, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 4, 3, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 3, y + 5, 1, 1), paint);
+        break;
+      case 'star4':
+        canvas.drawRect(Rect.fromLTWH(x + 2, y, 1, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 2, 5, 1), paint);
+        break;
+      case 'lightning':
+        canvas.drawRect(Rect.fromLTWH(x + 2, y, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 2, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 4, 5, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 6, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 8, 3, 2), paint);
+        break;
+      case 'cloud':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 5, y, 10, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 3, 18, 4), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 5, 22, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 15, y - 1, 6, 3), paint);
+        break;
+      case 'drop':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 1, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 2, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 4, 1, 1), paint);
+        break;
+      case 'note':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 4, y, 1, 8), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 4, y, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 6, 4, 3), paint);
+        break;
+      case 'crown':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y + 5, 30, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 2, 3, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 13, y, 4, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 27, y + 2, 3, 3), paint);
+        paint.color = Colors.redAccent.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 7, y + 6, 3, 2), paint);
+        paint.color = Colors.blueAccent.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 20, y + 6, 3, 2), paint);
+        break;
+      case 'shield':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y, 20, 4), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 4, 18, 4), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 3, y + 8, 14, 4), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 5, y + 12, 10, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 8, y + 15, 4, 2), paint);
+        paint.color = Colors.white.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 8, y + 3, 4, 8), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 5, y + 5, 10, 4), paint);
+        break;
+      case 'flame':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 2, y, 3, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 3, 5, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 6, 7, 3), paint);
+        paint.color = Colors.yellow.withAlpha(alpha);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 3, 3, 3), paint);
+        break;
+      case 'exclamation':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 3, 8), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 10, 3, 3), paint);
+        break;
+      case 'question':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 5, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 5, y + 2, 2, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 5, 4, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 7, 2, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 11, 2, 2), paint);
+        break;
+      case 'confetti':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y, 3, 2), paint);
+        break;
+      case 'dust':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y, 4, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 3, y - 1, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 5, y + 1, 2, 2), paint);
+        break;
+      case 'number':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y + 1, 5, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 3, 5, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y, 1, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 3, y, 1, 5), paint);
+        break;
+      case 'zzz':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y + 10, 4, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 2, y + 11, 1, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 1, y + 12, 1, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x, y + 13, 4, 1), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 6, y, 6, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 10, y + 2, 2, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 8, y + 4, 2, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 6, y + 6, 2, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 6, y + 8, 6, 2), paint);
+        break;
+      case 'spark':
+        paint.color = fadeColor;
+        canvas.drawRect(Rect.fromLTWH(x, y, 2, 2), paint);
+        break;
+    }
+  }
 }
 
 class TypingText extends StatefulWidget {
