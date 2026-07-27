@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database_service.dart';
+import 'dashboard_provider.dart';
 
 /// Definición de todos los logros disponibles en la app.
 class LogroDefinicion {
@@ -197,7 +198,7 @@ final List<LogroDefinicion> catalogoLogros = [
   ),
 ];
 
-/// Provider que evalúa y gestiona el estado de los logros.
+// Provider que evalúa y gestiona el estado de los logros.
 final logrosProvider = FutureProvider<List<LogroEstado>>((ref) async {
   final db = DatabaseService.instance;
 
@@ -214,10 +215,12 @@ final logrosProvider = FutureProvider<List<LogroEstado>>((ref) async {
     }
   }
 
-  // Evaluar progreso con los datos actuales del dashboard
-  final dashData = await ref.watch(dashboardDataForLogrosProvider.future);
+  // Evaluar progreso con los datos actuales del dashboard (que ya debe estar cargado)
+  final dashState = ref.read(dashboardProvider).value;
 
-  if (dashData != null) {
+  if (dashState != null && dashState['data'] != null) {
+    final dashData = dashState['data'] as Map<String, dynamic>;
+    
     for (final def in catalogoLogros) {
       final progreso = def.evaluador(dashData);
       final completado = progreso >= def.metaValor;
@@ -238,70 +241,4 @@ final logrosProvider = FutureProvider<List<LogroEstado>>((ref) async {
   // Retornar todos los logros actualizados
   final rows = await db.query('SELECT * FROM logros_misiones ORDER BY completado DESC, categoria, id');
   return rows.map((r) => LogroEstado.fromMap(r)).toList();
-});
-
-/// Provider auxiliar que obtiene los datos del dashboard para evaluar logros,
-/// sin crear una dependencia circular.
-final dashboardDataForLogrosProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
-  final db = DatabaseService.instance;
-
-  // Consulta simplificada para obtener los datos necesarios
-  final now = DateTime.now();
-  final mesActual = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-
-  final ingresosMes = (await db.getOne('''
-    SELECT COALESCE(SUM(monto), 0) as total FROM ingresos
-    WHERE substr(COALESCE(mes_referencia, fecha), 1, 7) = ?
-  ''', [mesActual]))?['total'] ?? 0;
-
-  if ((ingresosMes as num).toDouble() == 0) return null;
-
-  final totalGastosFijos = (await db.getOne('''
-    SELECT COALESCE(SUM(monto), 0) as total FROM gastos_fijos
-    WHERE substr(COALESCE(mes_referencia, fecha), 1, 7) = ?
-  ''', [mesActual]))?['total'] ?? 0;
-
-  final deudaTarjetas = (await db.getOne(
-    'SELECT COALESCE(SUM(deuda_actual), 0) as total FROM tarjetas_credito'
-  ))?['total'] ?? 0;
-
-  final totalAhorros = (await db.getOne(
-    'SELECT COALESCE(SUM(saldo_actual), 0) as total FROM bolsillos_ahorro'
-  ))?['total'] ?? 0;
-
-  final cuentasEnMora = await db.query(
-    "SELECT * FROM cuentas_cobrar WHERE estado = 'vencida'"
-  );
-
-  final tarjetas = await db.query('SELECT * FROM tarjetas_credito');
-
-  final cuotasTarjetas = (await db.getOne('''
-    SELECT COALESCE(SUM(ca.valor_cuota), 0) as total
-    FROM cuotas_amortizacion ca
-    JOIN compras_tarjeta ct ON ca.compra_id = ct.id
-    WHERE ca.estado = 'pendiente'
-    AND substr(ca.fecha_vencimiento, 1, 7) = ?
-  ''', [mesActual]))?['total'] ?? 0;
-
-  final ingD = (ingresosMes as num).toDouble();
-  final gastD = (totalGastosFijos as num).toDouble();
-  final cuotD = (cuotasTarjetas as num).toDouble();
-  final liquidez = ingD - gastD - cuotD;
-  final pctEndeudamiento = ingD > 0 ? ((gastD + cuotD) / ingD * 100) : 0.0;
-
-  return {
-    'capacidad_crediticia': {
-      'ingresos_mes': ingD,
-      'total_gastos_fijos': gastD,
-      'cuotas_tarjetas_mes': cuotD,
-      'liquidez_disponible': liquidez,
-      'porcentaje_endeudamiento': pctEndeudamiento,
-    },
-    'totales': {
-      'deuda_tarjetas': (deudaTarjetas as num).toDouble(),
-      'total_ahorros': (totalAhorros as num).toDouble(),
-    },
-    'tarjetas': tarjetas,
-    'cuentas_en_mora': cuentasEnMora,
-  };
 });
