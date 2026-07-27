@@ -90,7 +90,7 @@ class SummaryCard extends StatelessWidget {
 }
 
 /// Indicador de capacidad crediticia estilo Finanzas Light Impeccable (con arco semicircular)
-class CapacidadCrediticiaCard extends StatelessWidget {
+class CapacidadCrediticiaCard extends StatefulWidget {
   final double pct;
   final String nivel;
   final double liquidez;
@@ -103,8 +103,43 @@ class CapacidadCrediticiaCard extends StatelessWidget {
   });
 
   @override
+  State<CapacidadCrediticiaCard> createState() => _CapacidadCrediticiaCardState();
+}
+
+class _CapacidadCrediticiaCardState extends State<CapacidadCrediticiaCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(CapacidadCrediticiaCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pct != widget.pct) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = AppTheme.colorPorRiesgo(nivel);
+    final color = AppTheme.colorPorRiesgo(widget.nivel);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -139,44 +174,50 @@ class CapacidadCrediticiaCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: 220,
-            height: 110,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                CustomPaint(
-                  size: const Size(220, 110),
-                  painter: _ArchProgressPainter(
-                    progress: (pct / 100).clamp(0.0, 1.0),
-                    color: color,
-                    bgColor: AppTheme.borderLight,
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              final currentPct = widget.pct * _animation.value;
+              return SizedBox(
+                width: 220,
+                height: 110,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
                   children: [
-                    Text(
-                      '${pct.round()}%',
-                      style: AppTheme.monoStyle(fontSize: 34, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                    CustomPaint(
+                      size: const Size(220, 110),
+                      painter: _ArchProgressPainter(
+                        progress: (currentPct / 100).clamp(0.0, 1.0),
+                        color: color,
+                        bgColor: AppTheme.borderLight,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    _RiesgoBadge(nivel: nivel, color: color),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${currentPct.round()}%',
+                          style: AppTheme.monoStyle(fontSize: 34, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        _RiesgoBadge(nivel: widget.nivel, color: color),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Endeudado: ${pct.toStringAsFixed(1)}%',
+                'Endeudado: ${widget.pct.toStringAsFixed(1)}%',
                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
               ),
               Text(
-                'Liquidez: ${formatCOP(liquidez)}',
+                'Liquidez: ${formatCOP(widget.liquidez)}',
                 style: AppTheme.monoStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ],
