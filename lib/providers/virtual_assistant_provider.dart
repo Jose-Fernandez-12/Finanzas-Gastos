@@ -778,7 +778,11 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
   }
 
   void hideMessage() {
-    state = state.copyWith(isVisible: false);
+    state = state.copyWith(
+      isVisible: false, 
+      animation: AssistantAnimation.idle,
+      isAction: false,
+    );
   }
 
   void showMessage(String msg) {
