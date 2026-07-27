@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
+import '../core/health_score_calculator.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/virtual_assistant_provider.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/health_score_card.dart';
 import 'tarjetas/tarjeta_detalle_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
@@ -20,11 +22,13 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final DateTime _startupTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +111,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final cuentasMora = data['cuentas_en_mora'] as List<dynamic>;
           final tarjetasData = data['tarjetas'] as List<dynamic>;
 
+          final HealthScore healthScore = data['health_score'] as HealthScore;
+
+          // Anunciar el puntaje a Rocky la primera vez que cargan los datos
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final assistant = ref.read(virtualAssistantProvider.notifier);
+            if (!ref.read(virtualAssistantProvider).isAction &&
+                DateTime.now().difference(_startupTime).inSeconds >= 12) {
+              assistant.announceHealthScore(healthScore.score, healthScore.weakestFactor);
+            }
+          });
+
           // Calcular alertas de pago para los próximos 3 días
           final now = DateTime.now();
           final limitDate = now.add(const Duration(days: 3));
@@ -146,6 +161,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // --- Health Score Card ---
+                if (ingresos > 0)
+                  HealthScoreCard(
+                    healthScore: healthScore,
+                    onFactorTap: (factor, subScore) {
+                      ref.read(virtualAssistantProvider.notifier)
+                          .analyzeHealthFactor(factor, subScore);
+                    },
+                  ),
+
                 // --- Banner de Alertas de Pago ---
                 if (alertasVencimiento.isNotEmpty) ...[
                   Container(

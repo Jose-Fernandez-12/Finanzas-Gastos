@@ -790,6 +790,86 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     _autoHide();
   }
 
+  /// Anuncia el puntaje global de salud financiera al cargar el Dashboard.
+  void announceHealthScore(int score, String weakestFactor) {
+    String msg;
+    AssistantAnimation anim;
+
+    if (score >= 80) {
+      final opciones = [
+        '¡Tu salud financiera es excelente! Puntaje: $score/100. Sigue así.',
+        'Puntaje $score/100. Estás haciendo un trabajo financiero sobresaliente.',
+        '¡$score puntos! Eres un ejemplo de disciplina financiera.',
+      ];
+      msg = opciones[_random.nextInt(opciones.length)];
+      anim = AssistantAnimation.glowGreen;
+    } else if (score >= 60) {
+      msg = 'Puntaje $score/100. Tu $weakestFactor aún puede mejorar. Toca la tarjeta para explorar.';
+      anim = AssistantAnimation.nod;
+    } else if (score >= 40) {
+      msg = 'Cuidado. Puntaje $score/100. Tu $weakestFactor está jalando el score hacia abajo.';
+      anim = AssistantAnimation.glowRed;
+    } else {
+      msg = '¡Alerta! Puntaje $score/100. Necesitas actuar sobre tus deudas y gastos de inmediato.';
+      anim = AssistantAnimation.warningSevere;
+    }
+
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide();
+  }
+
+  /// Reacciona al toque de un factor específico en la HealthScoreCard.
+  void analyzeHealthFactor(String factor, int subScore) {
+    String msg;
+    AssistantAnimation anim;
+    final bool alto = subScore >= 70;
+
+    switch (factor) {
+      case 'Equilibrio':
+        if (alto) {
+          msg = '¡Tus ingresos superan claramente tus egresos. Vas perfecto con el equilibrio!';
+          anim = AssistantAnimation.celebration;
+        } else {
+          msg = 'Tus gastos fijos consumen demasiado de tus ingresos. Hay que recortar gastos no esenciales.';
+          anim = AssistantAnimation.sad;
+        }
+        break;
+      case 'Deuda':
+        if (alto) {
+          msg = 'Tu nivel de deuda es saludable ($subScore/100). Sigue manteniéndolo controlado.';
+          anim = AssistantAnimation.thumbsUp;
+        } else {
+          msg = 'Tu carga de deuda es alta ($subScore/100). Considera pagar capital antes que intereses.';
+          anim = AssistantAnimation.warningSevere;
+        }
+        break;
+      case 'Liquidez':
+        if (alto) {
+          msg = 'Tienes buena liquidez ($subScore/100). Podrías considerar invertir ese excedente.';
+          anim = AssistantAnimation.glowGreen;
+        } else {
+          msg = 'Poco margen de maniobra ($subScore/100). Un imprevisto podría complicarte las finanzas.';
+          anim = AssistantAnimation.glitch;
+        }
+        break;
+      case 'Ahorro':
+        if (alto) {
+          msg = '¡Excelente disciplina de ahorro ($subScore/100)! Estás construyendo un buen colchón financiero.';
+          anim = AssistantAnimation.crown;
+        } else {
+          msg = 'Tu fondo de ahorro aún está bajo ($subScore/100). Incluso un 5% de tus ingresos marca la diferencia.';
+          anim = AssistantAnimation.flexing;
+        }
+        break;
+      default:
+        msg = 'Factor $factor analizado. Puntaje: $subScore/100.';
+        anim = AssistantAnimation.nod;
+    }
+
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide();
+  }
+
   void _autoHide([int? seconds]) {
     final currentMsg = state.message;
     // Base 2 seconds, plus 1 second for every 25 characters, capped at 6 seconds

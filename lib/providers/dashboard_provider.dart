@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database_service.dart';
+import '../core/health_score_calculator.dart';
 
 final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   // Aquí podemos seguir usando la lógica de Dashboard original o adaptarla al DAO.
@@ -67,26 +68,34 @@ final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     LIMIT 10
   ''');
 
+  final Map<String, dynamic> innerData = {
+    'capacidad_crediticia': {
+      'ingresos_mes': ingresosMes,
+      'total_gastos_fijos': totalGastosFijos,
+      'cuotas_tarjetas_mes': cuotasTarjetasMes,
+      'liquidez_disponible': liquidezDisponible,
+      'porcentaje_endeudamiento': porcentajeEndeudamiento,
+      'nivel_riesgo': nivelRiesgo
+    },
+    'totales': {
+      'deuda_tarjetas': deudaTarjetas,
+      'cuentas_cobrar': cuentasCobrar,
+      'total_ahorros': totalAhorros
+    },
+    'tarjetas': tarjetasData,
+    'proximas_cuotas': proximasCuotasQuery,
+    'cuentas_en_mora': cuentasEnMora,
+    'ahorros': ahorrosData
+  };
+
+  final healthScore = calculateHealthScore(innerData);
+
   return {
     'ok': true,
     'data': {
-      'capacidad_crediticia': {
-        'ingresos_mes': ingresosMes,
-        'total_gastos_fijos': totalGastosFijos,
-        'cuotas_tarjetas_mes': cuotasTarjetasMes,
-        'liquidez_disponible': liquidezDisponible,
-        'porcentaje_endeudamiento': porcentajeEndeudamiento,
-        'nivel_riesgo': nivelRiesgo
-      },
-      'totales': {
-        'deuda_tarjetas': deudaTarjetas,
-        'cuentas_cobrar': cuentasCobrar,
-        'total_ahorros': totalAhorros
-      },
-      'tarjetas': tarjetasData,
-      'proximas_cuotas': proximasCuotasQuery,
-      'cuentas_en_mora': cuentasEnMora,
-      'ahorros': ahorrosData
+      ...innerData,
+      'health_score': healthScore,
     }
   };
 });
+
