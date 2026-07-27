@@ -198,32 +198,35 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
   @override
   void didUpdateWidget(ClawdWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if ((widget.animation != oldWidget.animation || widget.actionId != oldWidget.actionId) && widget.animation != AssistantAnimation.idle) {
-      final spec = rockyAnimations[widget.animation.name];
+    if (widget.animation != oldWidget.animation || widget.actionId != oldWidget.actionId) {
       _actionController.stop();
-      if (spec != null) {
-        _actionController.duration = spec.duration;
-        if (spec.loop) {
-          _actionController.repeat();
+      
+      if (widget.animation != AssistantAnimation.idle) {
+        final spec = rockyAnimations[widget.animation.name];
+        if (spec != null) {
+          _actionController.duration = spec.duration;
+          if (spec.loop) {
+            _actionController.repeat();
+          } else {
+            _actionController.forward(from: 0.0);
+          }
+        } else if (widget.animation == AssistantAnimation.flyingStars) {
+          _actionController.duration = const Duration(milliseconds: 4000);
+          _flyTargetX = (_random.nextDouble() > 0.5 ? 1 : -1) * (80.0 + _random.nextDouble() * 80.0);
+          _flyPeakY = -150.0 - _random.nextDouble() * 100.0;
+          _actionController.forward(from: 0.0);
         } else {
+          _actionController.duration = const Duration(milliseconds: 800);
           _actionController.forward(from: 0.0);
         }
-      } else if (widget.animation == AssistantAnimation.flyingStars) {
-        _actionController.duration = const Duration(milliseconds: 4000);
-        _flyTargetX = (_random.nextDouble() > 0.5 ? 1 : -1) * (80.0 + _random.nextDouble() * 80.0);
-        _flyPeakY = -150.0 - _random.nextDouble() * 100.0;
-        _actionController.forward(from: 0.0);
-      } else {
-        _actionController.duration = const Duration(milliseconds: 800);
-        _actionController.forward(from: 0.0);
-      }
-      
-      if (widget.animation == AssistantAnimation.warningSevere || widget.animation == AssistantAnimation.alert) {
-        HapticFeedback.heavyImpact();
-      } else if (widget.animation == AssistantAnimation.celebration || widget.animation == AssistantAnimation.wealthy) {
-        HapticFeedback.mediumImpact();
-      } else {
-        HapticFeedback.lightImpact();
+        
+        if (widget.animation == AssistantAnimation.warningSevere || widget.animation == AssistantAnimation.alert) {
+          HapticFeedback.heavyImpact();
+        } else if (widget.animation == AssistantAnimation.celebration || widget.animation == AssistantAnimation.wealthy) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.lightImpact();
+        }
       }
     }
   }
