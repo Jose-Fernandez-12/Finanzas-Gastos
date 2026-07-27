@@ -161,6 +161,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // --- Capacidad Crediticia ---
+                CapacidadCrediticiaCard(
+                  pct: pctEndeudamiento,
+                  nivel: nivelRiesgo,
+                  liquidez: liquidez,
+                ),
+                const SizedBox(height: 16),
+
                 // --- Health Score Card ---
                 if (ingresos > 0)
                   HealthScoreCard(
@@ -229,13 +237,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
 
-                // --- Capacidad Crediticia ---
-                CapacidadCrediticiaCard(
-                  pct: pctEndeudamiento,
-                  nivel: nivelRiesgo,
-                  liquidez: liquidez,
-                ),
-                const SizedBox(height: 16),
 
                 // --- Resumen de 4 cuadros principales ---
                 GridView.count(
