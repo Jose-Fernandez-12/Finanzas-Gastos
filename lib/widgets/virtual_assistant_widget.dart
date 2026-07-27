@@ -389,22 +389,18 @@ class _ClawdPainter extends CustomPainter {
     const eyeColor = Color(0xFF111111);
     switch (style) {
       case 'happy':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 8 + (9 - eyeH) / 2;
         paint.color = eyeColor;
-        canvas.drawRect(const Rect.fromLTWH(16, 14, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(19, 12, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(22, 14, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(47, 14, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(50, 12, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(53, 14, px, px), paint);
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'sad':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 12 + (9 - eyeH) / 2;
         paint.color = eyeColor;
-        canvas.drawRect(const Rect.fromLTWH(16, 12, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(19, 14, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(22, 12, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(47, 12, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(50, 14, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(53, 12, px, px), paint);
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'angry':
         final eyeH = 11 * (1 - blink);
@@ -414,38 +410,32 @@ class _ClawdPainter extends CustomPainter {
         canvas.drawRect(Rect.fromLTWH(48, eyeY, 6, eyeH), paint);
         break;
       case 'star':
-        _drawMiniStar(canvas, paint, 19, 13, Colors.yellowAccent);
-        _drawMiniStar(canvas, paint, 50, 13, Colors.yellowAccent);
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = Colors.yellowAccent;
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'dollar':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
         paint.color = Colors.greenAccent;
-        canvas.drawRect(const Rect.fromLTWH(17, 10, 6, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(17, 10 + px, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(17, 10 + px * 2, 6, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(20, 10 + px * 3, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(17, 10 + px * 4, 6, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 10, 6, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 10 + px, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 10 + px * 2, 6, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(51, 10 + px * 3, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 10 + px * 4, 6, px), paint);
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'heart':
-        _drawMiniHeart(canvas, paint, 17, 11, Colors.pinkAccent);
-        _drawMiniHeart(canvas, paint, 48, 11, Colors.pinkAccent);
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
+        paint.color = Colors.pinkAccent;
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'dizzy':
+        final eyeH = 9 * (1 - blink);
+        final eyeY = 10 + (9 - eyeH) / 2;
         paint.color = eyeColor;
-        canvas.drawRect(const Rect.fromLTWH(17, 11, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(23, 11, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(20, 13, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(17, 15, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(23, 15, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 11, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(54, 11, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(51, 13, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(48, 15, px, px), paint);
-        canvas.drawRect(const Rect.fromLTWH(54, 15, px, px), paint);
+        canvas.drawRect(Rect.fromLTWH(18, eyeY - 2, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY + 2, 5, eyeH), paint);
         break;
       case 'closed':
       case 'sleep':
@@ -501,13 +491,7 @@ class _ClawdPainter extends CustomPainter {
         break;
       case 'teeth':
         paint.color = const Color(0xFF222222);
-        canvas.drawRect(const Rect.fromLTWH(28, 24, 16, 6), paint);
-        paint.color = Colors.white;
-        canvas.drawRect(const Rect.fromLTWH(29, 24, 14, 2), paint);
-        paint.color = const Color(0xFF222222);
-        canvas.drawRect(const Rect.fromLTWH(33, 24, 1, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(37, 24, 1, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(41, 24, 1, 2), paint);
+        canvas.drawRect(const Rect.fromLTWH(28, 26, 16, 2), paint);
         break;
       case 'tight':
         paint.color = const Color(0xFF222222);
