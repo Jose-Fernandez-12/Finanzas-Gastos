@@ -103,6 +103,38 @@ class DatabaseService {
         // Migraciones para Suscripciones (Gastos Fijos expandidos)
         try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN tipo_frecuencia TEXT DEFAULT 'Mensual';"); } catch (_) {}
         try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN recordatorio_dias INTEGER DEFAULT 1;"); } catch (_) {}
+
+        // Tabla de presupuesto base cero (sobres virtuales)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS presupuesto_sobres (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_sobre    TEXT NOT NULL,
+            monto_asignado  REAL NOT NULL DEFAULT 0,
+            gastado         REAL NOT NULL DEFAULT 0,
+            color           TEXT NOT NULL DEFAULT '#4F46E5',
+            icono           TEXT NOT NULL DEFAULT 'account_balance_wallet',
+            mes_referencia  TEXT NOT NULL,
+            creado_en       TEXT DEFAULT (datetime('now')),
+            actualizado_en  TEXT DEFAULT (datetime('now'))
+          )
+        ''');
+
+        // Tabla de logros y misiones (gamificación)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS logros_misiones (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            clave           TEXT NOT NULL UNIQUE,
+            titulo          TEXT NOT NULL,
+            descripcion     TEXT NOT NULL,
+            icono           TEXT NOT NULL DEFAULT 'emoji_events',
+            categoria       TEXT NOT NULL DEFAULT 'general',
+            meta_valor      REAL NOT NULL DEFAULT 0,
+            progreso        REAL NOT NULL DEFAULT 0,
+            completado      INTEGER NOT NULL DEFAULT 0,
+            fecha_completado TEXT,
+            creado_en       TEXT DEFAULT (datetime('now'))
+          )
+        ''');
       },
     );
   }

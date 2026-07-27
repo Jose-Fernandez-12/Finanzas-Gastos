@@ -10,6 +10,8 @@ import '../widgets/health_score_card.dart';
 import 'tarjetas/tarjeta_detalle_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
+import 'trofeos_screen.dart';
+import 'simulador_financiero_screen.dart';
 import '../models/bolsillo_ahorro.dart';
 import '../models/tarjeta_credito.dart';
 
@@ -48,6 +50,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFF59E0B), size: 20),
+            ),
+            tooltip: 'Trofeos',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TrofeosScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -176,6 +195,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     onFactorTap: (factor, subScore) {
                       ref.read(virtualAssistantProvider.notifier)
                           .analyzeHealthFactor(factor, subScore);
+                    },
+                    onLabTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SimuladorFinancieroScreen()),
+                      );
                     },
                   ),
 

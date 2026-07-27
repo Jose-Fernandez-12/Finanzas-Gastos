@@ -8,6 +8,7 @@ import '../providers/ingresos_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/virtual_assistant_provider.dart';
 import '../models/ingreso.dart';
+import 'presupuesto_base_cero_screen.dart';
 
 class IngresosScreen extends ConsumerStatefulWidget {
   const IngresosScreen({super.key});
@@ -40,11 +41,28 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_ingresos',
-        onPressed: () => _showForm(context, ref),
-        backgroundColor: AppTheme.colorIngresos,
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'fab_presupuesto',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PresupuestoBaseCeroScreen()),
+              );
+            },
+            backgroundColor: const Color(0xFF8B5CF6),
+            child: const Icon(Icons.mail_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'fab_ingresos',
+            onPressed: () => _showForm(context, ref),
+            backgroundColor: AppTheme.colorIngresos,
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+          ),
+        ],
       ),
       body: ingresosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),

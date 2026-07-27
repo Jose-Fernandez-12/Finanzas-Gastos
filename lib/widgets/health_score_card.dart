@@ -11,10 +11,14 @@ class HealthScoreCard extends StatefulWidget {
   /// Recibe el nombre del factor y su sub-score.
   final void Function(String factor, int subScore)? onFactorTap;
 
+  /// Callback para abrir el laboratorio financiero.
+  final VoidCallback? onLabTap;
+
   const HealthScoreCard({
     super.key,
     required this.healthScore,
     this.onFactorTap,
+    this.onLabTap,
   });
 
   @override
@@ -89,21 +93,49 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                   color: Color(0xFF9CA3AF),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(20),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  hs.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                    letterSpacing: 0.5,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.onLabTap != null)
+                    GestureDetector(
+                      onTap: widget.onLabTap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0EA5E9).withAlpha(20),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.science_rounded, size: 13, color: Color(0xFF0EA5E9)),
+                            SizedBox(width: 4),
+                            Text(
+                              'LAB',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0EA5E9), letterSpacing: 0.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      hs.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

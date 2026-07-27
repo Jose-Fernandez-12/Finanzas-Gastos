@@ -790,6 +790,12 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
     _autoHide();
   }
 
+  /// Muestra un mensaje con una animación específica.
+  void showActionMessage(String msg, AssistantAnimation anim) {
+    state = AssistantState(message: msg, isVisible: true, isAction: true, animation: anim);
+    _autoHide();
+  }
+
   /// Anuncia el puntaje global de salud financiera al cargar el Dashboard.
   void announceHealthScore(int score, String weakestFactor) {
     String msg;
