@@ -407,16 +407,11 @@ class _ClawdPainter extends CustomPainter {
         canvas.drawRect(const Rect.fromLTWH(53, 12, px, px), paint);
         break;
       case 'angry':
-        final eyeH = 9 * (1 - blink);
-        final eyeY = 10 + (9 - eyeH) / 2;
+        final eyeH = 11 * (1 - blink);
+        final eyeY = 9 + (11 - eyeH) / 2;
         paint.color = eyeColor;
-        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
-        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
-        paint.color = const Color(0xFF333333);
-        canvas.drawRect(const Rect.fromLTWH(15, 8, 10, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(17, 7, 4, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(47, 8, 10, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(52, 7, 4, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(17, eyeY, 6, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(48, eyeY, 6, eyeH), paint);
         break;
       case 'star':
         _drawMiniStar(canvas, paint, 19, 13, Colors.yellowAccent);
