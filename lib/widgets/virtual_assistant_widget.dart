@@ -449,9 +449,11 @@ class _ClawdPainter extends CustomPainter {
         break;
       case 'closed':
       case 'sleep':
+        final eyeH = 9 * (1 - 0.9);
+        final eyeY = 10 + (9 - eyeH) / 2;
         paint.color = eyeColor;
-        canvas.drawRect(const Rect.fromLTWH(16, 14, 10, 2), paint);
-        canvas.drawRect(const Rect.fromLTWH(47, 14, 10, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(18, eyeY, 4, eyeH), paint);
+        canvas.drawRect(Rect.fromLTWH(49, eyeY, 5, eyeH), paint);
         break;
       case 'lookLeft':
         final eyeH = 9 * (1 - blink);
