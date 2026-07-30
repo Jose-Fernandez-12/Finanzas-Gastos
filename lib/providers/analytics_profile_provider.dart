@@ -18,6 +18,7 @@ class AnalyticsModuleIds {
   static const String esclavitudFinanciera = 'esclavitud_financiera';
   static const String dependenciaTarjetas = 'dependencia_tarjetas';
   static const String eficienciaAhorro = 'eficiencia_ahorro';
+  static const String reporteDetallado = 'reporte_detallado';
 
   /// Todos los módulos disponibles con su etiqueta amigable
   static const Map<String, String> labels = {
@@ -34,6 +35,7 @@ class AnalyticsModuleIds {
     esclavitudFinanciera: 'Días de Trabajo vs Deuda',
     dependenciaTarjetas: 'Dependencia por Tarjeta',
     eficienciaAhorro: 'Eficiencia de Ahorro',
+    reporteDetallado: 'Reporte Detallado (Exportable)',
   };
 
   static const Map<String, String> icons = {
@@ -50,6 +52,7 @@ class AnalyticsModuleIds {
     esclavitudFinanciera: '⏳',
     dependenciaTarjetas: '🏦',
     eficienciaAhorro: '💡',
+    reporteDetallado: '📄',
   };
 
   static List<String> get allIds => labels.keys.toList();
@@ -131,6 +134,13 @@ List<AnalyticsProfile> _defaultProfiles() {
         AnalyticsModuleIds.eficienciaAhorro,
       ],
     ),
+    AnalyticsProfile(
+      id: 'perfil_reporte',
+      nombre: 'Reporte Detallado',
+      modulos: [
+        AnalyticsModuleIds.reporteDetallado,
+      ],
+    ),
   ];
 }
 
@@ -188,6 +198,21 @@ class AnalyticsProfileNotifier extends Notifier<AnalyticsProfileState> {
         perfiles = decoded.map((e) => AnalyticsProfile.fromJson(e as Map<String, dynamic>)).toList();
       } else {
         perfiles = _defaultProfiles();
+      }
+
+      // Asegurar que el perfil "Reporte Detallado" siempre esté disponible,
+      // incluso si se cargó de caché anterior.
+      if (!perfiles.any((p) => p.id == 'perfil_reporte')) {
+        perfiles.add(
+          const AnalyticsProfile(
+            id: 'perfil_reporte',
+            nombre: 'Reporte Detallado',
+            modulos: [AnalyticsModuleIds.reporteDetallado],
+          ),
+        );
+        // Guardar para que quede persistente en la caché de SharedPreferences
+        final encoded = jsonEncode(perfiles.map((p) => p.toJson()).toList());
+        await prefs.setString(_kPrefKey, encoded);
       }
 
       String perfilActivoId = activo ?? perfiles.firstWhere((p) => p.esPorDefecto, orElse: () => perfiles.first).id;

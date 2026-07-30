@@ -8,6 +8,7 @@ import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import 'dart:math' as math;
+import 'reporte_detallado_screen.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -113,7 +114,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         minHeight: 2,
                       ),
                     Expanded(
-                      child: _buildContent(providerData!, advData, profileState.modulosActivos),
+                      child: profileState.perfilActivoId == 'perfil_reporte'
+                          ? const ReporteDetalladoView()
+                          : _buildContent(providerData!, advData, profileState.modulosActivos),
                     ),
                   ],
                 ),
