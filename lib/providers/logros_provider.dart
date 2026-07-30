@@ -196,6 +196,56 @@ final List<LogroDefinicion> catalogoLogros = [
       return 1.0;
     },
   ),
+  LogroDefinicion(
+    clave: 'sin_deudas',
+    titulo: 'Deuda Cero',
+    descripcion: 'Mantén el saldo total de tu deuda en tarjetas en \$0.',
+    icono: 'verified_user',
+    categoria: 'deuda',
+    metaValor: 1,
+    evaluador: (data) {
+      final totales = data['totales'] as Map<String, dynamic>?;
+      final deuda = (totales?['deuda_tarjetas'] as num?)?.toDouble() ?? 0.0;
+      return deuda == 0 ? 1.0 : 0.0;
+    },
+  ),
+  LogroDefinicion(
+    clave: 'super_ahorrador',
+    titulo: 'Super Ahorrador',
+    descripcion: 'Crea al menos 3 bolsillos de ahorro activos.',
+    icono: 'folder_special',
+    categoria: 'ahorro',
+    metaValor: 3,
+    evaluador: (data) {
+      final ahorros = data['ahorros'] as List<dynamic>?;
+      return (ahorros?.length ?? 0).toDouble();
+    },
+  ),
+  LogroDefinicion(
+    clave: 'buena_capacidad',
+    titulo: 'Finanzas Perfectas',
+    descripcion: 'Alcanza un Health Score perfecto de 100.',
+    icono: 'military_tech',
+    categoria: 'salud',
+    metaValor: 100,
+    evaluador: (data) {
+      final hs = data['health_score'];
+      if (hs == null) return 0.0;
+      return (hs.score as int).toDouble();
+    },
+  ),
+  LogroDefinicion(
+    clave: 'multitarjeta',
+    titulo: 'Coleccionista',
+    descripcion: 'Registra al menos 2 tarjetas de crédito activas.',
+    icono: 'credit_card',
+    categoria: 'deuda',
+    metaValor: 2,
+    evaluador: (data) {
+      final tarjetas = data['tarjetas'] as List<dynamic>?;
+      return (tarjetas?.length ?? 0).toDouble();
+    },
+  ),
 ];
 
 // Provider que evalúa y gestiona el estado de los logros.

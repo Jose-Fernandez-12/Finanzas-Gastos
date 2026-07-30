@@ -20,6 +20,10 @@ class TrofeosScreen extends ConsumerWidget {
     'water_drop': Icons.water_drop_rounded,
     'credit_score': Icons.credit_score_rounded,
     'emoji_events': Icons.emoji_events_rounded,
+    'verified_user': Icons.verified_user_rounded,
+    'folder_special': Icons.folder_special_rounded,
+    'military_tech': Icons.military_tech_rounded,
+    'credit_card': Icons.credit_card_rounded,
   };
 
   static const Map<String, Color> _categoryColors = {
