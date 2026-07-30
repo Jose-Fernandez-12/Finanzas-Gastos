@@ -112,6 +112,8 @@ class _PresupuestoBaseCeroScreenState extends ConsumerState<PresupuestoBaseCeroS
             iconMap: _iconMap,
             onEdit: () => _showEditarSobre(context, s),
             onDelete: () => _confirmarEliminar(s),
+            onRegistrarGasto: () => _showRegistrarGastoSobre(context, s),
+            onVerHistorial: () => _showHistorialSobre(context, s),
           )),
 
         const SizedBox(height: 80),
@@ -369,6 +371,94 @@ class _PresupuestoBaseCeroScreenState extends ConsumerState<PresupuestoBaseCeroS
     );
   }
 
+  void _showRegistrarGastoSobre(BuildContext context, Sobre sobre) {
+    final montoCtrl = TextEditingController();
+    final conceptoCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.add_shopping_cart_rounded, color: _parseColor(sobre.color)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Registrar Gasto en ${sobre.nombre}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: montoCtrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Monto del gasto',
+                prefixText: '\$ ',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: conceptoCtrl,
+              decoration: InputDecoration(
+                labelText: 'Concepto (Ej: Mercado, Gasolina)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _parseColor(sobre.color),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  final monto = double.tryParse(montoCtrl.text) ?? 0;
+                  if (monto <= 0) return;
+                  final concepto = conceptoCtrl.text.trim().isEmpty ? 'Gasto' : conceptoCtrl.text.trim();
+                  await SobresRepository.registrarGastoDirecto(sobre.id!, monto, concepto);
+                  ref.invalidate(presupuestoProvider(_mesActual));
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('DESCONTAR DEL SOBRE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHistorialSobre(BuildContext context, Sobre sobre) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => _HistorialSobreSheet(
+        sobre: sobre,
+        onUpdate: () => ref.invalidate(presupuestoProvider(_mesActual)),
+      ),
+    );
+  }
+
   Color _parseColor(String hex) {
     final clean = hex.replaceAll('#', '');
     return Color(int.parse('FF$clean', radix: 16));
@@ -383,12 +473,16 @@ class _SobreCard extends StatelessWidget {
   final Map<String, IconData> iconMap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onRegistrarGasto;
+  final VoidCallback onVerHistorial;
 
   const _SobreCard({
     required this.sobre,
     required this.iconMap,
     required this.onEdit,
     required this.onDelete,
+    required this.onRegistrarGasto,
+    required this.onVerHistorial,
   });
 
   Color _parseColor(String hex) {
@@ -401,122 +495,272 @@ class _SobreCard extends StatelessWidget {
     final color = _parseColor(sobre.color);
     final icon = iconMap[sobre.icono] ?? Icons.account_balance_wallet_rounded;
 
-    return GestureDetector(
-      onTap: onEdit,
-      onLongPress: onDelete,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withAlpha(10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Header del sobre (simula la solapa)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color.withAlpha(20), color.withAlpha(8)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withAlpha(10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header del sobre
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withAlpha(20), color.withAlpha(8)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(25),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: color, size: 18),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(25),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      sobre.nombre,
-                      style: TextStyle(
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    sobre.nombre,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatCOP(sobre.montoAsignado),
+                      style: AppTheme.monoStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: color,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        formatCOP(sobre.montoAsignado),
-                        style: AppTheme.monoStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'asignado',
-                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    Text(
+                      'presupuestado',
+                      style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppTheme.textMuted),
+                  onSelected: (val) {
+                    if (val == 'edit') onEdit();
+                    if (val == 'delete') onDelete();
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Editar Presupuesto')),
+                    const PopupMenuItem(value: 'delete', child: Text('Eliminar Sobre', style: TextStyle(color: Colors.red))),
+                  ],
+                ),
+              ],
             ),
+          ),
 
-            // Cuerpo del sobre
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Column(
-                children: [
-                  // Barra de progreso
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: sobre.porcentajeUsado,
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      valueColor: AlwaysStoppedAnimation(
-                        sobre.porcentajeUsado > 0.9 ? const Color(0xFFEF4444) : color,
-                      ),
-                      minHeight: 6,
+          // Cuerpo del sobre
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              children: [
+                // Barra de progreso
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: sobre.porcentajeUsado,
+                    backgroundColor: const Color(0xFFF3F4F6),
+                    valueColor: AlwaysStoppedAnimation(
+                      sobre.porcentajeUsado > 0.9 ? const Color(0xFFEF4444) : color,
                     ),
+                    minHeight: 6,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Gastado: ${formatCOP(sobre.gastado)}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Gastado: ${formatCOP(sobre.gastado)}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
+                    ),
+                    Text(
+                      'Disponible: ${formatCOP(sobre.disponible)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: sobre.disponible < 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
                       ),
-                      Text(
-                        'Disponible: ${formatCOP(sobre.disponible)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: sobre.disponible < 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onRegistrarGasto,
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('Registrar Gasto', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: color,
+                          side: BorderSide(color: color.withAlpha(80)),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: onVerHistorial,
+                      icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                      tooltip: 'Ver movimientos',
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFF3F4F6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistorialSobreSheet extends StatefulWidget {
+  final Sobre sobre;
+  final VoidCallback onUpdate;
+
+  const _HistorialSobreSheet({
+    required this.sobre,
+    required this.onUpdate,
+  });
+
+  @override
+  State<_HistorialSobreSheet> createState() => _HistorialSobreSheetState();
+}
+
+class _HistorialSobreSheetState extends State<_HistorialSobreSheet> {
+  late Future<List<SobreGasto>> _futureGastos;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() {
+    setState(() {
+      _futureGastos = SobresRepository.obtenerHistorialSobre(widget.sobre.id!);
+    });
+    widget.onUpdate();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Movimientos: ${widget.sobre.nombre}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: FutureBuilder<List<SobreGasto>>(
+              future: _futureGastos,
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final list = snapshot.data ?? [];
+                if (list.isEmpty) {
+                  return const Center(
+                    child: Text('No hay gastos registrados en este sobre aún.', style: TextStyle(color: Colors.grey)),
+                  );
+                }
+                return ListView.separated(
+                  itemCount: list.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final item = list[i];
+                    final isDirecto = item.origen == 'directo';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: isDirecto ? Colors.blue.withAlpha(20) : Colors.orange.withAlpha(20),
+                        child: Icon(
+                          isDirecto ? Icons.shopping_bag_outlined : Icons.repeat,
+                          color: isDirecto ? Colors.blue : Colors.orange,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(item.concepto, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text(
+                        '${item.fecha.split("T")[0]} • ${isDirecto ? "Directo" : "Gasto / Tarjeta"}',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            formatCOP(item.monto),
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 14),
+                          ),
+                          if (isDirecto)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 18),
+                              onPressed: () async {
+                                await SobresRepository.eliminarGastoDirecto(item.id!);
+                                _reload();
+                              },
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

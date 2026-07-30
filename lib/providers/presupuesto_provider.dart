@@ -27,7 +27,7 @@ class Sobre {
     id: m['id'] as int?,
     nombre: m['nombre_sobre'] as String,
     montoAsignado: (m['monto_asignado'] as num?)?.toDouble() ?? 0,
-    gastado: (m['gastado'] as num?)?.toDouble() ?? 0,
+    gastado: (m['gastado_calculado'] as num?)?.toDouble() ?? (m['gastado'] as num?)?.toDouble() ?? 0,
     color: m['color'] as String? ?? '#4F46E5',
     icono: m['icono'] as String? ?? 'account_balance_wallet',
     mesReferencia: m['mes_referencia'] as String,
@@ -59,6 +59,33 @@ class PresupuestoState {
   });
 }
 
+class SobreGasto {
+  final int? id;
+  final int sobreId;
+  final double monto;
+  final String concepto;
+  final String fecha;
+  final String origen; // 'directo' o 'gasto_fijo'
+
+  const SobreGasto({
+    this.id,
+    required this.sobreId,
+    required this.monto,
+    required this.concepto,
+    required this.fecha,
+    this.origen = 'directo',
+  });
+
+  factory SobreGasto.fromMap(Map<String, dynamic> m) => SobreGasto(
+    id: m['id'] as int?,
+    sobreId: m['sobre_id'] as int,
+    monto: (m['monto'] as num).toDouble(),
+    concepto: m['concepto'] as String? ?? 'Gasto',
+    fecha: m['fecha'] as String? ?? '',
+    origen: m['origen'] as String? ?? 'directo',
+  );
+}
+
 final presupuestoProvider = FutureProvider.family<PresupuestoState, String>((ref, mes) async {
   final db = DatabaseService.instance;
 
@@ -69,11 +96,15 @@ final presupuestoProvider = FutureProvider.family<PresupuestoState, String>((ref
   ''', [mes]);
   final ingresosMes = (ingresoRow?['total'] as num?)?.toDouble() ?? 0;
 
-  // Obtener sobres del mes
-  final rows = await db.query(
-    'SELECT * FROM presupuesto_sobres WHERE mes_referencia = ? ORDER BY id',
-    [mes],
-  );
+  // Obtener sobres del mes con total gastado calculado dinámicamente
+  final rows = await db.query('''
+    SELECT s.*,
+      (COALESCE((SELECT SUM(monto) FROM presupuesto_sobre_gastos WHERE sobre_id = s.id), 0) +
+       COALESCE((SELECT SUM(monto) FROM gastos_fijos WHERE sobre_id = s.id AND activo = 1), 0)) AS gastado_calculado
+    FROM presupuesto_sobres s
+    WHERE s.mes_referencia = ?
+    ORDER BY s.id
+  ''', [mes]);
   final sobres = rows.map((r) => Sobre.fromMap(r)).toList();
   final totalAsignado = sobres.fold<double>(0, (sum, s) => sum + s.montoAsignado);
 
@@ -107,4 +138,50 @@ class SobresRepository {
   static Future<void> eliminar(int id) async {
     await _db.delete('presupuesto_sobres', where: 'id = ?', whereArgs: [id]);
   }
+
+  static Future<void> registrarGastoDirecto(int sobreId, double monto, String concepto) async {
+    await _db.insert('presupuesto_sobre_gastos', {
+      'sobre_id': sobreId,
+      'monto': monto,
+      'concepto': concepto,
+      'fecha': DateTime.now().toIso8601String(),
+    });
+  }
+
+  static Future<List<SobreGasto>> obtenerHistorialSobre(int sobreId) async {
+    final rowsDirectos = await _db.query('''
+      SELECT id, sobre_id, monto, concepto, fecha, 'directo' as origen
+      FROM presupuesto_sobre_gastos
+      WHERE sobre_id = ?
+    ''', [sobreId]);
+
+    final rowsFijos = await _db.query('''
+      SELECT id, sobre_id, monto, nombre as concepto, COALESCE(fecha_ultimo_pago, creado_en) as fecha, 'gasto_fijo' as origen
+      FROM gastos_fijos
+      WHERE sobre_id = ? AND activo = 1
+    ''', [sobreId]);
+
+    final list = <SobreGasto>[];
+    for (var r in rowsDirectos) { list.add(SobreGasto.fromMap(r)); }
+    for (var r in rowsFijos) { list.add(SobreGasto.fromMap(r)); }
+    list.sort((a, b) => b.fecha.compareTo(a.fecha));
+    return list;
+  }
+
+  static Future<void> eliminarGastoDirecto(int id) async {
+    await _db.delete('presupuesto_sobre_gastos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<List<Sobre>> obtenerSobresDelMes(String mes) async {
+    final rows = await _db.query('''
+      SELECT s.*,
+        (COALESCE((SELECT SUM(monto) FROM presupuesto_sobre_gastos WHERE sobre_id = s.id), 0) +
+         COALESCE((SELECT SUM(monto) FROM gastos_fijos WHERE sobre_id = s.id AND activo = 1), 0)) AS gastado_calculado
+      FROM presupuesto_sobres s
+      WHERE s.mes_referencia = ?
+      ORDER BY s.id
+    ''', [mes]);
+    return rows.map((r) => Sobre.fromMap(r)).toList();
+  }
 }
+

@@ -119,6 +119,21 @@ class DatabaseService {
           )
         ''');
 
+        // Tabla de gastos directos asociados a sobres
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS presupuesto_sobre_gastos (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            sobre_id     INTEGER NOT NULL,
+            monto        REAL NOT NULL,
+            concepto     TEXT,
+            fecha        TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(sobre_id) REFERENCES presupuesto_sobres(id) ON DELETE CASCADE
+          )
+        ''');
+
+        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN sobre_id INTEGER;"); } catch (_) {}
+
+
         // Tabla de logros y misiones (gamificación)
         await db.execute('''
           CREATE TABLE IF NOT EXISTS logros_misiones (

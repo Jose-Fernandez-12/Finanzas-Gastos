@@ -1,6 +1,7 @@
 class GastoFijo {
   final int id;
   final int categoriaId;
+  final int? sobreId;
   final String nombre;
   final double monto;
   final int diaPago;
@@ -18,6 +19,7 @@ class GastoFijo {
   GastoFijo({
     required this.id,
     required this.categoriaId,
+    this.sobreId,
     required this.nombre,
     required this.monto,
     required this.diaPago,
@@ -35,6 +37,7 @@ class GastoFijo {
     return GastoFijo(
       id: map['id'] as int,
       categoriaId: map['categoria_id'] ?? 0,
+      sobreId: map['sobre_id'] as int?,
       nombre: map['nombre'] ?? '',
       monto: (map['monto'] as num).toDouble(),
       diaPago: map['dia_pago'] ?? 0,
@@ -50,8 +53,7 @@ class GastoFijo {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'categoria_id': categoriaId,
       'nombre': nombre,
       'monto': monto,
@@ -62,5 +64,8 @@ class GastoFijo {
       'activo': activo,
       'fecha_ultimo_pago': fechaUltimoPago,
     };
+    if (id != 0) map['id'] = id;
+    if (sobreId != null) map['sobre_id'] = sobreId;
+    return map;
   }
 }

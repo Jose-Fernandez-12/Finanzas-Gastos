@@ -6,6 +6,7 @@ import '../../core/local_repository.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/virtual_assistant_provider.dart';
+import '../../providers/presupuesto_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
 
@@ -323,21 +324,116 @@ class _CompraCardState extends ConsumerState<_CompraCard> {
                   Divider(color: Colors.white.withAlpha(15)),
                   const Text('Tabla de amortizacion', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 10),
-                  ...cuotas.map((cuota) => CuotaRow(
-                    cuota: cuota,
-                    onTapCuota: () => widget.onTapCuota(cuota),
-                    onPagar: cuota['estado'] == 'PENDIENTE' ? () async {
-                      await LocalRepository.instance.pagarCuota(widget.tarjetaId, c['id'] as int, cuota['id'] as int);
-                      ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
-                      widget.onPagoCuota();
-                    } : null,
-                  )),
+                  ...cuotas.map((cuota) {
+                    final montoCuota = (cuota['valor_cuota'] as num?)?.toDouble() ?? 0.0;
+                    return CuotaRow(
+                      cuota: cuota,
+                      onTapCuota: () => widget.onTapCuota(cuota),
+                      onPagar: cuota['estado'] == 'PENDIENTE' ? () async {
+                        await _promptPagoCuotaConSobre(
+                          context,
+                          ref,
+                          widget.tarjetaId,
+                          c['id'] as int,
+                          cuota['id'] as int,
+                          montoCuota,
+                          widget.onPagoCuota,
+                        );
+                      } : null,
+                    );
+                  }),
                 ],
               ),
             ),
             crossFadeState: _expandida ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           ),
         ],
+      ),
+    );
+  }
+}
+
+Future<void> _promptPagoCuotaConSobre(
+  BuildContext context,
+  WidgetRef ref,
+  int tarjetaId,
+  int compraId,
+  int cuotaId,
+  double montoCuota,
+  VoidCallback onPagoCuota,
+) async {
+  final mes = mesActual();
+  final sobres = await SobresRepository.obtenerSobresDelMes(mes);
+  int? sobreSeleccionadoId;
+
+  if (sobres.isNotEmpty) {
+    for (var s in sobres) {
+      if (s.nombre.toLowerCase().contains('deuda') || s.nombre.toLowerCase().contains('tarjeta')) {
+        sobreSeleccionadoId = s.id;
+        break;
+      }
+    }
+  }
+
+  if (context.mounted) {
+    if (sobres.isEmpty) {
+      await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId);
+      ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+      onPagoCuota();
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.bgCard,
+          title: const Text('Confirmar pago de cuota', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Monto a pagar: ${formatCOP(montoCuota)}', style: const TextStyle(color: AppTheme.textSecondary)),
+              const SizedBox(height: 16),
+              const Text('Descontar este pago de un sobre:', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int?>(
+                value: sobreSeleccionadoId,
+                dropdownColor: AppTheme.surfaceColor,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('No descontar de ningún sobre')),
+                  ...sobres.map((s) => DropdownMenuItem<int?>(
+                    value: s.id,
+                    child: Text('${s.nombre} (Disp: ${formatCOP(s.disponible)})'),
+                  )),
+                ],
+                onChanged: (v) => setDialogState(() => sobreSeleccionadoId = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId);
+                if (sobreSeleccionadoId != null) {
+                  await SobresRepository.registrarGastoDirecto(
+                    sobreSeleccionadoId!,
+                    montoCuota,
+                    'Pago Cuota Tarjeta',
+                  );
+                  ref.invalidate(presupuestoProvider(mes));
+                }
+                ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+                onPagoCuota();
+              },
+              child: const Text('PAGAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }

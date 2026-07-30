@@ -7,6 +7,7 @@ import '../core/local_repository.dart';
 import '../providers/gastos_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/virtual_assistant_provider.dart';
+import '../providers/presupuesto_provider.dart';
 import '../models/gasto_fijo.dart';
 
 class GastosScreen extends ConsumerStatefulWidget {
@@ -355,7 +356,9 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
   final _monto  = TextEditingController();
   final _dia    = TextEditingController();
   List<dynamic> _categorias = [];
+  List<Sobre>   _sobres = [];
   int?  _categoriaId;
+  int?  _sobreId;
   bool  _esFijo = true;
   bool  _saving = false;
 
@@ -367,6 +370,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
       _monto.text  = widget.gastoExistente!.monto.toString();
       _dia.text    = widget.gastoExistente!.diaPago.toString();
       _categoriaId = widget.gastoExistente!.categoriaId;
+      _sobreId     = widget.gastoExistente!.sobreId;
       _esFijo      = widget.gastoExistente!.esFijo == 1;
     }
     LocalRepository.instance.getCategoriasGasto().then((r) {
@@ -376,6 +380,9 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
           _categoriaId = _categorias[0]['id'] as int;
         }
       });
+    });
+    SobresRepository.obtenerSobresDelMes(mesActual()).then((list) {
+      if (mounted) setState(() => _sobres = list);
     });
   }
 
@@ -404,6 +411,23 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
                   )).toList(),
                   onChanged: (v) => setState(() => _categoriaId = v),
                 ),
+              if (_sobres.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: _sobreId,
+                  decoration: const InputDecoration(labelText: 'Asignar a sobre virtual (Opcional)'),
+                  dropdownColor: AppTheme.surfaceColor,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('Ningún sobre')),
+                    ..._sobres.map((s) => DropdownMenuItem<int?>(
+                      value: s.id,
+                      child: Text('${s.nombre} (Disp: ${formatCOP(s.disponible)})'),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => _sobreId = v),
+                ),
+              ],
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nombre, style: const TextStyle(color: AppTheme.textPrimary),
@@ -464,6 +488,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
     try {
       final data = {
         'categoria_id': _categoriaId,
+        'sobre_id':     _sobreId,
         'nombre':       _nombre.text.trim(),
         'monto':        double.parse(_monto.text),
         'dia_pago':     _dia.text.isEmpty ? null : int.parse(_dia.text),
