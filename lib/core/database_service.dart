@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'amortization_calculator.dart';
 
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._init();
@@ -150,6 +151,9 @@ class DatabaseService {
             creado_en       TEXT DEFAULT (datetime('now'))
           )
         ''');
+
+        // Ejecutar corrección de cuotas RappiCard
+        await _fixRappiCardCuotas(db);
       },
     );
   }
@@ -213,5 +217,65 @@ class DatabaseService {
     final db = await instance.database;
     _database = null;
     return db.close();
+  }
+
+  static Future<void> _fixRappiCardCuotas(Database db) async {
+    try {
+      final tarjetas = await db.rawQuery("SELECT * FROM tarjetas_credito WHERE banco LIKE '%rappi%'");
+      for (var t in tarjetas) {
+        final tId = t['id'];
+        final banco = t['banco'].toString();
+        final diaCorte = (t['fecha_corte'] as num).toInt();
+        final diaPago = (t['fecha_pago'] as num).toInt();
+
+        final compras = await db.rawQuery("SELECT * FROM compras_tarjeta WHERE tarjeta_id = ? AND num_cuotas > 1", [tId]);
+        for (var c in compras) {
+          final compraId = c['id'] as int;
+          final montoTotal = (c['monto_total'] as num).toDouble();
+          final tasaMensual = (c['tasa_interes_mensual'] as num).toDouble();
+          final numCuotas = c['num_cuotas'] as int;
+          final fechaCompra = c['fecha_compra'].toString();
+
+          final cuotasExistentes = await db.rawQuery("SELECT numero_cuota, estado, fecha_pago_real FROM cuotas_amortizacion WHERE compra_id = ?", [compraId]);
+          final Map<int, Map<String, dynamic>> estadosExistentes = {};
+          for (var q in cuotasExistentes) {
+            estadosExistentes[q['numero_cuota'] as int] = {
+              'estado': q['estado'],
+              'fecha_pago_real': q['fecha_pago_real']
+            };
+          }
+
+          final nuevaTabla = AmortizationCalculator.generarTablaAmortizacion(
+            montoTotal, tasaMensual, numCuotas, fechaCompra, diaCorte, diaPago, banco
+          );
+
+          await db.transaction((txn) async {
+            await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [compraId]);
+            for (var cuota in nuevaTabla) {
+              final numC = cuota['numero_cuota'] as int;
+              final est = estadosExistentes[numC]?['estado'] ?? cuota['estado'];
+              final fPagoReal = estadosExistentes[numC]?['fecha_pago_real'];
+
+              await txn.insert('cuotas_amortizacion', {
+                'compra_id': compraId,
+                'tarjeta_id': tId,
+                'numero_cuota': numC,
+                'fecha_vencimiento': cuota['fecha_vencimiento'],
+                'saldo_inicial': cuota['saldo_inicial'],
+                'valor_capital': cuota['valor_capital'],
+                'valor_interes': cuota['valor_interes'],
+                'valor_cuota': cuota['valor_cuota'],
+                'saldo_final': cuota['saldo_final'],
+                'estado': est,
+                'fecha_pago_real': fPagoReal
+              });
+            }
+          });
+        }
+      }
+      print("Migracion de cuotas de RappiCard completada con exito.");
+    } catch (e) {
+      print("Error al migrar cuotas de RappiCard: $e");
+    }
   }
 }

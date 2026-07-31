@@ -41,18 +41,32 @@ class AmortizationCalculator {
     
     DateTime fechaActualPago = calcularPrimerPago(fechaCompra, diaCorte, diaPago);
 
+    final List<double> listInteres = [];
+    if (esRappi && numCuotas > 1) {
+      double tempSaldo = capital;
+      for (int k = 1; k <= numCuotas; k++) {
+        double interes = 0;
+        if (k == 1) {
+          interes = double.parse((tempSaldo * tasaMensual * 0.7).toStringAsFixed(2));
+        } else if (k == numCuotas) {
+          interes = 0;
+        } else {
+          interes = double.parse((tempSaldo * tasaMensual).toStringAsFixed(2));
+        }
+        listInteres.add(interes);
+        tempSaldo = double.parse(max(0.0, tempSaldo - abonoCapitalRappi).toStringAsFixed(2));
+      }
+      final reversedInteres = listInteres.reversed.toList();
+      listInteres.clear();
+      listInteres.addAll(reversedInteres);
+    }
+
     for (int k = 1; k <= numCuotas; k++) {
       double interes = 0;
       double capK = 0;
       
       if (esRappi && numCuotas > 1) {
-        if (k == 1) {
-          interes = double.parse((saldo * tasaMensual * 0.7).toStringAsFixed(2));
-        } else if (k == numCuotas) {
-          interes = 0;
-        } else {
-          interes = double.parse((saldo * tasaMensual).toStringAsFixed(2));
-        }
+        interes = listInteres[k - 1];
         capK = abonoCapitalRappi;
       } else {
         interes = double.parse((saldo * tasaMensual).toStringAsFixed(2));
