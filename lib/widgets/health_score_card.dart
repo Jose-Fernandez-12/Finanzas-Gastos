@@ -66,9 +66,9 @@ class _HealthScoreCardState extends State<HealthScoreCard>
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.bgCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppTheme.borderLight),
         boxShadow: [
           BoxShadow(
             color: color.withAlpha(20),
@@ -90,7 +90,7 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
-                  color: Color(0xFF9CA3AF),
+                  color: AppTheme.textMuted,
                 ),
               ),
               Row(
@@ -103,17 +103,17 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0EA5E9).withAlpha(20),
+                          color: AppTheme.primary.withAlpha(20),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.science_rounded, size: 13, color: Color(0xFF0EA5E9)),
+                            Icon(Icons.science_rounded, size: 13, color: AppTheme.primary),
                             SizedBox(width: 4),
                             Text(
                               'LAB',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0EA5E9), letterSpacing: 0.5),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primary, letterSpacing: 0.5),
                             ),
                           ],
                         ),
@@ -173,7 +173,7 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                             '/100',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF9CA3AF),
+                              color: AppTheme.textMuted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -243,9 +243,9 @@ class _HealthScoreCardState extends State<HealthScoreCard>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
+              color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: AppTheme.borderLight),
             ),
             child: Row(
               children: [
