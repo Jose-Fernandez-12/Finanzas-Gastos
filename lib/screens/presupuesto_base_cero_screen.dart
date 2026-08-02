@@ -927,7 +927,8 @@ class _CrearSobreSheetState extends State<_CrearSobreSheet> {
                 );
                 await SobresRepository.crear(sobre);
                 widget.onCreado();
-                if (mounted) Navigator.pop(context);
+                if (!context.mounted) return;
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,

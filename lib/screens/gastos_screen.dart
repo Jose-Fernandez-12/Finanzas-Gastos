@@ -402,7 +402,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
               const SizedBox(height: 20),
               if (_categorias.isNotEmpty)
                 DropdownButtonFormField<int>(
-                  value:        _categoriaId,
+                  value: _categoriaId,
                   decoration:   const InputDecoration(labelText: 'Categoria'),
                   dropdownColor: AppTheme.surfaceColor,
                   style:        const TextStyle(color: AppTheme.textPrimary),
@@ -414,7 +414,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
               if (_sobres.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
-                  value: _sobreId,
+                  initialValue: _sobreId,
                   decoration: const InputDecoration(labelText: 'Asignar a sobre virtual (Opcional)'),
                   dropdownColor: AppTheme.surfaceColor,
                   style: const TextStyle(color: AppTheme.textPrimary),

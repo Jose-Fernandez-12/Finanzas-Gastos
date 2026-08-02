@@ -85,7 +85,7 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
                 child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
               ),
               error: (_, __) => const SizedBox.shrink(),
-              data: (sobres) => _SobresCarrusel(sobres: sobres),
+              data: (state) => _SobresCarrusel(sobres: state.sobres),
             ),
           ),
 
@@ -312,8 +312,8 @@ class _ResumenCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ingresos = ingresosAsync.valueOrNull ?? [];
-    final gastos   = gastosAsync.valueOrNull ?? [];
+    final ingresos = ingresosAsync.value ?? [];
+    final gastos   = gastosAsync.value ?? [];
     final totalInc = ingresos.fold<double>(0, (s, i) => s + i.monto);
     final totalExp = gastos.fold<double>(0, (s, g) => s + g.monto);
     final balance  = totalInc - totalExp;

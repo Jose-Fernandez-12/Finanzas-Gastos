@@ -100,7 +100,7 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
                 child: ingresosList.isEmpty
                     ? const _Empty(mensaje: 'Sin ingresos registrados este mes')
                     : RefreshIndicator(
-                        color:     AppTheme.primary,
+                        color: AppTheme.primary,
                         onRefresh: () async => ref.invalidate(ingresosProvider(_mes)),
                         child: ListView.builder(
                           padding:     const EdgeInsets.all(16).copyWith(top: 4),
@@ -354,7 +354,7 @@ class _FormIngresoState extends ConsumerState<_FormIngreso> {
 
               if (_categorias.isNotEmpty)
                 DropdownButtonFormField<int>(
-                  value:        _categoriaId,
+                  value: _categoriaId,
                   decoration:   const InputDecoration(labelText: 'Categoria'),
                   dropdownColor: AppTheme.surfaceColor,
                   style:        const TextStyle(color: AppTheme.textPrimary),

@@ -81,10 +81,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           text: 'Copia de seguridad de Mis Finanzas (finanzas.db)',
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay base de datos para exportar')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay base de datos para exportar')));
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
+      }
     }
   }
 
@@ -96,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (result != null && result.files.single.path != null) {
         final backupPath = result.files.single.path!;
         
+        if (!mounted) return;
         final conf = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
@@ -124,7 +129,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
+      }
     }
   }
 
@@ -213,6 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             Switch(
                               value: _permissionGranted,
+                              activeTrackColor: AppTheme.primary.withAlpha(100),
                               activeColor: AppTheme.primary,
                               onChanged: (val) async {
                                 // Siempre abrir la configuracion, ya sea para apagar o prender
@@ -249,6 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               Switch(
                                 value: _loggingEnabled,
+                                activeTrackColor: AppTheme.primary.withAlpha(100),
                                 activeColor: AppTheme.primary,
                                 onChanged: (val) async {
                                   await NotificationListenerChannel.instance.setLoggingEnabled(val);

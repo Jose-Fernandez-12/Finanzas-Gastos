@@ -9,6 +9,7 @@ import '../models/tarjeta_credito.dart';
 import '../models/bolsillo_ahorro.dart';
 import '../models/cuenta_cobrar.dart';
 import 'tarjetas/tarjeta_detalle_screen.dart';
+import 'tarjetas/tarjetas_screen.dart';
 import 'ahorros_screen.dart';
 import 'cuentas_cobrar_screen.dart';
 
@@ -112,7 +113,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                 actionLabel: '+ Registrar',
                 onAction: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const TarjetaDetalleScreen.empty()),
+                  MaterialPageRoute(builder: (_) => const TarjetasScreen()),
                 ).then((_) => ref.invalidate(comprasActivasProvider)),
               ),
             ),
@@ -635,8 +636,8 @@ class _MetasList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final a = ahorros[i];
-        final pct = a.montoMeta > 0
-            ? (a.montoActual / a.montoMeta).clamp(0.0, 1.0)
+        final pct = a.metaMonto > 0
+            ? (a.montoActual / a.metaMonto).clamp(0.0, 1.0)
             : 0.0;
         return Container(
           padding: const EdgeInsets.all(14),
@@ -696,7 +697,7 @@ class _MetasList extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${formatCOP(a.montoActual)} / ${formatCOP(a.montoMeta)}',
+                      '${formatCOP(a.montoActual)} / ${formatCOP(a.metaMonto)}',
                       style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                     ),
                   ],
