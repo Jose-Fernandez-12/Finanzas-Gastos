@@ -32,6 +32,17 @@ String formatMes(String? mes) {
 /// Mes actual en formato YYYY-MM
 String mesActual() => DateFormat('yyyy-MM').format(DateTime.now());
 
+/// Sumar/restar meses a un formato YYYY-MM
+String sumMonths(String baseMonth, int offset) {
+  try {
+    final dt = DateTime.parse('$baseMonth-01');
+    final newDt = DateTime(dt.year, dt.month + offset, 1);
+    return DateFormat('yyyy-MM').format(newDt);
+  } catch (_) {
+    return baseMonth;
+  }
+}
+
 /// Color hexadecimal a Color de Flutter
 Color hexToColor(String hex) {
   hex = hex.replaceAll('#', '');

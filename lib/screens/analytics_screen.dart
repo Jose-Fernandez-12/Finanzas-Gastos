@@ -9,6 +9,8 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import 'dart:math' as math;
 import 'reporte_detallado_screen.dart';
+import '../widgets/common_widgets.dart';
+import '../providers/proyeccion_capacidad_provider.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -26,6 +28,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   double _pctAbonoExtra = 0.0;
   double _abonoSimulador = 200000.0;
   bool _simuladorAvalancha = true;
+  String _proyeccionSelectedMonth = sumMonths(mesActual(), 1);
+  int _proyeccionOffset = 1;
 
   Map<String, dynamic>? _lastProviderData;
   Map<String, dynamic>? _lastAdvData;
@@ -251,6 +255,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
             const SizedBox(height: 20),
           ],
+          
+          // Proyección de Capacidad Crediticia
+          const _SectionTitle(title: 'Proyección de Capacidad Crediticia'),
+          const SizedBox(height: 10),
+          _buildProyeccionCapacidadModule(),
+          const SizedBox(height: 20),
 
           // Días de esclavitud financiera
           if (modulos.contains(AnalyticsModuleIds.esclavitudFinanciera) && adv != null && adv['dias_esclavitud'] != null) ...[
@@ -371,6 +381,66 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ],
 
           const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProyeccionCapacidadModule() {
+    final proyeccionAsync = ref.watch(proyeccionCapacidadProvider(_proyeccionSelectedMonth));
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, color: AppTheme.primary),
+                onPressed: _proyeccionOffset > 1
+                    ? () {
+                        setState(() {
+                          _proyeccionOffset--;
+                          _proyeccionSelectedMonth = sumMonths(mesActual(), _proyeccionOffset);
+                        });
+                      }
+                    : null,
+              ),
+              Text(
+                formatMes(_proyeccionSelectedMonth),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded, color: AppTheme.primary),
+                onPressed: _proyeccionOffset < 6
+                    ? () {
+                        setState(() {
+                          _proyeccionOffset++;
+                          _proyeccionSelectedMonth = sumMonths(mesActual(), _proyeccionOffset);
+                        });
+                      }
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          proyeccionAsync.when(
+            data: (data) {
+              return CapacidadCrediticiaCard(
+                pct: data['porcentaje_endeudamiento'] as double,
+                nivel: data['nivel_riesgo'] as String,
+                liquidez: data['liquidez_disponible'] as double,
+              );
+            },
+            loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))),
+            error: (e, st) => Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Error al cargar proyección.', style: TextStyle(color: AppTheme.danger)))),
+          ),
         ],
       ),
     );
