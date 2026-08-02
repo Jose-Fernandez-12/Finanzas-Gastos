@@ -456,7 +456,7 @@ class _FormCuentaState extends State<_FormCuenta> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value:        _modalidad,
+                initialValue: _modalidad,
                 decoration:   const InputDecoration(labelText: 'Modalidad de pago'),
                 dropdownColor: AppTheme.surfaceColor,
                 style:        const TextStyle(color: AppTheme.textPrimary),

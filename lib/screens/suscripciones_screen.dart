@@ -97,6 +97,7 @@ class _SuscripcionesScreenState extends ConsumerState<SuscripcionesScreen>
         icon: const Icon(Icons.add_rounded),
         label: const Text('Nueva'),
         backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
       ),
       body: asyncData.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),

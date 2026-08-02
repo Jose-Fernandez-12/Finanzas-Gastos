@@ -33,6 +33,7 @@ class _AhorrosScreenState extends ConsumerState<AhorrosScreen> {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Nueva meta'),
         backgroundColor: AppTheme.colorAhorros,
+        foregroundColor: Colors.white,
       ),
       body: ahorrosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
