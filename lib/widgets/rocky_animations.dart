@@ -391,7 +391,7 @@ class RockyAnimationSpec {
         objs.add(PixelObject(
           type: 'crown',
           x: 21,
-          y: -40 + p * 10,
+          y: -40 + p * 25, // Before: -40 + p * 10
           progress: p < 0.5 ? 0 : (p - 0.5) * 2,
           color: const Color(0xFFFFBF00),
         ));

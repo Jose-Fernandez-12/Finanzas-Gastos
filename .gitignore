@@ -46,3 +46,22 @@ app.*.map.json
 /android/app/release
 /finanzas
 finanzas.db
+
+# Development databases (local only)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Dev artifacts
+*.patch
+doctor.txt
+planner.txt
+old_file*
+devtools_options.yaml
+
+# Design mockups (merged, no longer needed)
+refactorizacionvisual/
+
+# HTML preview files
+*.html

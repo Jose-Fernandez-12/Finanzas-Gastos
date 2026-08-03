@@ -64,7 +64,7 @@ class FinanzasApp extends StatelessWidget {
         return Stack(
           children: [
             if (child != null) child,
-            // Rocky sigue igual — overlay flotante global sin cambios
+            // Rocky — global, aparece en todas las pantallas
             const GlobalVirtualAssistant(),
           ],
         );

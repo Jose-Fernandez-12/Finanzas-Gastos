@@ -89,10 +89,15 @@ class SobreGasto {
 final presupuestoProvider = FutureProvider.family<PresupuestoState, String>((ref, mes) async {
   final db = DatabaseService.instance;
 
-  // Obtener ingresos del mes
+  // Obtener ingresos del mes (incluyendo ingresos fijos)
   final ingresoRow = await db.getOne('''
     SELECT COALESCE(SUM(monto), 0) as total FROM ingresos
-    WHERE substr(COALESCE(mes_referencia, fecha), 1, 7) = ?
+    WHERE es_fijo = 1 OR (
+      CASE 
+        WHEN mes_referencia IS NOT NULL AND mes_referencia != '' THEN mes_referencia
+        ELSE substr(fecha, 1, 7)
+      END
+    ) = ?
   ''', [mes]);
   final ingresosMes = (ingresoRow?['total'] as num?)?.toDouble() ?? 0;
 
