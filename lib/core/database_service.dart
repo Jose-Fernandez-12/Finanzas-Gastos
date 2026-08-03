@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -19,157 +17,388 @@ class DatabaseService {
   }
 
   Future<Database> _initDB(String filePath) async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, filePath);
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    final path = join(documentsDirectory.path, filePath);
 
-    // Comprobar si la base de datos ya existe
-    var exists = await databaseExists(path);
-
-    if (!exists) {
-      // Debería ocurrir solo la primera vez que se lanza la app
-      print("Creando nueva copia de la base de datos desde los assets");
-
-      // Asegurarse de que el directorio padre existe
-      try {
-        await Directory(dirname(path)).create(recursive: true);
-      } catch (_) {}
-
-      // Copiar de los assets
-      ByteData data = await rootBundle.load(join("assets/db", filePath));
-      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-
-      // Escribir y volcar los bytes copiados
-      await File(path).writeAsBytes(bytes, flush: true);
-    } else {
-      print("Abriendo base de datos existente");
-    }
-
-    // Abrir la base de datos
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onOpen: (db) async {
-        // Habilitar foreign keys si no están habilitadas por defecto
         await db.execute("PRAGMA foreign_keys = ON;");
-        // Crear tabla de logs de notificaciones si no existe (migracion no destructiva)
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS notification_logs (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            package_name    TEXT NOT NULL,
-            app_label       TEXT,
-            titulo          TEXT,
-            cuerpo          TEXT,
-            monto_detectado REAL,
-            comercio_detectado TEXT,
-            tipo_tarjeta    TEXT,
-            parseado        INTEGER DEFAULT 0,
-            creado_en       TEXT DEFAULT (datetime('now'))
-          )
-        ''');
-
-        // Tabla de suscripciones (modulo independiente)
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS suscripciones (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre            TEXT NOT NULL,
-            monto             REAL NOT NULL,
-            dia_cobro         INTEGER NOT NULL DEFAULT 1,
-            frecuencia        TEXT NOT NULL DEFAULT 'Mensual',
-            recordatorio_dias INTEGER NOT NULL DEFAULT 1,
-            color             TEXT NOT NULL DEFAULT '#4F46E5',
-            notas             TEXT,
-            activa            INTEGER NOT NULL DEFAULT 1,
-            fecha_ultimo_cobro TEXT,
-            creado_en         TEXT DEFAULT (datetime('now')),
-            actualizado_en    TEXT DEFAULT (datetime('now'))
-          )
-        ''');
-
-
-        // Migraciones de columnas seguras (no destructivas) para bases de datos existentes
-        try { await db.execute("ALTER TABLE cuotas_amortizacion ADD COLUMN fecha_pago_real TEXT;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN es_fijo INTEGER DEFAULT 1;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE ingresos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE ingresos ADD COLUMN es_fijo INTEGER DEFAULT 0;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN es_avance INTEGER DEFAULT 0;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
-
-        // Migraciones para Ahorros (Cuotas y metas)
-        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN cuota_monto REAL DEFAULT 0;"); } catch (_) {}
-        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN frecuencia_cuota TEXT DEFAULT 'Mensual';"); } catch (_) {}
-        try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN meses_meta INTEGER;"); } catch (_) {}
-
-        // Migraciones para Suscripciones (Gastos Fijos expandidos)
-        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN tipo_frecuencia TEXT DEFAULT 'Mensual';"); } catch (_) {}
-        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN recordatorio_dias INTEGER DEFAULT 1;"); } catch (_) {}
-
-        // Tabla de presupuesto base cero (sobres virtuales)
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS presupuesto_sobres (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre_sobre    TEXT NOT NULL,
-            monto_asignado  REAL NOT NULL DEFAULT 0,
-            gastado         REAL NOT NULL DEFAULT 0,
-            color           TEXT NOT NULL DEFAULT '#4F46E5',
-            icono           TEXT NOT NULL DEFAULT 'account_balance_wallet',
-            mes_referencia  TEXT NOT NULL,
-            creado_en       TEXT DEFAULT (datetime('now')),
-            actualizado_en  TEXT DEFAULT (datetime('now'))
-          )
-        ''');
-
-        // Tabla de gastos directos asociados a sobres
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS presupuesto_sobre_gastos (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            sobre_id     INTEGER NOT NULL,
-            monto        REAL NOT NULL,
-            concepto     TEXT,
-            fecha        TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY(sobre_id) REFERENCES presupuesto_sobres(id) ON DELETE CASCADE
-          )
-        ''');
-
-        try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN sobre_id INTEGER;"); } catch (_) {}
-
-
-        // Tabla de logros y misiones (gamificación)
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS logros_misiones (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            clave           TEXT NOT NULL UNIQUE,
-            titulo          TEXT NOT NULL,
-            descripcion     TEXT NOT NULL,
-            icono           TEXT NOT NULL DEFAULT 'emoji_events',
-            categoria       TEXT NOT NULL DEFAULT 'general',
-            meta_valor      REAL NOT NULL DEFAULT 0,
-            progreso        REAL NOT NULL DEFAULT 0,
-            completado      INTEGER NOT NULL DEFAULT 0,
-            fecha_completado TEXT,
-            creado_en       TEXT DEFAULT (datetime('now'))
-          )
-        ''');
-
-        // Ejecutar corrección de cuotas RappiCard
+        // Migraciones de columnas seguras para bases de datos existentes
+        await _runSafeMigrations(db);
+        // Corrección de cuotas RappiCard
         await _fixRappiCardCuotas(db);
-
-        // Eliminar duplicados históricos de gastos fijos generados por la versión vieja
-        await db.execute("DELETE FROM gastos_fijos WHERE nombre LIKE 'Cuota TC:%';");
-
-        // Eliminar compras antiguas de Nu que ya se pagaron y duplican el gasto
-        await db.transaction((txn) async {
-          final rows = await txn.rawQuery("SELECT id FROM compras_tarjeta WHERE descripcion IN ('pago minimo', 'nubank')");
-          for (var r in rows) {
-            final id = r['id'];
-            await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [id]);
-            await txn.delete('compras_tarjeta', where: 'id = ?', whereArgs: [id]);
-          }
-        });
+        // Limpieza de datos históricos
+        await _cleanupLegacyData(db);
       },
     );
   }
+  Future<void> _onCreate(Database db, int version) async {
+    await db.execute("PRAGMA foreign_keys = ON;");
+    
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS categorias_ingreso (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        icono TEXT NOT NULL,
+        color TEXT NOT NULL,
+        activa INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+    
+    await db.execute('''
+      INSERT INTO categorias_ingreso (nombre, icono, color) VALUES 
+      ('Salario', 'payments', '#4CAF50'),
+      ('Negocio', 'storefront', '#2196F3'),
+      ('Inversiones', 'trending_up', '#9C27B0'),
+      ('Otros', 'more_horiz', '#757575')
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS categorias_gasto (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        icono TEXT NOT NULL,
+        color TEXT NOT NULL,
+        activa INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+    
+    await db.execute('''
+      INSERT INTO categorias_gasto (nombre, icono, color) VALUES 
+      ('Vivienda', 'home', '#F44336'),
+      ('Alimentación', 'restaurant', '#FF9800'),
+      ('Transporte', 'directions_car', '#03A9F4'),
+      ('Educación', 'school', '#9C27B0'),
+      ('Entretenimiento', 'sports_esports', '#E91E63'),
+      ('Salud', 'favorite', '#00BCD4'),
+      ('Otros', 'more_horiz', '#757575')
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS tarjetas_credito (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        banco                 TEXT NOT NULL,
+        nombre_tarjeta        TEXT NOT NULL,
+        cupo_total            REAL NOT NULL DEFAULT 0,
+        cupo_disponible       REAL NOT NULL DEFAULT 0,
+        fecha_corte           INTEGER NOT NULL DEFAULT 1,
+        fecha_pago            INTEGER NOT NULL DEFAULT 15,
+        tasa_interes_mensual  REAL NOT NULL DEFAULT 0,
+        cupo_avances_total    REAL NOT NULL DEFAULT 0,
+        cuota_manejo          REAL NOT NULL DEFAULT 0,
+        color                 TEXT NOT NULL DEFAULT '#1976D2',
+        notas                 TEXT,
+        activa                INTEGER NOT NULL DEFAULT 1,
+        creado_en             TEXT DEFAULT (datetime('now')),
+        actualizado_en        TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS compras_tarjeta (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        tarjeta_id            INTEGER NOT NULL,
+        descripcion           TEXT NOT NULL,
+        monto_total           REAL NOT NULL,
+        num_cuotas            INTEGER NOT NULL DEFAULT 1,
+        fecha_compra          TEXT NOT NULL,
+        tasa_interes_mensual  REAL DEFAULT 0,
+        es_avance             INTEGER DEFAULT 0,
+        creado_en             TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(tarjeta_id) REFERENCES tarjetas_credito(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cuotas_amortizacion (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        compra_id        INTEGER NOT NULL,
+        tarjeta_id       INTEGER NOT NULL,
+        numero_cuota     INTEGER NOT NULL,
+        fecha_vencimiento TEXT NOT NULL,
+        saldo_inicial    REAL NOT NULL,
+        valor_capital    REAL NOT NULL,
+        valor_interes    REAL NOT NULL,
+        valor_cuota      REAL NOT NULL,
+        saldo_final      REAL NOT NULL,
+        estado           TEXT NOT NULL DEFAULT 'pendiente',
+        fecha_pago_real  TEXT,
+        FOREIGN KEY(compra_id) REFERENCES compras_tarjeta(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS gastos_fijos (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        categoria_id     INTEGER NOT NULL DEFAULT 1,
+        sobre_id         INTEGER,
+        nombre           TEXT NOT NULL,
+        monto            REAL NOT NULL,
+        dia_pago         INTEGER NOT NULL DEFAULT 1,
+        es_fijo          INTEGER DEFAULT 1,
+        mes_referencia   TEXT NOT NULL DEFAULT '',
+        notas            TEXT,
+        activo           INTEGER NOT NULL DEFAULT 1,
+        fecha_ultimo_pago TEXT,
+        tipo_frecuencia  TEXT DEFAULT 'Mensual',
+        recordatorio_dias INTEGER DEFAULT 1,
+        creado_en        TEXT DEFAULT (datetime('now')),
+        actualizado_en   TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ingresos (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        categoria_id   INTEGER NOT NULL DEFAULT 1,
+        descripcion    TEXT,
+        monto          REAL NOT NULL,
+        es_fijo        INTEGER DEFAULT 0,
+        fecha          TEXT NOT NULL DEFAULT '',
+        mes_referencia TEXT NOT NULL DEFAULT '',
+        notas          TEXT,
+        creado_en      TEXT DEFAULT (datetime('now')),
+        actualizado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bolsillos_ahorro (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre           TEXT NOT NULL,
+        meta_monto       REAL NOT NULL DEFAULT 0,
+        monto_actual     REAL NOT NULL DEFAULT 0,
+        fecha_creacion   TEXT NOT NULL DEFAULT (datetime('now')),
+        fecha_meta       TEXT,
+        color            TEXT NOT NULL DEFAULT '#4CAF50',
+        notas            TEXT,
+        activo           INTEGER NOT NULL DEFAULT 1,
+        cuota_monto      REAL DEFAULT 0,
+        frecuencia_cuota TEXT DEFAULT 'Mensual',
+        meses_meta       INTEGER,
+        actualizado_en   TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cuentas_cobrar (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre_deudor TEXT NOT NULL,
+        telefono     TEXT,
+        monto_total  REAL NOT NULL,
+        saldo_pendiente REAL NOT NULL,
+        modalidad    TEXT,
+        num_cuotas   INTEGER DEFAULT 1,
+        valor_cuota  REAL,
+        fecha_primer_vencimiento TEXT,
+        periodicidad TEXT,
+        estado       TEXT NOT NULL DEFAULT 'AL_DIA',
+        notas        TEXT,
+        creado_en    TEXT DEFAULT (datetime('now')),
+        actualizado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS suscripciones (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre              TEXT NOT NULL,
+        monto               REAL NOT NULL,
+        dia_cobro           INTEGER NOT NULL DEFAULT 1,
+        frecuencia          TEXT NOT NULL DEFAULT 'Mensual',
+        recordatorio_dias   INTEGER NOT NULL DEFAULT 1,
+        color               TEXT NOT NULL DEFAULT '#4F46E5',
+        notas               TEXT,
+        activa              INTEGER NOT NULL DEFAULT 1,
+        fecha_ultimo_cobro  TEXT,
+        creado_en           TEXT DEFAULT (datetime('now')),
+        actualizado_en      TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_name        TEXT NOT NULL,
+        app_label           TEXT,
+        titulo              TEXT,
+        cuerpo              TEXT,
+        monto_detectado     REAL,
+        comercio_detectado  TEXT,
+        tipo_tarjeta        TEXT,
+        parseado            INTEGER DEFAULT 0,
+        creado_en           TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS presupuesto_sobres (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre_sobre    TEXT NOT NULL,
+        monto_asignado  REAL NOT NULL DEFAULT 0,
+        gastado         REAL NOT NULL DEFAULT 0,
+        color           TEXT NOT NULL DEFAULT '#4F46E5',
+        icono           TEXT NOT NULL DEFAULT 'account_balance_wallet',
+        mes_referencia  TEXT NOT NULL,
+        creado_en       TEXT DEFAULT (datetime('now')),
+        actualizado_en  TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS presupuesto_sobre_gastos (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        sobre_id  INTEGER NOT NULL,
+        monto     REAL NOT NULL,
+        concepto  TEXT,
+        fecha     TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(sobre_id) REFERENCES presupuesto_sobres(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS logros_misiones (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        clave            TEXT NOT NULL UNIQUE,
+        titulo           TEXT NOT NULL,
+        descripcion      TEXT NOT NULL,
+        icono            TEXT NOT NULL DEFAULT 'emoji_events',
+        categoria        TEXT NOT NULL DEFAULT 'general',
+        meta_valor       REAL NOT NULL DEFAULT 0,
+        progreso         REAL NOT NULL DEFAULT 0,
+        completado       INTEGER NOT NULL DEFAULT 0,
+        fecha_completado TEXT,
+        creado_en        TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Para migraciones futuras: if (oldVersion < 2) { ... }
+  }
+
+  Future<void> _runSafeMigrations(Database db) async {
+    // Estas migraciones son compatibles con bases de datos anteriores al esquema en código
+    try { await db.execute("ALTER TABLE cuotas_amortizacion ADD COLUMN fecha_pago_real TEXT;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN es_fijo INTEGER DEFAULT 1;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE ingresos ADD COLUMN mes_referencia TEXT;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE ingresos ADD COLUMN es_fijo INTEGER DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE compras_tarjeta ADD COLUMN es_avance INTEGER DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN tasa_interes_mensual REAL DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN cupo_avances_total REAL DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN cuota_manejo REAL DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN color TEXT DEFAULT '#1976D2';"); } catch (_) {}
+    try { await db.execute("ALTER TABLE tarjetas_credito ADD COLUMN notas TEXT;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN cuota_monto REAL DEFAULT 0;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN frecuencia_cuota TEXT DEFAULT 'Mensual';"); } catch (_) {}
+    try { await db.execute("ALTER TABLE bolsillos_ahorro ADD COLUMN meses_meta INTEGER;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN tipo_frecuencia TEXT DEFAULT 'Mensual';"); } catch (_) {}
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN recordatorio_dias INTEGER DEFAULT 1;"); } catch (_) {}
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN sobre_id INTEGER;"); } catch (_) {}
+
+    try { await db.execute("ALTER TABLE gastos_fijos ADD COLUMN actualizado_en TEXT DEFAULT (datetime('now'));"); } catch (_) {}
+    try { await db.execute("ALTER TABLE ingresos ADD COLUMN actualizado_en TEXT DEFAULT (datetime('now'));"); } catch (_) {}
+    try { await db.execute("ALTER TABLE cuentas_cobrar ADD COLUMN actualizado_en TEXT DEFAULT (datetime('now'));"); } catch (_) {}
+
+    // Tablas de categorias (pueden faltar en versiones viejas)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS categorias_ingreso (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL,
+        icono TEXT NOT NULL, color TEXT NOT NULL, activa INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+    final catIngCount = (await db.rawQuery('SELECT COUNT(*) as c FROM categorias_ingreso')).first['c'] as int;
+    if (catIngCount == 0) {
+      await db.execute('''
+        INSERT INTO categorias_ingreso (nombre, icono, color) VALUES 
+        ('Salario', 'payments', '#4CAF50'), ('Negocio', 'storefront', '#2196F3'),
+        ('Inversiones', 'trending_up', '#9C27B0'), ('Otros', 'more_horiz', '#757575')
+      ''');
+    }
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS categorias_gasto (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL,
+        icono TEXT NOT NULL, color TEXT NOT NULL, activa INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+    final catGasCount = (await db.rawQuery('SELECT COUNT(*) as c FROM categorias_gasto')).first['c'] as int;
+    if (catGasCount == 0) {
+      await db.execute('''
+        INSERT INTO categorias_gasto (nombre, icono, color) VALUES 
+        ('Vivienda', 'home', '#F44336'), ('Alimentacion', 'restaurant', '#FF9800'),
+        ('Transporte', 'directions_car', '#03A9F4'), ('Educacion', 'school', '#9C27B0'),
+        ('Entretenimiento', 'sports_esports', '#E91E63'), ('Salud', 'favorite', '#00BCD4'),
+        ('Otros', 'more_horiz', '#757575')
+      ''');
+    }
+
+    // Crear tablas que pueden faltar en versiones anteriores
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, package_name TEXT NOT NULL,
+        app_label TEXT, titulo TEXT, cuerpo TEXT, monto_detectado REAL,
+        comercio_detectado TEXT, tipo_tarjeta TEXT, parseado INTEGER DEFAULT 0,
+        creado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS suscripciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL,
+        monto REAL NOT NULL, dia_cobro INTEGER NOT NULL DEFAULT 1,
+        frecuencia TEXT NOT NULL DEFAULT 'Mensual', recordatorio_dias INTEGER NOT NULL DEFAULT 1,
+        color TEXT NOT NULL DEFAULT '#4F46E5', notas TEXT, activa INTEGER NOT NULL DEFAULT 1,
+        fecha_ultimo_cobro TEXT, creado_en TEXT DEFAULT (datetime('now')),
+        actualizado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS presupuesto_sobres (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre_sobre TEXT NOT NULL,
+        monto_asignado REAL NOT NULL DEFAULT 0, gastado REAL NOT NULL DEFAULT 0,
+        color TEXT NOT NULL DEFAULT '#4F46E5', icono TEXT NOT NULL DEFAULT 'account_balance_wallet',
+        mes_referencia TEXT NOT NULL, creado_en TEXT DEFAULT (datetime('now')),
+        actualizado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS presupuesto_sobre_gastos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, sobre_id INTEGER NOT NULL,
+        monto REAL NOT NULL, concepto TEXT, fecha TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(sobre_id) REFERENCES presupuesto_sobres(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS logros_misiones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, clave TEXT NOT NULL UNIQUE,
+        titulo TEXT NOT NULL, descripcion TEXT NOT NULL, icono TEXT NOT NULL DEFAULT 'emoji_events',
+        categoria TEXT NOT NULL DEFAULT 'general', meta_valor REAL NOT NULL DEFAULT 0,
+        progreso REAL NOT NULL DEFAULT 0, completado INTEGER NOT NULL DEFAULT 0,
+        fecha_completado TEXT, creado_en TEXT DEFAULT (datetime('now'))
+      )
+    ''');
+  }
+
+  Future<void> _cleanupLegacyData(Database db) async {
+    try {
+      await db.execute("DELETE FROM gastos_fijos WHERE nombre LIKE 'Cuota TC:%';");
+      await db.transaction((txn) async {
+        final rows = await txn.rawQuery("SELECT id FROM compras_tarjeta WHERE descripcion IN ('pago minimo', 'nubank')");
+        for (var r in rows) {
+          final id = r['id'];
+          await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [id]);
+          await txn.delete('compras_tarjeta', where: 'id = ?', whereArgs: [id]);
+        }
+      });
+    } catch (_) {}
+  }
+
+
 
   // --- Métodos de utilidad generales para envolver las operaciones ---
 

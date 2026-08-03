@@ -14,142 +14,201 @@ class GlobalVirtualAssistant extends ConsumerStatefulWidget {
   ConsumerState<GlobalVirtualAssistant> createState() => _GlobalVirtualAssistantState();
 }
 
-class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant> with SingleTickerProviderStateMixin {
-  // Posición inicial (abajo a la derecha)
-  double _x = 0;
-  double _y = 0;
-  bool _initialized = false;
+class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant> {
+  Timer? _dismissTimer;
+  String _lastMessage = '';
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
-      final size = MediaQuery.of(context).size;
-      _x = size.width - 75;
-      _y = size.height - 180;
-      _initialized = true;
-    }
+  void dispose() {
+    _dismissTimer?.cancel();
+    super.dispose();
   }
 
-  void _snapToEdge(Size size) {
-    setState(() {
-      if (_x > size.width / 2) {
-        _x = size.width - 75; // Borde derecho
-      } else {
-        _x = 0; // Borde izquierdo
+  void _startDismissTimer(String message) {
+    _dismissTimer?.cancel();
+    final int calcSeconds = (3 + (message.length / 20).ceil()).clamp(5, 10);
+    _dismissTimer = Timer(Duration(seconds: calcSeconds), () {
+      if (mounted) {
+        ref.read(virtualAssistantProvider.notifier).hideMessage();
       }
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(virtualAssistantProvider);
-    final size = MediaQuery.of(context).size;
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-
-    double displayY = _y;
-    double displayX = _x;
-
-    if (isKeyboardOpen) {
-      displayY = 50; 
-      displayX = size.width - 75; 
-    } else {
-      if (_y > size.height - 100) _y = size.height - 100;
-      if (_x > size.width - 75) _x = size.width - 75;
-    }
-
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutQuint,
-      left: displayX,
-      top: displayY,
-      child: IgnorePointer(
-        ignoring: isKeyboardOpen,
-        child: GestureDetector(
-          onPanUpdate: (details) {
-            if (isKeyboardOpen) return;
-            setState(() {
-              _x += details.delta.dx;
-              _y += details.delta.dy;
-              if (_x < 0) _x = 0;
-              if (_x > size.width - 75) _x = size.width - 75;
-              if (_y < 40) _y = 40;
-              if (_y > size.height - 100) _y = size.height - 100;
-            });
-          },
-          onPanEnd: (details) {
-            if (!isKeyboardOpen) _snapToEdge(size);
-          },
-          onTap: () => ref.read(virtualAssistantProvider.notifier).toggleVisibility(),
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: (isKeyboardOpen && !state.isAction) ? 0.25 : 1.0,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.bottomRight,
-              children: [
-                if (state.isVisible && (!isKeyboardOpen || state.isAction))
-                  Positioned(
-                    bottom: 60,
-                    right: (displayX > size.width / 2) ? 0 : null,
-                    left: (displayX <= size.width / 2) ? 0 : null,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 300),
-                        opacity: state.isVisible ? 1.0 : 0.0,
-                        child: Container(
-                          width: size.width * 0.65,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E), 
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(16),
-                              topRight: const Radius.circular(16),
-                              bottomLeft: Radius.circular((_x <= size.width / 2) ? 4 : 16),
-                              bottomRight: Radius.circular((_x > size.width / 2) ? 4 : 16),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(40),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                            border: Border.all(color: const Color(0xFF333333)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.smart_toy_rounded, color: AppTheme.primary, size: 14),
-                                  const SizedBox(width: 6),
-                                  Text('Rocky', style: AppTheme.monoStyle(color: AppTheme.primary, fontSize: 11)),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              TypingText(
-                                text: state.message,
-                                style: const TextStyle(
-                                  color: Color(0xFFE5E5E5),
-                                  fontSize: 13,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+  void _showExpandedRocky(BuildContext context, AssistantState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final currentState = ref.watch(virtualAssistantProvider);
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(top: BorderSide(color: Color(0xFF333333))),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 80,
+                        height: 54,
+                        child: ClawdWidget(
+                          animation: currentState.animation,
+                          actionId: currentState.actionId,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.smart_toy_rounded, color: AppTheme.primary, size: 14),
+                                const SizedBox(width: 6),
+                                Text('Rocky', style: AppTheme.monoStyle(color: AppTheme.primary, fontSize: 11)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TypingText(
+                              text: currentState.message,
+                              style: const TextStyle(
+                                color: Color(0xFFE5E5E5),
+                                fontSize: 14,
+                                height: 1.5,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-                SizedBox(
-                  width: 72,
-                  child: ClawdWidget(animation: state.animation, actionId: state.actionId),
+  @override
+  Widget build(BuildContext context) {
+    // Escucha cambios de estado UNA SOLA VEZ — no en cada build
+    ref.listen<AssistantState>(virtualAssistantProvider, (previous, next) {
+      if (next.isVisible && next.message.isNotEmpty && next.message != _lastMessage) {
+        _lastMessage = next.message;
+        _startDismissTimer(next.message);
+      }
+      if (!next.isVisible) {
+        _dismissTimer?.cancel();
+        _lastMessage = '';
+      }
+    });
+
+    final state = ref.watch(virtualAssistantProvider);
+    final topPadding = MediaQuery.of(context).padding.top;
+    final visible = state.isVisible && state.message.isNotEmpty;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      top: visible ? topPadding + 8 : -(120 + topPadding),
+      left: 12,
+      right: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: GestureDetector(
+          onTap: visible ? () => _showExpandedRocky(context, state) : null,
+          child: Container(
+            padding: const EdgeInsets.only(left: 8, right: 12, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(60),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(color: const Color(0xFF333333)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ClawdWidget SOLO cuando el banner es visible (no anima en background)
+                if (visible)
+                  SizedBox(
+                    width: 64,
+                    height: 44,
+                    child: ClawdWidget(
+                      animation: state.animation,
+                      actionId: state.actionId,
+                    ),
+                  )
+                else
+                  const SizedBox(width: 64, height: 44),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Rocky',
+                        style: AppTheme.monoStyle(color: AppTheme.primary, fontSize: 10),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        state.message,
+                        style: const TextStyle(
+                          color: Color(0xFFE5E5E5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _dismissTimer?.cancel();
+                    ref.read(virtualAssistantProvider.notifier).hideMessage();
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.close_rounded, color: Color(0xFF888888), size: 18),
+                  ),
                 ),
               ],
             ),
@@ -308,8 +367,8 @@ class _ClawdWidgetState extends State<ClawdWidget> with TickerProviderStateMixin
               scaleX = pose.bodyScaleX;
               scaleY = pose.bodyScaleY;
               rotation = pose.bodyRotation;
-              dx += pose.bodyOffset.dx;
-              dy += pose.bodyOffset.dy;
+              dx += pose.bodyOffset.dx * 0.35;
+              dy += pose.bodyOffset.dy * 0.35;
               leftArmAngle = pose.leftArmAngle;
               rightArmAngle = pose.rightArmAngle;
               rightArmOffsetX = pose.rightArmOffsetX;
@@ -738,14 +797,16 @@ class _ClawdPainter extends CustomPainter {
         break;
       case 'crown':
         paint.color = fadeColor;
-        canvas.drawRect(Rect.fromLTWH(x, y + 5, 30, 5), paint);
-        canvas.drawRect(Rect.fromLTWH(x, y + 2, 3, 3), paint);
-        canvas.drawRect(Rect.fromLTWH(x + 13, y, 4, 5), paint);
-        canvas.drawRect(Rect.fromLTWH(x + 27, y + 2, 3, 3), paint);
+        // Bajar la corona sumando 12 al eje Y
+        final cy = y + 12;
+        canvas.drawRect(Rect.fromLTWH(x, cy + 5, 30, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x, cy + 2, 3, 3), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 13, cy, 4, 5), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 27, cy + 2, 3, 3), paint);
         paint.color = Colors.redAccent.withAlpha(alpha);
-        canvas.drawRect(Rect.fromLTWH(x + 7, y + 6, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 7, cy + 6, 3, 2), paint);
         paint.color = Colors.blueAccent.withAlpha(alpha);
-        canvas.drawRect(Rect.fromLTWH(x + 20, y + 6, 3, 2), paint);
+        canvas.drawRect(Rect.fromLTWH(x + 20, cy + 6, 3, 2), paint);
         break;
       case 'shield':
         paint.color = fadeColor;
