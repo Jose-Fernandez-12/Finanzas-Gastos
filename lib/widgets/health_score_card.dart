@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/health_score_calculator.dart';
+import '../core/theme.dart';
 
 /// Tarjeta principal que muestra el índice de salud financiera de Rocky.
 /// Incluye un anillo animado, 4 sub-pills interactivos y una recomendación.
@@ -84,7 +85,7 @@ class _HealthScoreCardState extends State<HealthScoreCard>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'SALUD FINANCIERA',
                 style: TextStyle(
                   fontSize: 11,
@@ -106,11 +107,11 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                           color: AppTheme.primary.withAlpha(20),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.science_rounded, size: 13, color: AppTheme.primary),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text(
                               'LAB',
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.primary, letterSpacing: 0.5),
@@ -169,7 +170,7 @@ class _HealthScoreCardState extends State<HealthScoreCard>
                               height: 1,
                             ),
                           ),
-                          const Text(
+                          Text(
                             '/100',
                             style: TextStyle(
                               fontSize: 11,

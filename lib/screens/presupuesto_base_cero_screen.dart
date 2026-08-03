@@ -378,55 +378,88 @@ class _PresupuestoBaseCeroScreenState extends ConsumerState<PresupuestoBaseCeroS
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
         padding: EdgeInsets.only(
           left: 20, right: 20, top: 20,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.add_shopping_cart_rounded, color: _parseColor(sobre.color)),
-                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _parseColor(sobre.color).withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.add_shopping_cart_rounded, color: _parseColor(sobre.color), size: 20),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Registrar Gasto en ${sobre.nombre}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             TextField(
               controller: montoCtrl,
               keyboardType: TextInputType.number,
               autofocus: true,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 labelText: 'Monto del gasto',
                 prefixText: '\$ ',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: AppTheme.bgCanvas,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: conceptoCtrl,
+              style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
                 labelText: 'Concepto (Ej: Mercado, Gasolina)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: AppTheme.bgCanvas,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _parseColor(sobre.color),
+                  elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () async {
@@ -437,7 +470,7 @@ class _PresupuestoBaseCeroScreenState extends ConsumerState<PresupuestoBaseCeroS
                   ref.invalidate(presupuestoProvider(_mesActual));
                   if (ctx.mounted) Navigator.pop(ctx);
                 },
-                child: const Text('DESCONTAR DEL SOBRE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('DESCONTAR DEL SOBRE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
               ),
             ),
           ],
@@ -673,11 +706,13 @@ class _HistorialSobreSheetState extends State<_HistorialSobreSheet> {
     _reload();
   }
 
-  void _reload() {
+  void _reload({bool notifyParent = false}) {
     setState(() {
       _futureGastos = SobresRepository.obtenerHistorialSobre(widget.sobre.id!);
     });
-    widget.onUpdate();
+    if (notifyParent) {
+      widget.onUpdate();
+    }
   }
 
   @override
@@ -749,7 +784,7 @@ class _HistorialSobreSheetState extends State<_HistorialSobreSheet> {
                               icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 18),
                               onPressed: () async {
                                 await SobresRepository.eliminarGastoDirecto(item.id!);
-                                _reload();
+                                _reload(notifyParent: true);
                               },
                             ),
                         ],

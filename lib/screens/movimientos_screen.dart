@@ -85,7 +85,13 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
                 child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
               ),
               error: (_, __) => const SizedBox.shrink(),
-              data: (state) => _SobresCarrusel(sobres: state.sobres),
+              data: (state) => _SobresCarrusel(
+                sobres: state.sobres,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PresupuestoBaseCeroScreen()),
+                ).then((_) => ref.invalidate(presupuestoProvider(_mesActual()))),
+              ),
             ),
           ),
 
@@ -389,7 +395,8 @@ class _Divider extends StatelessWidget {
 
 class _SobresCarrusel extends StatelessWidget {
   final List<Sobre> sobres;
-  const _SobresCarrusel({required this.sobres});
+  final VoidCallback? onTap;
+  const _SobresCarrusel({required this.sobres, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -412,13 +419,16 @@ class _SobresCarrusel extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 130,
+      height: 145,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: sobres.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) => _SobreCard(sobre: sobres[i]),
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: onTap,
+          child: _SobreCard(sobre: sobres[i]),
+        ),
       ),
     );
   }

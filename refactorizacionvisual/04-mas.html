@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Mis Finanzas · Más</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f3ff;--surface:#fff;--surface-warm:#efe7ff;--fg:#191225;--fg-2:#443856;--muted:#746985;
+    --meta:#7c3aed;--border:#ddd2f2;--border-soft:#eee6fb;--accent:#7c3aed;--accent-on:#fff;
+    --success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --r-sm:12px;--r-md:20px;--r-lg:32px;--r-pill:9999px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg)}
+  body{font-family:var(--font);color:var(--fg);-webkit-font-smoothing:antialiased}
+  .app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .header{padding:var(--s4) var(--s5) var(--s3);display:flex;align-items:center;justify-content:space-between}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-0.02em}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:var(--s5) var(--s4) var(--s3)}
+  .section-title{font-size:16px;font-weight:700}
+  .section-link{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer}
+
+  /* Suscripciones */
+  .sub-summary{margin:0 var(--s4);background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5);display:flex;align-items:center;gap:var(--s4)}
+  .sub-icon{width:40px;height:40px;border-radius:var(--r-sm);background:#d1fae5;color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sub-info{flex:1}
+  .sub-label{font-size:13px;color:var(--muted)}
+  .sub-val{font-size:20px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+  .sub-items{padding:0 var(--s4);margin-top:var(--s3)}
+  .sub-item{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--border-soft)}
+  .sub-item:last-child{border-bottom:none}
+  .sub-item-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+  .sub-item-info{flex:1;min-width:0}
+  .sub-item-name{font-size:14px;font-weight:600}
+  .sub-item-freq{font-size:12px;color:var(--muted);margin-top:1px}
+  .sub-item-amount{text-align:right;flex-shrink:0;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* Trofeos */
+  .trophy-hero{margin:0 var(--s4);background:linear-gradient(135deg,#7c3aed,#990FFA 50%,#a855f7);border-radius:var(--r-md);padding:var(--s5);color:#fff;display:flex;align-items:center;gap:var(--s4)}
+  .trophy-ring{position:relative;width:56px;height:56px;flex-shrink:0}
+  .trophy-ring svg{width:56px;height:56px;transform:rotate(-90deg)}
+  .trophy-ring .track{fill:none;stroke:rgba(255,255,255,.2);stroke-width:5}
+  .trophy-ring .fill{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;stroke-dasharray:141.4;stroke-dashoffset:90.9}
+  .trophy-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+  .trophy-info{flex:1}
+  .trophy-count{font-size:18px;font-weight:700}
+  .trophy-sub{font-size:13px;opacity:.8;margin-top:2px}
+
+  /* Menu items */
+  .menu{padding:0 var(--s4)}
+  .menu-item{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) 0;border-bottom:1px solid var(--border-soft);cursor:pointer}
+  .menu-item:last-child{border-bottom:none}
+  .menu-icon{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .menu-info{flex:1}
+  .menu-name{font-size:15px;font-weight:600}
+  .menu-desc{font-size:12px;color:var(--muted);margin-top:1px}
+  .menu-arrow{color:var(--muted);flex-shrink:0}
+  .menu-arrow svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
+
+  /* Analytics preview */
+  .analytics-card{margin:0 var(--s4);background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .analytics-title{font-size:14px;font-weight:600;margin-bottom:var(--s3)}
+  .analytics-row{display:flex;gap:var(--s3);margin-bottom:var(--s3)}
+  .analytics-mini{flex:1;background:var(--surface-warm);border-radius:var(--r-sm);padding:var(--s3);text-align:center}
+  .analytics-mini-label{font-size:11px;color:var(--muted)}
+  .analytics-mini-val{font-size:16px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .analytics-mini-val.good{color:var(--success)}
+  .analytics-mini-val.warn{color:var(--warn)}
+  .analytics-mini-val.danger{color:var(--danger)}
+
+  /* Tab bar */
+  .tab-bar{display:flex;align-items:center;justify-content:space-around;padding:var(--s2) 0 calc(var(--s2) + env(safe-area-inset-bottom,4px));background:var(--surface);border-top:1px solid var(--border-soft);flex-shrink:0;min-height:56px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:56px;padding:4px 0;color:var(--muted);transition:color .15s ease}
+  .tab.active{color:var(--accent)}
+  .tab-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .tab-icon svg{width:22px;height:22px;stroke-width:1.8;fill:none;stroke:currentColor}
+  .tab-label{font-size:10px;font-weight:600;letter-spacing:.02em}
+  .tab.center{position:relative}
+  .tab.center .tab-icon{width:44px;height:44px;background:var(--accent);border-radius:var(--r-sm);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.35);margin-top:-18px}
+  .tab.center .tab-label{color:var(--accent)}
+  .spacer-bottom{height:var(--s8)}
+
+  /* Bottom sheet Quick-Add */
+  .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .sheet-overlay.open{opacity:1;pointer-events:auto}
+  .bottom-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surface);border-radius:var(--r-lg) var(--r-lg) 0 0;padding:var(--s3) var(--s5) calc(var(--s6) + env(safe-area-inset-bottom,0px));z-index:201;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+  .bottom-sheet.open{transform:translateX(-50%) translateY(0)}
+  .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto var(--s4)}
+  .sheet-title{font-size:17px;font-weight:700;margin-bottom:var(--s4);text-align:center}
+  .sheet-actions{display:flex;flex-direction:column;gap:var(--s2)}
+  .sheet-action{display:flex;align-items:center;gap:var(--s3);padding:var(--s4);border-radius:var(--r-sm);border:1px solid var(--border-soft);background:var(--surface);cursor:pointer;transition:all .15s ease;text-decoration:none;color:var(--fg)}
+  .sheet-action:hover{border-color:var(--accent);background:var(--surface-warm)}
+  .sheet-icon{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sheet-action-text{flex:1}
+  .sheet-action-name{font-size:14px;font-weight:600}
+  .sheet-action-desc{font-size:12px;color:var(--muted);margin-top:1px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scroll" data-od-id="scroll-mas">
+    <div class="header" data-od-id="header-mas">
+      <div class="page-title">Más</div>
+    </div>
+
+    <!-- Analytics preview -->
+    <div class="analytics-card" data-od-id="analytics-preview" onclick="window.location.href='06-analitica.html'" style="cursor:pointer">
+      <div class="analytics-title">Resumen Analítica</div>
+      <div class="analytics-row">
+        <div class="analytics-mini">
+          <div class="analytics-mini-label">Liquidez</div>
+          <div class="analytics-mini-val good">$1.687.995</div>
+        </div>
+        <div class="analytics-mini">
+          <div class="analytics-mini-label">Endeudamiento</div>
+          <div class="analytics-mini-val warn">31,5%</div>
+        </div>
+        <div class="analytics-mini">
+          <div class="analytics-mini-label">Ahorro</div>
+          <div class="analytics-mini-val danger">88,8%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suscripciones -->
+    <div class="section-header" data-od-id="subs-header">
+      <div class="section-title">Suscripciones</div>
+      <div class="section-link">Ver todas</div>
+    </div>
+    <div class="sub-summary">
+      <div class="sub-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+      </div>
+      <div class="sub-info">
+        <div class="sub-label">Gasto mensual</div>
+        <div class="sub-val">$20.000</div>
+      </div>
+    </div>
+    <div class="sub-items">
+      <div class="sub-item">
+        <div class="sub-item-icon" style="background:#1ed760;color:#fff">♫</div>
+        <div class="sub-item-info">
+          <div class="sub-item-name">Spotify Premium</div>
+          <div class="sub-item-freq">Mensual · Día 20</div>
+        </div>
+        <div class="sub-item-amount">$20.000</div>
+      </div>
+    </div>
+
+    <!-- Trofeos -->
+    <div class="section-header" data-od-id="trophy-header">
+      <div class="section-title">Logros</div>
+      <div class="section-link">Ver todos</div>
+    </div>
+    <div class="trophy-hero" data-od-id="trophy-hero">
+      <div class="trophy-ring">
+        <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="22.5"/><circle class="fill" cx="28" cy="28" r="22.5"/></svg>
+        <div class="trophy-num">5</div>
+      </div>
+      <div class="trophy-info">
+        <div class="trophy-count">5 de 14 logros</div>
+        <div class="trophy-sub">Sigue avanzando para desbloquear más</div>
+      </div>
+    </div>
+
+    <!-- Menu -->
+    <div class="section-header" data-od-id="menu-header">
+      <div class="section-title">Herramientas</div>
+    </div>
+    <div class="menu" data-od-id="menu-list">
+      <div class="menu-item">
+        <div class="menu-icon" style="background:#ede9fe;color:var(--accent)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+        </div>
+        <div class="menu-info">
+          <div class="menu-name">Simulador de Pagos</div>
+          <div class="menu-desc">Avalancha o Bola de Nieve</div>
+        </div>
+        <div class="menu-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-icon" style="background:#dbeafe;color:#3b82f6">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <div class="menu-info">
+          <div class="menu-name">Calendario de Estrés</div>
+          <div class="menu-desc">Flujo de pagos del mes</div>
+        </div>
+        <div class="menu-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-icon" style="background:#d1fae5;color:var(--success)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div class="menu-info">
+          <div class="menu-name">Reporte Detallado</div>
+          <div class="menu-desc">Descargar PDF completo</div>
+        </div>
+        <div class="menu-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-icon" style="background:#fef3c7;color:var(--warn)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </div>
+        <div class="menu-info">
+          <div class="menu-name">Configuración</div>
+          <div class="menu-desc">Perfil, datos, preferencias</div>
+        </div>
+        <div class="menu-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+    </div>
+    <div class="spacer-bottom"></div>
+  </div>
+
+  <!-- Quick-Add Bottom Sheet -->
+  <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Agregar</div>
+    <div class="sheet-actions">
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#d1fae5;color:var(--success)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Registrar Ingreso</div>
+          <div class="sheet-action-desc">Salario, freelance, otro ingreso</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#fee2e2;color:var(--danger)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Registrar Gasto</div>
+          <div class="sheet-action-desc">Transporte, comida, servicios</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#ede9fe;color:var(--accent)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Compra con TDC</div>
+          <div class="sheet-action-desc">Registrar compra en cuotas</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#fef3c7;color:var(--warn)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Nueva Suscripción</div>
+          <div class="sheet-action-desc">Spotify, Netflix, otro servicio</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tab-bar" data-od-id="tab-bar">
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg></div>
+      <div class="tab-label">Inicio</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M17 14v4m-2-2h4"/></svg></div>
+      <div class="tab-label">Movimientos</div>
+    </div>
+    <div class="tab center" onclick="openSheet()" data-od-id="fab-add">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+      <div class="tab-label">Agregar</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+      <div class="tab-label">Finanzas</div>
+    </div>
+    <div class="tab active">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+      <div class="tab-label">Más</div>
+    </div>
+  </nav>
+</div>
+<script>
+function openSheet(){document.getElementById('sheetOverlay').classList.add('open');document.getElementById('bottomSheet').classList.add('open')}
+function closeSheet(){document.getElementById('sheetOverlay').classList.remove('open');document.getElementById('bottomSheet').classList.remove('open')}
+</script>
+</body>
+</html>

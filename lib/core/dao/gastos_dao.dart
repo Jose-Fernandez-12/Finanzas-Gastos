@@ -29,6 +29,9 @@ class GastosDao {
 
   Future<void> createGastoFijo(GastoFijo gasto) async {
     final map = gasto.toMap();
+    if (map['dia_pago'] == null || map['dia_pago'] < 1 || map['dia_pago'] > 31) {
+      map['dia_pago'] = DateTime.now().day;
+    }
     // Al registrar un gasto, se marca como pagado hoy (el usuario lo ingresa porque ya lo pagó)
     map['fecha_ultimo_pago'] = DateTime.now().toIso8601String().split('T')[0];
     await DatabaseService.instance.insert('gastos_fijos', map);
@@ -36,6 +39,9 @@ class GastosDao {
 
   Future<void> updateGastoFijo(int id, GastoFijo gasto) async {
     final map = gasto.toMap();
+    if (map['dia_pago'] == null || map['dia_pago'] < 1 || map['dia_pago'] > 31) {
+      map['dia_pago'] = DateTime.now().day;
+    }
     map['actualizado_en'] = DateTime.now().toIso8601String();
     await DatabaseService.instance.update('gastos_fijos', map, where: 'id = ?', whereArgs: [id]);
   }

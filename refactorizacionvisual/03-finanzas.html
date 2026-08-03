@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Mis Finanzas · Finanzas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f3ff;--surface:#fff;--surface-warm:#efe7ff;--fg:#191225;--fg-2:#443856;--muted:#746985;
+    --meta:#7c3aed;--border:#ddd2f2;--border-soft:#eee6fb;--accent:#7c3aed;--accent-on:#fff;
+    --success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --r-sm:12px;--r-md:20px;--r-lg:32px;--r-pill:9999px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg)}
+  body{font-family:var(--font);color:var(--fg);-webkit-font-smoothing:antialiased}
+  .app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .header{padding:var(--s4) var(--s5) var(--s3);display:flex;align-items:center;justify-content:space-between}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-0.02em}
+
+  /* Card carousel */
+  .carousel{padding:var(--s3) var(--s4);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;display:flex;gap:var(--s3)}
+  .carousel::-webkit-scrollbar{display:none}
+  .card-visual{min-width:280px;scroll-snap-align:start;height:160px;border-radius:var(--r-md);padding:var(--s5);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;color:#fff;flex-shrink:0}
+  .card-visual.rappi{background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f3460)}
+  .card-visual.nu{background:linear-gradient(135deg,#7c3aed,#990FFA 60%,#c084fc)}
+  .card-visual::after{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+  .card-brand{font-size:14px;font-weight:700;opacity:.9}
+  .card-number{font-size:13px;font-weight:500;opacity:.7;letter-spacing:.15em;font-family:var(--font-mono,'Inter')}
+  .card-bottom{display:flex;justify-content:space-between;align-items:flex-end}
+  .card-available{font-size:12px;opacity:.7}
+  .card-amount{font-size:22px;font-weight:800;letter-spacing:-0.02em}
+  .card-dots{display:flex;gap:6px;justify-content:center;padding:var(--s3) 0}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+  .dot.active{background:var(--accent);width:20px;border-radius:4px}
+
+  /* Cuotas summary */
+  .cuotas-card{margin:0 var(--s4);background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5);display:flex;align-items:center;gap:var(--s4)}
+  .cuotas-icon{width:40px;height:40px;border-radius:var(--r-sm);background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .cuotas-info{flex:1}
+  .cuotas-label{font-size:13px;color:var(--muted)}
+  .cuotas-val{font-size:20px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--danger)}
+  .cuotas-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+  /* Tabs */
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:var(--s5) var(--s4) var(--s3)}
+  .section-title{font-size:16px;font-weight:700}
+  .section-link{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer}
+
+  .sub-tabs{display:flex;gap:var(--s2);padding:0 var(--s4);margin-bottom:var(--s3)}
+  .sub-tab{padding:var(--s2) var(--s4);border-radius:var(--r-pill);border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s ease}
+  .sub-tab.active{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+
+  /* Purchase items */
+  .purchase-list{padding:0 var(--s4)}
+  .purchase-item{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--border-soft)}
+  .purchase-item:last-child{border-bottom:none}
+  .purchase-icon{width:36px;height:36px;border-radius:10px;background:var(--surface-warm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .purchase-info{flex:1;min-width:0}
+  .purchase-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .purchase-detail{font-size:12px;color:var(--muted);margin-top:1px}
+  .purchase-right{text-align:right;flex-shrink:0}
+  .purchase-amount{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+  .purchase-progress{width:60px;height:4px;background:var(--border-soft);border-radius:2px;margin-top:4px;margin-left:auto}
+  .purchase-progress-fill{height:100%;border-radius:2px;background:var(--accent)}
+
+  /* Metas */
+  .metas{padding:0 var(--s4)}
+  .meta-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:var(--s4);margin-bottom:var(--s3);display:flex;align-items:center;gap:var(--s4)}
+  .meta-icon{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+  .meta-info{flex:1}
+  .meta-name{font-size:14px;font-weight:600}
+  .meta-progress{display:flex;align-items:center;gap:var(--s2);margin-top:var(--s2)}
+  .meta-bar{flex:1;height:6px;background:var(--border-soft);border-radius:3px;overflow:hidden}
+  .meta-bar-fill{height:100%;border-radius:3px}
+  .meta-pct{font-size:12px;font-weight:700;color:var(--accent)}
+  .meta-val{font-size:13px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+
+  /* Tab bar */
+  .tab-bar{display:flex;align-items:center;justify-content:space-around;padding:var(--s2) 0 calc(var(--s2) + env(safe-area-inset-bottom,4px));background:var(--surface);border-top:1px solid var(--border-soft);flex-shrink:0;min-height:56px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:56px;padding:4px 0;color:var(--muted);transition:color .15s ease}
+  .tab.active{color:var(--accent)}
+  .tab-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .tab-icon svg{width:22px;height:22px;stroke-width:1.8;fill:none;stroke:currentColor}
+  .tab-label{font-size:10px;font-weight:600;letter-spacing:.02em}
+  .tab.center{position:relative}
+  .tab.center .tab-icon{width:44px;height:44px;background:var(--accent);border-radius:var(--r-sm);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.35);margin-top:-18px}
+  .tab.center .tab-label{color:var(--accent)}
+  .spacer-bottom{height:var(--s8)}
+
+  /* Bottom sheet Quick-Add */
+  .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .sheet-overlay.open{opacity:1;pointer-events:auto}
+  .bottom-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surface);border-radius:var(--r-lg) var(--r-lg) 0 0;padding:var(--s3) var(--s5) calc(var(--s6) + env(safe-area-inset-bottom,0px));z-index:201;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+  .bottom-sheet.open{transform:translateX(-50%) translateY(0)}
+  .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto var(--s4)}
+  .sheet-title{font-size:17px;font-weight:700;margin-bottom:var(--s4);text-align:center}
+  .sheet-actions{display:flex;flex-direction:column;gap:var(--s2)}
+  .sheet-action{display:flex;align-items:center;gap:var(--s3);padding:var(--s4);border-radius:var(--r-sm);border:1px solid var(--border-soft);background:var(--surface);cursor:pointer;transition:all .15s ease;text-decoration:none;color:var(--fg)}
+  .sheet-action:hover{border-color:var(--accent);background:var(--surface-warm)}
+  .sheet-icon{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sheet-action-text{flex:1}
+  .sheet-action-name{font-size:14px;font-weight:600}
+  .sheet-action-desc{font-size:12px;color:var(--muted);margin-top:1px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scroll" data-od-id="scroll-finanzas">
+    <div class="header" data-od-id="header-finanzas">
+      <div class="page-title">Finanzas</div>
+    </div>
+
+    <!-- Card carousel -->
+    <div class="carousel" data-od-id="card-carousel">
+      <div class="card-visual rappi">
+        <div class="card-brand">RappiCard</div>
+        <div class="card-number">•••• 4821</div>
+        <div class="card-bottom">
+          <div><div class="card-available">Disponible</div><div class="card-amount">$3.495.152</div></div>
+          <div style="text-align:right"><div class="card-available">Deuda</div><div class="card-amount">$2.604.848</div></div>
+        </div>
+      </div>
+      <div class="card-visual nu">
+        <div class="card-brand">NuBank</div>
+        <div class="card-number">•••• 7632</div>
+        <div class="card-bottom">
+          <div><div class="card-available">Disponible</div><div class="card-amount">$24.910</div></div>
+          <div style="text-align:right"><div class="card-available">Deuda</div><div class="card-amount">$975.090</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-dots"><div class="dot active"></div><div class="dot"></div></div>
+
+    <!-- Cuotas activas -->
+    <div class="cuotas-card" data-od-id="cuotas-summary">
+      <div class="cuotas-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      <div class="cuotas-info">
+        <div class="cuotas-label">Cuotas Activas</div>
+        <div class="cuotas-val">$577.115 / mes</div>
+        <div class="cuotas-sub">Cuota 1 de cada compra</div>
+      </div>
+    </div>
+
+    <!-- Compras RappiCard -->
+    <div class="section-header" data-od-id="purchases-header">
+      <div class="section-title">Compras RappiCard</div>
+      <div class="section-link">+ Registrar</div>
+    </div>
+    <div class="sub-tabs">
+      <div class="sub-tab active">Activas</div>
+      <div class="sub-tab">Pagadas</div>
+    </div>
+    <div class="purchase-list" data-od-id="purchases-list">
+      <div class="purchase-item">
+        <div class="purchase-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="purchase-info">
+          <div class="purchase-name">(Avance) completar plata</div>
+          <div class="purchase-detail">6 cuotas · 0% interés · Cuota 1</div>
+        </div>
+        <div class="purchase-right">
+          <div class="purchase-amount">$486.600</div>
+          <div class="purchase-progress"><div class="purchase-progress-fill" style="width:16%"></div></div>
+        </div>
+      </div>
+      <div class="purchase-item">
+        <div class="purchase-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="purchase-info">
+          <div class="purchase-name">lifeafter</div>
+          <div class="purchase-detail">6 cuotas · 0% interés · Cuota 1</div>
+        </div>
+        <div class="purchase-right">
+          <div class="purchase-amount">$40.667</div>
+          <div class="purchase-progress"><div class="purchase-progress-fill" style="width:16%"></div></div>
+        </div>
+      </div>
+      <div class="purchase-item">
+        <div class="purchase-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="purchase-info">
+          <div class="purchase-name">rappi</div>
+          <div class="purchase-detail">3 cuotas · 0% interés · Cuota 2</div>
+        </div>
+        <div class="purchase-right">
+          <div class="purchase-amount">$22.928</div>
+          <div class="purchase-progress"><div class="purchase-progress-fill" style="width:33%"></div></div>
+        </div>
+      </div>
+      <div class="purchase-item">
+        <div class="purchase-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="purchase-info">
+          <div class="purchase-name">(Avance) completar plata</div>
+          <div class="purchase-detail">6 cuotas · 0% interés · Cuota 2</div>
+        </div>
+        <div class="purchase-right">
+          <div class="purchase-amount">$505.355</div>
+          <div class="purchase-progress"><div class="purchase-progress-fill" style="width:16%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metas de Ahorro -->
+    <div class="section-header" data-od-id="metas-header">
+      <div class="section-title">Metas de Ahorro</div>
+      <div class="section-link">+ Meta</div>
+    </div>
+    <div class="metas" data-od-id="metas-list">
+      <div class="meta-card">
+        <div class="meta-icon" style="background:#fef3c7">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+        <div class="meta-info">
+          <div class="meta-name">Fondo de emergencia</div>
+          <div class="meta-progress">
+            <div class="meta-bar"><div class="meta-bar-fill" style="width:0%;background:var(--warn)"></div></div>
+            <div class="meta-pct">0%</div>
+          </div>
+          <div class="meta-val">$0 / $12.000.000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deudas / Cuentas por cobrar -->
+    <div class="section-header" data-od-id="deudas-header">
+      <div class="section-title">Cuentas por Cobrar</div>
+      <div class="section-link">+ Deudor</div>
+    </div>
+    <div style="padding:0 var(--s4)">
+      <div class="cuotas-card" style="margin:0">
+        <div class="cuotas-icon" style="background:var(--success)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+        </div>
+        <div class="cuotas-info">
+          <div class="cuotas-label">Total Pendiente</div>
+          <div class="cuotas-val" style="color:var(--success)">$13.720.000</div>
+          <div class="cuotas-sub">3 deudores activos</div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer-bottom"></div>
+  </div>
+
+  <!-- Quick-Add Bottom Sheet -->
+  <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Agregar</div>
+    <div class="sheet-actions">
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#d1fae5;color:var(--success)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Registrar Ingreso</div>
+          <div class="sheet-action-desc">Salario, freelance, otro ingreso</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#fee2e2;color:var(--danger)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Registrar Gasto</div>
+          <div class="sheet-action-desc">Transporte, comida, servicios</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#ede9fe;color:var(--accent)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Compra con TDC</div>
+          <div class="sheet-action-desc">Registrar compra en cuotas</div>
+        </div>
+      </div>
+      <div class="sheet-action">
+        <div class="sheet-icon" style="background:#fef3c7;color:var(--warn)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+        </div>
+        <div class="sheet-action-text">
+          <div class="sheet-action-name">Nueva Suscripción</div>
+          <div class="sheet-action-desc">Spotify, Netflix, otro servicio</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tab-bar" data-od-id="tab-bar">
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg></div>
+      <div class="tab-label">Inicio</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M17 14v4m-2-2h4"/></svg></div>
+      <div class="tab-label">Movimientos</div>
+    </div>
+    <div class="tab center" onclick="openSheet()" data-od-id="fab-add">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+      <div class="tab-label">Agregar</div>
+    </div>
+    <div class="tab active">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+      <div class="tab-label">Finanzas</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+      <div class="tab-label">Más</div>
+    </div>
+  </nav>
+</div>
+<script>
+function openSheet(){document.getElementById('sheetOverlay').classList.add('open');document.getElementById('bottomSheet').classList.add('open')}
+function closeSheet(){document.getElementById('sheetOverlay').classList.remove('open');document.getElementById('bottomSheet').classList.remove('open')}
+</script>
+</body>
+</html>
