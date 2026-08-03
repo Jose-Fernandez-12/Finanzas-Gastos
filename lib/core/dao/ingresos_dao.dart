@@ -8,16 +8,39 @@ class IngresosDao {
   IngresosDao._();
 
   Future<List<Ingreso>> getIngresos({String? mes}) async {
-    final queryMes = mes ?? DateFormat('yyyy-MM').format(DateTime.now());
+    String whereClause = 'i.mes_referencia = ? OR i.es_fijo = 1';
+    List<dynamic> args;
+
+    if (mes == 'all') {
+      whereClause = '1 = 1';
+      args = [];
+    } else if (mes != null && mes.startsWith('year:')) {
+      final year = mes.split(':')[1];
+      whereClause = 'i.mes_referencia LIKE ? OR i.es_fijo = 1';
+      args = ['$year-%'];
+    } else if (mes != null && mes.startsWith('week:')) {
+      final dateStr = mes.split(':')[1];
+      final date = DateTime.parse(dateStr);
+      final monday = date.subtract(Duration(days: date.weekday - 1));
+      final sunday = monday.add(const Duration(days: 6));
+      final mondayStr = '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+      final sundayStr = '${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}';
+      whereClause = '(i.fecha >= ? AND i.fecha <= ?) OR i.es_fijo = 1';
+      args = [mondayStr, sundayStr];
+    } else {
+      final queryMes = mes ?? DateFormat('yyyy-MM').format(DateTime.now());
+      args = [queryMes];
+    }
+
     final rows = await DatabaseService.instance.query(
       '''
       SELECT i.*, c.nombre AS categoria_nombre, c.icono AS categoria_icono, c.color AS categoria_color
       FROM ingresos i
       JOIN categorias_ingreso c ON i.categoria_id = c.id
-      WHERE i.mes_referencia = ? OR i.es_fijo = 1
+      WHERE $whereClause
       ORDER BY i.fecha DESC
       ''',
-      [queryMes]
+      args
     );
     return rows.map((e) => Ingreso.fromMap(e)).toList();
   }

@@ -145,7 +145,15 @@ class MasScreen extends ConsumerWidget {
                     desc: 'Descargar PDF completo',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReporteDetalladoView()),
+                      MaterialPageRoute(builder: (_) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Reporte Detallado', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary)),
+                          backgroundColor: AppTheme.bgCanvas,
+                          elevation: 0,
+                          iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+                        ),
+                        body: const ReporteDetalladoView(),
+                      )),
                     ),
                   ),
                   _MenuItem(

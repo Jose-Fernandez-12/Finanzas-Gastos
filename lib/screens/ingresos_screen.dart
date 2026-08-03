@@ -125,7 +125,7 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
       isScrollControlled: true,
       backgroundColor:    AppTheme.bgCard,
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder:            (_) => _FormIngreso(
+      builder:            (_) => FormIngreso(
         ingreso: ingreso,
         onSave: (monto) {
           ref.invalidate(ingresosProvider(_mes));
@@ -297,16 +297,16 @@ class _IngresoItem extends ConsumerWidget {
   }
 }
 
-class _FormIngreso extends ConsumerStatefulWidget {
+class FormIngreso extends ConsumerStatefulWidget {
   final Ingreso? ingreso;
   final Function(double) onSave;
-  const _FormIngreso({this.ingreso, required this.onSave});
+  const FormIngreso({super.key, this.ingreso, required this.onSave});
 
   @override
-  ConsumerState<_FormIngreso> createState() => _FormIngresoState();
+  ConsumerState<FormIngreso> createState() => _FormIngresoState();
 }
 
-class _FormIngresoState extends ConsumerState<_FormIngreso> {
+class _FormIngresoState extends ConsumerState<FormIngreso> {
   final _form        = GlobalKey<FormState>();
   final _desc        = TextEditingController();
   final _monto       = TextEditingController();

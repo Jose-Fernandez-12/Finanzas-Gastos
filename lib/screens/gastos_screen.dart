@@ -109,7 +109,7 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
       isScrollControlled: true,
       backgroundColor:    AppTheme.bgCard,
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder:            (_) => _FormGasto(
+      builder:            (_) => FormGasto(
         gastoExistente: gasto,
         onSave: (monto) {
           ref.invalidate(gastosProvider(_mes));
@@ -341,16 +341,16 @@ class _GastoItem extends ConsumerWidget {
   }
 }
 
-class _FormGasto extends ConsumerStatefulWidget {
+class FormGasto extends ConsumerStatefulWidget {
   final GastoFijo? gastoExistente;
   final Function(double) onSave;
-  const _FormGasto({this.gastoExistente, required this.onSave});
+  const FormGasto({super.key, this.gastoExistente, required this.onSave});
 
   @override
-  ConsumerState<_FormGasto> createState() => _FormGastoState();
+  ConsumerState<FormGasto> createState() => _FormGastoState();
 }
 
-class _FormGastoState extends ConsumerState<_FormGasto> {
+class _FormGastoState extends ConsumerState<FormGasto> {
   final _form   = GlobalKey<FormState>();
   final _nombre = TextEditingController();
   final _monto  = TextEditingController();

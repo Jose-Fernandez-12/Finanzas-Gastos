@@ -7,7 +7,11 @@ import '../providers/gastos_provider.dart';
 import '../providers/presupuesto_provider.dart';
 import '../models/ingreso.dart';
 import '../models/gasto_fijo.dart';
+import '../providers/dashboard_provider.dart';
 import 'presupuesto_base_cero_screen.dart';
+import 'ingresos_screen.dart';
+import 'gastos_screen.dart';
+import 'historial_movimientos_screen.dart';
 
 /// Pantalla unificada: Ingresos + Gastos + Presupuesto base cero
 class MovimientosScreen extends ConsumerStatefulWidget {
@@ -23,10 +27,19 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
   int _periodoIndex = 1; // 0=Semana, 1=Mes, 2=Año
 
   static final List<_Periodo> _periodos = [
-    (label: 'Semana', mes: null),
+    (label: 'Semana', mes: 'week:${_fechaHoy()}'),
     (label: 'Mes',    mes: _mesActual()),
-    (label: 'Año',    mes: null),
+    (label: 'Año',    mes: 'year:${_yearActual()}'),
   ];
+
+  static String _fechaHoy() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  static String _yearActual() {
+    return DateTime.now().year.toString();
+  }
 
   static String _mesActual() {
     final now = DateTime.now();
@@ -100,7 +113,10 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
             child: _SectionHeader(
               title: 'Últimos movimientos',
               actionLabel: 'Ver todo',
-              onAction: null,
+              onAction: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HistorialMovimientosScreen()),
+              ),
             ),
           ),
 
@@ -149,7 +165,7 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
     );
   }
 
-  /// Combina y ordena ingresos + gastos por fecha, agrupa por dia
+  /// Combina y ordena ingresos + gastos por fecha, agrupa por dia, filtra por periodo
   List<Object> _buildMovimientos(List<Ingreso> ingresos, List<GastoFijo> gastos) {
     // Unificar en una lista tipada
     final all = <_TxItem>[
@@ -161,6 +177,7 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
         fecha: i.fecha,
         isIngreso: true,
         color: i.categoriaColor,
+        ingreso: i,
       )),
       ...gastos.map((g) => _TxItem(
         id: 'g${g.id}',
@@ -170,10 +187,39 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
         fecha: g.fechaUltimoPago ?? g.mesReferencia,
         isIngreso: false,
         color: g.categoriaColor,
+        gasto: g,
       )),
     ];
 
     if (all.isEmpty) return [];
+
+    // Filtrar en memoria para vistas específicas de Semana y Año
+    if (_periodoIndex == 0) { // Semana
+      final now = DateTime.now();
+      final monday = now.subtract(Duration(days: now.weekday - 1));
+      final sunday = monday.add(const Duration(days: 6));
+      final start = DateTime(monday.year, monday.month, monday.day);
+      final end = DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
+
+      all.removeWhere((item) {
+        try {
+          final dt = DateTime.parse(item.fecha);
+          return dt.isBefore(start) || dt.isAfter(end);
+        } catch (_) {
+          return true; // Excluir si la fecha no tiene formato válido de día en vista semanal (ej. '2026-08' sin pagar)
+        }
+      });
+    } else if (_periodoIndex == 2) { // Año
+      final currentYear = DateTime.now().year;
+      all.removeWhere((item) {
+        try {
+          final dt = DateTime.parse(item.fecha);
+          return dt.year != currentYear;
+        } catch (_) {
+          return !item.fecha.startsWith('$currentYear');
+        }
+      });
+    }
 
     // Ordenar por fecha DESC
     all.sort((a, b) => b.fecha.compareTo(a.fecha));
@@ -585,7 +631,7 @@ class _TxDateHeader extends StatelessWidget {
   }
 }
 
-class _TransactionRow extends StatelessWidget {
+class _TransactionRow extends ConsumerWidget {
   final _TxItem tx;
   const _TransactionRow({required this.tx});
 
@@ -600,64 +646,98 @@ class _TransactionRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _parseCat();
     final bgColor = color.withAlpha(25);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderSoft),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: () {
+        if (tx.isIngreso && tx.ingreso != null) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: AppTheme.bgCard,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+            builder: (_) => FormIngreso(
+              ingreso: tx.ingreso,
+              onSave: (_) {
+                ref.invalidate(ingresosProvider);
+                ref.invalidate(dashboardProvider);
+              },
             ),
-            child: Icon(
-              tx.isIngreso ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-              color: color,
-              size: 18,
+          );
+        } else if (!tx.isIngreso && tx.gasto != null) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: AppTheme.bgCard,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+            builder: (_) => FormGasto(
+              gastoExistente: tx.gasto,
+              onSave: (_) {
+                ref.invalidate(gastosProvider);
+                ref.invalidate(dashboardProvider);
+              },
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.nombre,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderSoft),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                tx.isIngreso ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                color: color,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.nombre,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${tx.isIngreso ? 'Ingreso' : 'Gasto'} · ${tx.categoria}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                ),
-              ],
+                  Text(
+                    '${tx.isIngreso ? 'Ingreso' : 'Gasto'} · ${tx.categoria}',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${tx.isIngreso ? '+' : '-'}${formatCOP(tx.monto)}',
-            style: AppTheme.monoStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+            const SizedBox(width: 8),
+            Text(
+              '${tx.isIngreso ? '+' : '-'}${formatCOP(tx.monto)}',
+              style: AppTheme.monoStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -719,6 +799,8 @@ class _TxItem {
   final String fecha;
   final bool isIngreso;
   final String? color;
+  final Ingreso? ingreso;
+  final GastoFijo? gasto;
 
   const _TxItem({
     required this.id,
@@ -728,5 +810,7 @@ class _TxItem {
     required this.fecha,
     required this.isIngreso,
     this.color,
+    this.ingreso,
+    this.gasto,
   });
 }
