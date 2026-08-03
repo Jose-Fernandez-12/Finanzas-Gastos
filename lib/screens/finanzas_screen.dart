@@ -36,6 +36,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
   Widget build(BuildContext context) {
     final tarjetasAsync       = ref.watch(tarjetasProvider);
     final comprasActivasAsync = ref.watch(comprasActivasProvider);
+    final todasLasComprasAsync = ref.watch(todasLasComprasProvider);
     final ahorrosAsync        = ref.watch(ahorrosProvider);
     final cuentasAsync        = ref.watch(cuentasCobrarProvider);
 
@@ -46,6 +47,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
         onRefresh: () async {
           ref.invalidate(tarjetasProvider);
           ref.invalidate(comprasActivasProvider);
+          ref.invalidate(todasLasComprasProvider);
           ref.invalidate(ahorrosProvider);
           ref.invalidate(cuentasCobrarProvider);
         },
@@ -56,11 +58,27 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
               child: _FinanzasHeader(),
             ),
 
+            // ── Tarjetas de Crédito Header ──────────────────────
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: 'Mis Tarjetas',
+                actionLabel: 'Gestionar',
+                onAction: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TarjetasScreen()),
+                ).then((_) {
+                  ref.invalidate(tarjetasProvider);
+                  ref.invalidate(comprasActivasProvider);
+                  ref.invalidate(todasLasComprasProvider);
+                }),
+              ),
+            ),
+
             // ── Carousel tarjetas ───────────────────────────────
             SliverToBoxAdapter(
               child: tarjetasAsync.when(
                 loading: () => const SizedBox(
-                  height: 170,
+                  height: 220,
                   child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
                 ),
                 error: (_, __) => const SizedBox.shrink(),
@@ -79,6 +97,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                         ).then((_) {
                           ref.invalidate(tarjetasProvider);
                           ref.invalidate(comprasActivasProvider);
+                          ref.invalidate(todasLasComprasProvider);
                         }),
                       ),
               ),
@@ -114,7 +133,10 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                 onAction: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const TarjetasScreen()),
-                ).then((_) => ref.invalidate(comprasActivasProvider)),
+                ).then((_) {
+                  ref.invalidate(comprasActivasProvider);
+                  ref.invalidate(todasLasComprasProvider);
+                }),
               ),
             ),
             SliverToBoxAdapter(
@@ -124,20 +146,28 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
               ),
             ),
             SliverToBoxAdapter(
-              child: comprasActivasAsync.when(
+              child: todasLasComprasAsync.when(
                 loading: () => const SizedBox(
                   height: 80,
                   child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
                 ),
                 error: (_, __) => const SizedBox.shrink(),
                 data: (compras) {
-                  if (compras.isEmpty) {
-                    return const _EmptySection(
+                  final filtradas = compras.where((c) => (c['pagada'] == true) == _verPagadas).toList();
+                  if (filtradas.isEmpty) {
+                    return _EmptySection(
                       icon: Icons.credit_card_rounded,
-                      message: 'Sin compras en cuotas activas',
+                      message: _verPagadas ? 'Sin compras pagadas' : 'Sin compras en cuotas activas',
                     );
                   }
-                  return _ComprasList(compras: compras);
+                  return _ComprasList(
+                    compras: filtradas,
+                    onRefresh: () {
+                      ref.invalidate(tarjetasProvider);
+                      ref.invalidate(comprasActivasProvider);
+                      ref.invalidate(todasLasComprasProvider);
+                    },
+                  );
                 },
               ),
             ),
@@ -201,7 +231,13 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                   );
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _CuentasCobrarCard(total: total, count: activas.length),
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CuentasCobrarScreen()),
+                      ).then((_) => ref.invalidate(cuentasCobrarProvider)),
+                      child: _CuentasCobrarCard(total: total, count: activas.length),
+                    ),
                   );
                 },
               ),
@@ -262,7 +298,7 @@ class _TarjetasCarrusel extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          height: 170,
+          height: 220,
           child: PageView.builder(
             controller: pageController,
             onPageChanged: onPageChanged,
@@ -346,38 +382,55 @@ class _TarjetaCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(0),
+        child: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  tarjeta.nombreTarjeta.isNotEmpty ? tarjeta.nombreTarjeta : tarjeta.banco,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+            // Decorative background blob
+            Positioned(
+              top: -40,
+              right: -30,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(15),
+                  shape: BoxShape.circle,
                 ),
-                const Icon(Icons.credit_card_rounded, color: Colors.white70, size: 22),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '•••• ${tarjeta.banco.length >= 4 ? tarjeta.banco.substring(0, 4).toUpperCase() : tarjeta.banco}',
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 13,
-                letterSpacing: 2,
               ),
             ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        tarjeta.nombreTarjeta.isNotEmpty ? tarjeta.nombreTarjeta : tarjeta.banco,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Icon(Icons.credit_card_rounded, color: Colors.white70, size: 22),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '•••• ${tarjeta.banco.length >= 4 ? tarjeta.banco.substring(0, 4).toUpperCase() : tarjeta.banco}',
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 13,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Disponible', style: TextStyle(color: Colors.white60, fontSize: 11)),
@@ -410,7 +463,10 @@ class _TarjetaCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ],
+  ),
+),
+);
   }
 }
 
@@ -529,7 +585,18 @@ class _SubTabBar extends StatelessWidget {
 
 class _ComprasList extends StatelessWidget {
   final List<Map<String, dynamic>> compras;
-  const _ComprasList({required this.compras});
+  final VoidCallback? onRefresh;
+  const _ComprasList({required this.compras, this.onRefresh});
+
+  Color _parseColor(String? hexString) {
+    if (hexString == null || hexString.isEmpty) return AppTheme.primary;
+    final hex = hexString.replaceAll('#', '');
+    try {
+      return Color(int.parse('FF$hex', radix: 16));
+    } catch (_) {
+      return AppTheme.primary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -538,81 +605,100 @@ class _ComprasList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: compras.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.borderLight),
       itemBuilder: (_, i) {
         final c = compras[i];
         final cuotaActual = (c['cuota_actual'] as num?)?.toInt() ?? 1;
         final numCuotas = (c['num_cuotas'] as num?)?.toInt() ?? 1;
         final pct = (cuotaActual / numCuotas).clamp(0.0, 1.0);
         final valorCuota = (c['valor_cuota'] as num?)?.toDouble() ?? 0.0;
+        final tarjetaNombre = c['nombre_tarjeta']?.toString() ?? '';
+        final color = _parseColor(c['tarjeta_color']?.toString());
+        final tasaMensual = (c['tasa_interes_mensual'] as num?)?.toDouble() ?? 0.0;
+        final tasaStr = (tasaMensual * 100).toStringAsFixed(0);
 
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.bgCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderSoft),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.bgCardWarm,
-                  borderRadius: BorderRadius.circular(10),
+        return GestureDetector(
+          onTap: () {
+            if (c['tarjeta_obj'] != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TarjetaDetalleScreen(
+                    tarjeta: c['tarjeta_obj'],
+                    initialCompraId: c['id'],
+                  ),
                 ),
-                child: const Icon(Icons.credit_card_rounded, color: AppTheme.primary, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ).then((_) {
+                if (onRefresh != null) onRefresh!();
+              });
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            decoration: const BoxDecoration(color: Colors.transparent),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(20),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.credit_card_rounded, color: color, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        c['descripcion']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$tarjetaNombre · $numCuotas cuotas · $tasaStr% interés · Cuota $cuotaActual',
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      c['descripcion']?.toString() ?? '',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      '\$${formatCOP(valorCuota).replaceAll('\$', '').trim()}',
+                      style: AppTheme.monoStyle(
                         color: AppTheme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      '$numCuotas cuotas · Cuota $cuotaActual',
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 50,
+                      height: 4,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          backgroundColor: AppTheme.borderSoft,
+                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatCOP(valorCuota),
-                    style: AppTheme.monoStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 60,
-                    height: 4,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: pct,
-                        backgroundColor: AppTheme.borderSoft,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -639,71 +725,79 @@ class _MetasList extends StatelessWidget {
         final pct = a.metaMonto > 0
             ? (a.montoActual / a.metaMonto).clamp(0.0, 1.0)
             : 0.0;
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.bgCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderSoft),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.warn.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AhorrosScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderSoft),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.warn.withAlpha(25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.savings_rounded, color: AppTheme.warn, size: 20),
                 ),
-                child: const Icon(Icons.savings_rounded, color: AppTheme.warn, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      a.nombre,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        a.nombre,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: pct,
-                              minHeight: 6,
-                              backgroundColor: AppTheme.borderSoft,
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.warn),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: pct,
+                                minHeight: 6,
+                                backgroundColor: AppTheme.borderSoft,
+                                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.warn),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${(pct * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primary,
+                          const SizedBox(width: 8),
+                          Text(
+                            '${(pct * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${formatCOP(a.montoActual)} / ${formatCOP(a.metaMonto)}',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${formatCOP(a.montoActual)} / ${formatCOP(a.metaMonto)}',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

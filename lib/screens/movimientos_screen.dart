@@ -25,6 +25,7 @@ typedef _Periodo = ({String label, String? mes});
 
 class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
   int _periodoIndex = 1; // 0=Semana, 1=Mes, 2=Año
+  int _filtroTipo = 0; // 0=Todos, 1=Ingresos, 2=Gastos
 
   static final List<_Periodo> _periodos = [
     (label: 'Semana', mes: 'week:${_fechaHoy()}'),
@@ -60,7 +61,7 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
           // ── Header ───────────────────────────────────────────
           SliverToBoxAdapter(
             child: _MovHeader(
-              onFilter: () {},
+              onFilter: () => _mostrarFiltros(context),
             ),
           ),
 
@@ -165,6 +166,51 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
     );
   }
 
+  void _mostrarFiltros(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgCanvas,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Filtrar Movimientos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('Todos', style: TextStyle(color: AppTheme.textPrimary)),
+                trailing: _filtroTipo == 0 ? const Icon(Icons.check, color: AppTheme.primary) : null,
+                onTap: () {
+                  setState(() => _filtroTipo = 0);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('Solo Ingresos', style: TextStyle(color: AppTheme.textPrimary)),
+                trailing: _filtroTipo == 1 ? const Icon(Icons.check, color: AppTheme.primary) : null,
+                onTap: () {
+                  setState(() => _filtroTipo = 1);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('Solo Gastos', style: TextStyle(color: AppTheme.textPrimary)),
+                trailing: _filtroTipo == 2 ? const Icon(Icons.check, color: AppTheme.primary) : null,
+                onTap: () {
+                  setState(() => _filtroTipo = 2);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// Combina y ordena ingresos + gastos por fecha, agrupa por dia, filtra por periodo
   List<Object> _buildMovimientos(List<Ingreso> ingresos, List<GastoFijo> gastos) {
     // Unificar en una lista tipada
@@ -219,6 +265,12 @@ class _MovimientosScreenState extends ConsumerState<MovimientosScreen> {
           return !item.fecha.startsWith('$currentYear');
         }
       });
+    }
+
+    if (_filtroTipo == 1) { // Ingresos
+      all.removeWhere((item) => !item.isIngreso);
+    } else if (_filtroTipo == 2) { // Gastos
+      all.removeWhere((item) => item.isIngreso);
     }
 
     // Ordenar por fecha DESC
@@ -684,29 +736,27 @@ class _TransactionRow extends ConsumerWidget {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderSoft),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
+          border: Border(bottom: BorderSide(color: AppTheme.borderLight, width: 1)),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 tx.isIngreso ? Icons.trending_up_rounded : Icons.trending_down_rounded,
                 color: color,
-                size: 18,
+                size: 22,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,26 +764,27 @@ class _TransactionRow extends ConsumerWidget {
                   Text(
                     tx.nombre,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     '${tx.isIngreso ? 'Ingreso' : 'Gasto'} · ${tx.categoria}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Text(
-              '${tx.isIngreso ? '+' : '-'}${formatCOP(tx.monto)}',
+              '${tx.isIngreso ? '+' : '-'}\$${formatCOP(tx.monto).replaceAll('\$', '').trim()}',
               style: AppTheme.monoStyle(
                 color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],

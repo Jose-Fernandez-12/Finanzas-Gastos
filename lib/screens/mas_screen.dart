@@ -23,7 +23,7 @@ class MasScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final suscripcionesAsync = ref.watch(suscripcionesProvider);
     final logrosAsync        = ref.watch(logrosProvider);
-    final analyticsAsync     = ref.watch(analyticsProvider(0.0));
+    final analyticsAsync     = ref.watch(advancedAnalyticsProvider((mes: null, abonoExtra: 0.0)));
 
     return Scaffold(
       backgroundColor: AppTheme.bgCanvas,
@@ -217,8 +217,9 @@ class _AnalyticaPreview extends StatelessWidget {
     final eficiencia = analytics['eficiencia_ahorro'] as Map<String, dynamic>? ?? {};
     final esclavitud = analytics['esclavitud_financiera'] as Map<String, dynamic>? ?? {};
 
-    final liquidez = (termometro['plata_libre'] as num?)?.toDouble() ?? 0.0;
-    final endeudamiento = (esclavitud['tasa_esclavitud'] as num?)?.toDouble() ?? 0.0;
+    final liquidez = (termometro['disponible_real'] as num?)?.toDouble() ?? 0.0;
+    final pctLibertad = (esclavitud['pct_libertad'] as num?)?.toDouble() ?? 100.0;
+    final endeudamiento = (100.0 - pctLibertad).clamp(0.0, 100.0);
     final tasaAhorro = (eficiencia['tasa_ahorro'] as num?)?.toDouble() ?? 0.0;
 
     return GestureDetector(

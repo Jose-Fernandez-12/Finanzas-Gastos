@@ -271,11 +271,11 @@ class _Header extends StatelessWidget {
             ),
             child: const Center(
               child: Text(
-                'MF',
+                'J',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: 16,
                 ),
               ),
             ),
@@ -289,15 +289,15 @@ class _Header extends StatelessWidget {
                 Text(
                   saludo,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppTheme.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const Text(
-                  'Mis Finanzas',
+                  'Jose',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
@@ -782,25 +782,23 @@ class _ProximaCuotaItem extends ConsumerWidget {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderSoft),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
+          border: Border(bottom: BorderSide(color: AppTheme.borderLight, width: 1)),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: color.withAlpha(25),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.credit_card_rounded, color: color, size: 18),
+              child: Icon(Icons.credit_card_rounded, color: color, size: 22),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -808,30 +806,31 @@ class _ProximaCuotaItem extends ConsumerWidget {
                   Text(
                     cuota['nombre_tarjeta']?.toString() ?? cuota['banco']?.toString() ?? '',
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     cuota['compra_descripcion']?.toString() ?? '',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  formatCOP((cuota['valor_cuota'] as num).toDouble()),
+                  '\$${formatCOP((cuota['valor_cuota'] as num).toDouble()).replaceAll('\$', '').trim()}',
                   style: AppTheme.monoStyle(
                     color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 Text(
@@ -839,7 +838,7 @@ class _ProximaCuotaItem extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: esHoy ? AppTheme.danger : AppTheme.textMuted,
+                    color: esHoy ? AppTheme.danger : AppTheme.textSecondary,
                   ),
                 ),
               ],
