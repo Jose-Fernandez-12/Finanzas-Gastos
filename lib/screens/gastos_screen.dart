@@ -109,7 +109,7 @@ class _GastosScreenState extends ConsumerState<GastosScreen> {
       isScrollControlled: true,
       backgroundColor:    AppTheme.bgCard,
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder:            (_) => _FormGasto(
+      builder:            (_) => FormGasto(
         gastoExistente: gasto,
         onSave: (monto) {
           ref.invalidate(gastosProvider(_mes));
@@ -341,16 +341,16 @@ class _GastoItem extends ConsumerWidget {
   }
 }
 
-class _FormGasto extends ConsumerStatefulWidget {
+class FormGasto extends ConsumerStatefulWidget {
   final GastoFijo? gastoExistente;
   final Function(double) onSave;
-  const _FormGasto({this.gastoExistente, required this.onSave});
+  const FormGasto({super.key, this.gastoExistente, required this.onSave});
 
   @override
-  ConsumerState<_FormGasto> createState() => _FormGastoState();
+  ConsumerState<FormGasto> createState() => _FormGastoState();
 }
 
-class _FormGastoState extends ConsumerState<_FormGasto> {
+class _FormGastoState extends ConsumerState<FormGasto> {
   final _form   = GlobalKey<FormState>();
   final _nombre = TextEditingController();
   final _monto  = TextEditingController();
@@ -402,7 +402,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
               const SizedBox(height: 20),
               if (_categorias.isNotEmpty)
                 DropdownButtonFormField<int>(
-                  value:        _categoriaId,
+                  value: _categoriaId,
                   decoration:   const InputDecoration(labelText: 'Categoria'),
                   dropdownColor: AppTheme.surfaceColor,
                   style:        const TextStyle(color: AppTheme.textPrimary),
@@ -414,7 +414,7 @@ class _FormGastoState extends ConsumerState<_FormGasto> {
               if (_sobres.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
-                  value: _sobreId,
+                  initialValue: _sobreId,
                   decoration: const InputDecoration(labelText: 'Asignar a sobre virtual (Opcional)'),
                   dropdownColor: AppTheme.surfaceColor,
                   style: const TextStyle(color: AppTheme.textPrimary),

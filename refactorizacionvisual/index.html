@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis Finanzas · Prototipo Refactorizado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f3ff;--surface:#fff;--fg:#191225;--fg-2:#443856;--muted:#746985;
+    --accent:#7c3aed;--border:#ddd2f2;--border-soft:#eee6fb;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font);color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.5}
+
+  /* Header */
+  .hero{padding:clamp(48px,8vw,80px) 24px clamp(32px,6vw,56px);text-align:center;max-width:720px;margin:0 auto}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.15);border-radius:9999px;font-size:13px;font-weight:600;color:var(--accent);margin-bottom:20px}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .hero h1{font-size:clamp(32px,5vw,48px);font-weight:800;letter-spacing:-0.03em;line-height:1.1;margin-bottom:16px}
+  .hero h1 span{color:var(--accent)}
+  .hero p{font-size:17px;color:var(--muted);max-width:520px;margin:0 auto 32px;line-height:1.6}
+
+  /* Pain points */
+  .pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:640px;margin:0 auto 48px;padding:0 24px}
+  .pain-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:16px;padding:20px;text-align:center}
+  .pain-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px}
+  .pain-card h3{font-size:14px;font-weight:700;margin-bottom:4px}
+  .pain-card p{font-size:12px;color:var(--muted);line-height:1.4}
+  @media(max-width:640px){.pain-grid{grid-template-columns:1fr}}
+
+  /* Screen selector */
+  .selector{display:flex;justify-content:center;gap:8px;padding:0 24px;margin-bottom:32px;flex-wrap:wrap}
+  .sel-btn{padding:8px 16px;border-radius:9999px;border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s ease;font-family:var(--font)}
+  .sel-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .sel-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* Frames container */
+  .frames-wrap{display:flex;justify-content:center;gap:40px;padding:0 24px 64px;flex-wrap:wrap;align-items:flex-start}
+  .frame-col{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .frame-label{font-size:14px;font-weight:700;color:var(--fg-2);display:flex;align-items:center;gap:8px}
+  .frame-label svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none}
+  .frame-wrap{border-radius:56px;overflow:hidden;box-shadow:0 0 0 3px #1a1a1a,0 30px 80px rgba(0,0,0,.18);background:#000;position:relative}
+  .frame-wrap.ios{width:390px;height:844px}
+  .frame-wrap.android{width:412px;height:900px;border-radius:32px}
+  .frame-wrap iframe{width:100%;height:100%;border:none;display:block}
+
+  /* Island */
+  .island{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:126px;height:36px;background:#000;border-radius:20px;z-index:10;display:flex;align-items:center;justify-content:center}
+  .island-cam{width:12px;height:12px;background:#0a0a2a;border-radius:50%;border:1px solid #1a1a3a}
+
+  /* Android punch hole */
+  .punch-hole{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#000;border-radius:50%;z-index:10}
+
+  /* Home bars */
+  .home-bar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:rgba(255,255,255,.5);border-radius:3px;z-index:10}
+  .nav-pill{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:120px;height:4px;background:rgba(255,255,255,.4);border-radius:2px;z-index:10}
+
+  /* Architecture comparison */
+  .compare{max-width:720px;margin:0 auto;padding:0 24px 64px}
+  .compare h2{font-size:24px;font-weight:800;text-align:center;margin-bottom:32px;letter-spacing:-0.02em}
+  .compare-grid{display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:start}
+  .compare-col{background:var(--surface);border:1px solid var(--border-soft);border-radius:20px;padding:24px}
+  .compare-col h3{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .compare-col h3 .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px}
+  .tag.before{background:#fee2e2;color:#ef4444}
+  .tag.after{background:#d1fae5;color:#10b981}
+  .compare-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:14px}
+  .compare-item:last-child{border-bottom:none}
+  .compare-item .num{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .compare-item .num.before{background:#fee2e2;color:#ef4444}
+  .compare-item .num.after{background:#d1fae5;color:#10b981}
+  .compare-arrow{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);padding-top:40px}
+  @media(max-width:700px){.compare-grid{grid-template-columns:1fr;gap:16px}.compare-arrow{transform:rotate(90deg);padding:0}}
+
+  /* Footer */
+  footer{text-align:center;padding:32px 24px 48px;border-top:1px solid var(--border-soft)}
+  footer p{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<section class="hero" data-od-id="hero">
+  <div class="badge"><div class="dot"></div> Prototipo refactorizado · Alta fidelidad</div>
+  <h1><span>Mis Finanzas</span> rediseñado</h1>
+  <p>De 7 pestañas caóticas a 5 pantallas claras. Gradient design system, flujos simplificados, Rocky integrado sin bloquear contenido.</p>
+</section>
+
+<div class="pain-grid" data-od-id="pain-points">
+  <div class="pain-card">
+    <div class="pain-icon" style="background:#fee2e2;color:#ef4444">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </div>
+    <h3>7 → 5 tabs</h3>
+    <p>Nav consolidada: Inicio, Movimientos, Finanzas, Más</p>
+  </div>
+  <div class="pain-card">
+    <div class="pain-icon" style="background:#fef3c7;color:#f59e0b">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+    </div>
+    <h3>Colores unificados</h3>
+    <p>Una paleta Gradient: púrpura #7c3aed como acento único</p>
+  </div>
+  <div class="pain-card">
+    <div class="pain-icon" style="background:#d1fae5;color:#10b981">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <h3>Flujos rápidos</h3>
+    <p>Quick-add FAB, formularios simplificados, una acción menos</p>
+  </div>
+</div>
+
+<div class="selector" data-od-id="screen-selector">
+  <button class="sel-btn active" onclick="setScreen('01-inicio.html')">Inicio</button>
+  <button class="sel-btn" onclick="setScreen('02-movimientos.html')">Movimientos</button>
+  <button class="sel-btn" onclick="setScreen('03-finanzas.html')">Finanzas</button>
+  <button class="sel-btn" onclick="setScreen('04-mas.html')">Más</button>
+  <button class="sel-btn" onclick="setScreen('06-analitica.html')">Analítica</button>
+  <button class="sel-btn" onclick="setScreen('05-rocky.html')">Rocky</button>
+</div>
+
+<div class="frames-wrap" data-od-id="frames">
+  <!-- iOS Frame -->
+  <div class="frame-col">
+    <div class="frame-label">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      iOS
+    </div>
+    <div class="frame-wrap ios">
+      <div class="island"><div class="island-cam"></div></div>
+      <iframe id="ios-frame" src="screens/01-inicio.html"></iframe>
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <!-- Android Frame -->
+  <div class="frame-col">
+    <div class="frame-label">
+      <svg viewBox="0 0 24 24"><path d="M5 16V9a7 7 0 0114 0v7"/><path d="M3 16h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"/></svg>
+      Android
+    </div>
+    <div class="frame-wrap android">
+      <div class="punch-hole"></div>
+      <iframe id="android-frame" src="screens/01-inicio.html"></iframe>
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Architecture comparison -->
+<div class="compare" data-od-id="compare">
+  <h2>Antes vs Después</h2>
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h3><span class="tag before">ANTES</span> Navegación</h3>
+      <div class="compare-item"><div class="num before">1</div> Inicio (dashboard sobrecargado)</div>
+      <div class="compare-item"><div class="num before">2</div> Ingresos</div>
+      <div class="compare-item"><div class="num before">3</div> Gastos</div>
+      <div class="compare-item"><div class="num before">4</div> Presupuesto</div>
+      <div class="compare-item"><div class="num before">5</div> Tarjetas</div>
+      <div class="compare-item"><div class="num before">6</div> Ahorros</div>
+      <div class="compare-item"><div class="num before">7</div> Suscripciones</div>
+    </div>
+    <div class="compare-arrow">→</div>
+    <div class="compare-col">
+      <h3><span class="tag after">DESPUÉS</span> Navegación</h3>
+      <div class="compare-item"><div class="num after">1</div> Inicio (resumen curado)</div>
+      <div class="compare-item"><div class="num after">2</div> Movimientos (ingresos + gastos + presupuesto)</div>
+      <div class="compare-item"><div class="num after">3</div> Agregar (FAB central)</div>
+      <div class="compare-item"><div class="num after">4</div> Finanzas (tarjetas + deudas + metas)</div>
+      <div class="compare-item"><div class="num after">5</div> Más (suscripciones + logros + analítica + config)</div>
+    </div>
+  </div>
+</div>
+
+<footer data-od-id="footer">
+  <p>Mis Finanzas · Prototipo refactorizado · Gradient design system · es-ES</p>
+</footer>
+
+<script>
+function setScreen(name) {
+  document.getElementById('ios-frame').src = 'screens/' + name;
+  document.getElementById('android-frame').src = 'screens/' + name;
+  document.querySelectorAll('.sel-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -154,6 +154,19 @@ class DatabaseService {
 
         // Ejecutar corrección de cuotas RappiCard
         await _fixRappiCardCuotas(db);
+
+        // Eliminar duplicados históricos de gastos fijos generados por la versión vieja
+        await db.execute("DELETE FROM gastos_fijos WHERE nombre LIKE 'Cuota TC:%';");
+
+        // Eliminar compras antiguas de Nu que ya se pagaron y duplican el gasto
+        await db.transaction((txn) async {
+          final rows = await txn.rawQuery("SELECT id FROM compras_tarjeta WHERE descripcion IN ('pago minimo', 'nubank')");
+          for (var r in rows) {
+            final id = r['id'];
+            await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [id]);
+            await txn.delete('compras_tarjeta', where: 'id = ?', whereArgs: [id]);
+          }
+        });
       },
     );
   }

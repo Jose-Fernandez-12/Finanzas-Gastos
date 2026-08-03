@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Mis Finanzas · Analítica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f3ff;--surface:#fff;--surface-warm:#efe7ff;--fg:#191225;--fg-2:#443856;--muted:#746985;
+    --meta:#7c3aed;--border:#ddd2f2;--border-soft:#eee6fb;--accent:#7c3aed;--accent-on:#fff;
+    --success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --r-sm:12px;--r-md:20px;--r-lg:32px;--r-pill:9999px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg)}
+  body{font-family:var(--font);color:var(--fg);-webkit-font-smoothing:antialiased}
+  .app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .header{padding:var(--s4) var(--s5) var(--s3);display:flex;align-items:center;gap:var(--s3)}
+  .back-btn{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg)}
+  .page-title{font-size:20px;font-weight:800;letter-spacing:-0.02em;flex:1}
+  .profile-pill{font-size:12px;font-weight:600;color:var(--accent);background:rgba(124,58,237,.08);padding:4px 12px;border-radius:var(--r-pill);border:1px solid rgba(124,58,237,.15)}
+
+  /* Hero card */
+  .hero-card{margin:0 var(--s4);background:linear-gradient(135deg,#7c3aed,#990FFA 50%,#a855f7);border-radius:var(--r-md);padding:var(--s5);color:#fff;position:relative;overflow:hidden}
+  .hero-card::after{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.07)}
+  .hero-label{font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+  .hero-value{font-size:36px;font-weight:800;letter-spacing:-0.03em;margin-top:4px}
+  .hero-row{display:flex;gap:var(--s4);margin-top:var(--s4)}
+  .hero-stat{flex:1}
+  .hero-stat-label{font-size:11px;opacity:.7}
+  .hero-stat-val{font-size:15px;font-weight:700;margin-top:2px}
+  .hero-stat-val.inc{color:#86efac}
+  .hero-stat-val.exp{color:#fca5a5}
+  .hero-tag{display:inline-flex;align-items:center;gap:4px;margin-top:var(--s3);padding:4px 10px;background:rgba(255,255,255,.15);border-radius:var(--r-pill);font-size:12px;font-weight:600}
+
+  /* Section */
+  .section{padding:var(--s5) var(--s4) 0}
+  .section-title{font-size:16px;font-weight:700;margin-bottom:var(--s3)}
+
+  /* Donut chart */
+  .donut-wrap{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5);display:flex;flex-direction:column;align-items:center}
+  .donut-chart{position:relative;width:160px;height:160px;margin-bottom:var(--s4)}
+  .donut-chart svg{width:160px;height:160px;transform:rotate(-90deg)}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut-total{font-size:18px;font-weight:800;letter-spacing:-0.02em}
+  .donut-sublabel{font-size:11px;color:var(--muted)}
+  .donut-legend{display:flex;gap:var(--s5);width:100%}
+  .legend-item{display:flex;align-items:center;gap:var(--s2);flex:1}
+  .legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+  .legend-info{flex:1}
+  .legend-name{font-size:12px;color:var(--muted)}
+  .legend-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* Category bars */
+  .cat-list{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .cat-item{margin-bottom:var(--s3)}
+  .cat-item:last-child{margin-bottom:0}
+  .cat-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s1)}
+  .cat-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:var(--s2)}
+  .cat-dot{width:8px;height:8px;border-radius:2px}
+  .cat-val{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .cat-pct{font-size:11px;color:var(--muted);margin-left:var(--s2)}
+  .cat-bar{height:6px;background:var(--border-soft);border-radius:3px;overflow:hidden}
+  .cat-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+  /* Estado endeudamiento */
+  .debt-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .debt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s3)}
+  .debt-title{font-size:14px;font-weight:600}
+  .debt-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--r-pill);background:#d1fae5;color:var(--success)}
+  .debt-pct{font-size:28px;font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s2)}
+  .debt-bar{height:8px;background:var(--border-soft);border-radius:4px;overflow:hidden;margin-bottom:var(--s2)}
+  .debt-bar-fill{height:100%;border-radius:4px;background:var(--success)}
+  .debt-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .debt-nums{display:flex;gap:var(--s4);margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--border-soft)}
+  .debt-num{flex:1;text-align:center}
+  .debt-num-label{font-size:11px;color:var(--muted)}
+  .debt-num-val{font-size:14px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+
+  /* Eficiencia ahorro */
+  .save-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .save-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s3)}
+  .save-pct{font-size:28px;font-weight:800;color:var(--success);letter-spacing:-0.02em}
+  .save-bar{height:8px;background:var(--border-soft);border-radius:4px;overflow:hidden;margin-bottom:var(--s3)}
+  .save-bar-fill{height:100%;border-radius:4px;background:var(--success)}
+  .save-row{display:flex;gap:var(--s3)}
+  .save-item{flex:1;text-align:center}
+  .save-item-label{font-size:11px;color:var(--muted)}
+  .save-item-val{font-size:14px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .save-msg{margin-top:var(--s3);padding:var(--s3);background:#d1fae5;border-radius:var(--r-sm);font-size:13px;color:#065f46;display:flex;align-items:center;gap:var(--s2)}
+
+  /* Simulador */
+  .sim-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .sim-tabs{display:flex;gap:var(--s2);margin-bottom:var(--s4)}
+  .sim-tab{flex:1;padding:var(--s2) 0;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;transition:all .15s ease}
+  .sim-tab.active{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+  .sim-amounts{display:flex;gap:var(--s2);margin-bottom:var(--s4)}
+  .sim-amt{flex:1;padding:var(--s2) 0;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;transition:all .15s ease}
+  .sim-amt.active{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+  .sim-result{background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r-sm);padding:var(--s3)}
+  .sim-result-title{font-size:13px;font-weight:700;color:#92400e;margin-bottom:var(--s2)}
+  .sim-save{font-size:14px;font-weight:700;color:#92400e}
+  .sim-desc{font-size:12px;color:#78350f;margin-top:var(--s2);line-height:1.4}
+
+  /* Gastos hormiga */
+  .ant-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:var(--s5)}
+  .ant-total{font-size:13px;font-weight:600;color:var(--danger);display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3)}
+  .ant-item{display:flex;align-items:center;justify-content:space-between;padding:var(--s2) 0;border-bottom:1px solid var(--border-soft)}
+  .ant-item:last-child{border-bottom:none}
+  .ant-name{font-size:13px;font-weight:600}
+  .ant-vals{text-align:right}
+  .ant-val{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ant-annual{font-size:11px;color:var(--danger);font-variant-numeric:tabular-nums}
+
+  /* Tab bar */
+  .tab-bar{display:flex;align-items:center;justify-content:space-around;padding:var(--s2) 0 calc(var(--s2) + env(safe-area-inset-bottom,4px));background:var(--surface);border-top:1px solid var(--border-soft);flex-shrink:0;min-height:56px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:56px;padding:4px 0;color:var(--muted);transition:color .15s ease}
+  .tab.active{color:var(--accent)}
+  .tab-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .tab-icon svg{width:22px;height:22px;stroke-width:1.8;fill:none;stroke:currentColor}
+  .tab-label{font-size:10px;font-weight:600;letter-spacing:.02em}
+  .tab.center{position:relative}
+  .tab.center .tab-icon{width:44px;height:44px;background:var(--accent);border-radius:var(--r-sm);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.35);margin-top:-18px}
+  .tab.center .tab-label{color:var(--accent)}
+  .spacer-bottom{height:var(--s8)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scroll" data-od-id="scroll-analitica">
+    <div class="header" data-od-id="header-analitica">
+      <button class="back-btn" onclick="history.back()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="page-title">Analítica</div>
+      <div class="profile-pill">Completo Pro</div>
+    </div>
+
+    <!-- Hero: Liquidez -->
+    <div class="hero-card" data-od-id="liquidez-hero">
+      <div class="hero-label">Liquidez a Fin de Mes</div>
+      <div class="hero-value">$1.687.995</div>
+      <div class="hero-row">
+        <div class="hero-stat">
+          <div class="hero-stat-label">Ingresos Totales</div>
+          <div class="hero-stat-val inc">$2.465.000</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Egresos Totales</div>
+          <div class="hero-stat-val exp">$777.005</div>
+        </div>
+      </div>
+      <div class="hero-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/></svg>
+        Nivel de Endeudamiento: 31,5%
+      </div>
+    </div>
+
+    <!-- Donut: Ingresos vs Egresos -->
+    <div class="section" data-od-id="donut-section">
+      <div class="section-title">Proporción: Ingresos vs Egresos</div>
+      <div class="donut-wrap">
+        <div class="donut-chart">
+          <svg viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#eee6fb" stroke-width="20"/>
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#10b981" stroke-width="20" stroke-dasharray="377 1000" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#ef4444" stroke-width="20" stroke-dasharray="90 1000" stroke-dashoffset="-377" stroke-linecap="round"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-total">$2.465.000</div>
+            <div class="donut-sublabel">ingresos</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--success)"></div>
+            <div class="legend-info">
+              <div class="legend-name">Ingresos</div>
+              <div class="legend-val">$2.465.000</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--danger)"></div>
+            <div class="legend-info">
+              <div class="legend-name">Egresos</div>
+              <div class="legend-val">$777.005</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gastos por categoría -->
+    <div class="section" data-od-id="cats-section">
+      <div class="section-title">Gastos por Categoría</div>
+      <div class="cat-list">
+        <div class="cat-item">
+          <div class="cat-row">
+            <div class="cat-name"><div class="cat-dot" style="background:#3b82f6"></div>Transporte</div>
+            <div><span class="cat-val">$80.000</span><span class="cat-pct">40%</span></div>
+          </div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:40%;background:#3b82f6"></div></div>
+        </div>
+        <div class="cat-item">
+          <div class="cat-row">
+            <div class="cat-name"><div class="cat-dot" style="background:#f59e0b"></div>Servicios</div>
+            <div><span class="cat-val">$80.000</span><span class="cat-pct">40%</span></div>
+          </div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:40%;background:#f59e0b"></div></div>
+        </div>
+        <div class="cat-item">
+          <div class="cat-row">
+            <div class="cat-name"><div class="cat-dot" style="background:#78716c"></div>Otros</div>
+            <div><span class="cat-val">$39.890</span><span class="cat-pct">20%</span></div>
+          </div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:20%;background:#78716c"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado endeudamiento -->
+    <div class="section" data-od-id="debt-section">
+      <div class="section-title">Estado de Endeudamiento</div>
+      <div class="debt-card">
+        <div class="debt-header">
+          <div class="debt-title">Deuda vs Activos</div>
+          <div class="debt-badge">Saludable</div>
+        </div>
+        <div class="debt-pct">20,7%</div>
+        <div class="debt-bar"><div class="debt-bar-fill" style="width:20.7%"></div></div>
+        <div class="debt-legend"><span>0%</span><span>Riesgo (&gt;60%)</span></div>
+        <div class="debt-nums">
+          <div class="debt-num">
+            <div class="debt-num-label">A Favor</div>
+            <div class="debt-num-val" style="color:var(--success)">$13.720.000</div>
+          </div>
+          <div class="debt-num">
+            <div class="debt-num-label">Cuentas x Pagar</div>
+            <div class="debt-num-val" style="color:var(--danger)">$3.579.938</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eficiencia de ahorro -->
+    <div class="section" data-od-id="save-section">
+      <div class="section-title">Eficiencia de Ahorro</div>
+      <div class="save-card">
+        <div class="save-header">
+          <div style="font-size:14px;font-weight:600">Tasa real de ahorro del mes</div>
+          <div class="save-pct">88,8%</div>
+        </div>
+        <div class="save-bar"><div class="save-bar-fill" style="width:88.8%"></div></div>
+        <div class="save-row">
+          <div class="save-item">
+            <div class="save-item-label">Ingresos</div>
+            <div class="save-item-val">$2.465.000</div>
+          </div>
+          <div class="save-item">
+            <div class="save-item-label">Superávit</div>
+            <div class="save-item-val" style="color:var(--success)">$1.610.995</div>
+          </div>
+          <div class="save-item">
+            <div class="save-item-label">Ahorro real</div>
+            <div class="save-item-val" style="color:var(--accent)">$2.188.110</div>
+          </div>
+        </div>
+        <div class="save-msg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          Excelente disciplina financiera. Sigue así.
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulador de pagos -->
+    <div class="section" data-od-id="sim-section">
+      <div class="section-title">Simulador Inteligente de Pagos</div>
+      <div class="sim-card">
+        <div class="sim-tabs">
+          <div class="sim-tab active">Avalancha</div>
+          <div class="sim-tab">Bola de Nieve</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:var(--s3)">Simula un abono extra este mes:</div>
+        <div class="sim-amounts">
+          <div class="sim-amt">$100k</div>
+          <div class="sim-amt active">$200k</div>
+          <div class="sim-amt">$500k</div>
+          <div class="sim-amt">$1M</div>
+        </div>
+        <div class="sim-result">
+          <div class="sim-result-title">Recomendación Avalancha</div>
+          <div style="font-size:13px;font-weight:600">Pagar a la deuda de mayor interés (RappiCard)</div>
+          <div class="sim-save">Ahorro proyectado en intereses: $128</div>
+          <div class="sim-desc">Pagar primero la deuda con mayor tasa (0,0%) ahorra el máximo interés posible al banco.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gastos hormiga -->
+    <div class="section" data-od-id="ant-section">
+      <div class="section-title">Radar de Gastos Hormiga</div>
+      <div class="ant-card">
+        <div class="ant-total">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          Fuga anual detectada: $918.072 / año
+        </div>
+        <div class="ant-item">
+          <div class="ant-name">Spotify</div>
+          <div class="ant-vals"><div class="ant-val">$20.000</div><div class="ant-annual">$240.000 / año</div></div>
+        </div>
+        <div class="ant-item">
+          <div class="ant-name">Cuota manejo RappiCard</div>
+          <div class="ant-vals"><div class="ant-val">$19.990</div><div class="ant-annual">$239.880 / año</div></div>
+        </div>
+        <div class="ant-item">
+          <div class="ant-name">Cuota manejo NuBank</div>
+          <div class="ant-vals"><div class="ant-val">$19.900</div><div class="ant-annual">$238.800 / año</div></div>
+        </div>
+        <div class="ant-item">
+          <div class="ant-name">Rappi</div>
+          <div class="ant-vals"><div class="ant-val">$22.928</div><div class="ant-annual">$91.712 / año</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer-bottom"></div>
+  </div>
+
+  <nav class="tab-bar" data-od-id="tab-bar">
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg></div>
+      <div class="tab-label">Inicio</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M17 14v4m-2-2h4"/></svg></div>
+      <div class="tab-label">Movimientos</div>
+    </div>
+    <div class="tab center">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+      <div class="tab-label">Agregar</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+      <div class="tab-label">Finanzas</div>
+    </div>
+    <div class="tab active">
+      <div class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+      <div class="tab-label">Más</div>
+    </div>
+  </nav>
+</div>
+</body>
+</html>

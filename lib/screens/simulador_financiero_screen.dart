@@ -58,11 +58,7 @@ class _SimuladorFinancieroScreenState extends ConsumerState<SimuladorFinancieroS
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0EA5E9), Color(0xFF6366F1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: AppTheme.heroGradient,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -150,7 +146,7 @@ class _SimuladorFinancieroScreenState extends ConsumerState<SimuladorFinancieroS
                           min: 0,
                           max: 5,
                           divisions: 50,
-                          activeColor: const Color(0xFFF59E0B),
+                          activeColor: AppTheme.warn,
                           onChanged: (v) => setState(() {
                             _tasaInteres = v;
                             _haSimulado = false;
@@ -183,7 +179,7 @@ class _SimuladorFinancieroScreenState extends ConsumerState<SimuladorFinancieroS
                           min: 1,
                           max: 60,
                           divisions: 59,
-                          activeColor: const Color(0xFF10B981),
+                          activeColor: AppTheme.success,
                           onChanged: (v) => setState(() {
                             _plazoMeses = v.round();
                             _haSimulado = false;

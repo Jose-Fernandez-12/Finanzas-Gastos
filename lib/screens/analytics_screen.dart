@@ -439,7 +439,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               );
             },
             loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))),
-            error: (e, st) => Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Error al cargar proyección.', style: TextStyle(color: AppTheme.danger)))),
+            error: (e, st) => Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Error al cargar proyección.', style: TextStyle(color: AppTheme.colorGastos)))),
           ),
         ],
       ),

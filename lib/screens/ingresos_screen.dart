@@ -100,7 +100,7 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
                 child: ingresosList.isEmpty
                     ? const _Empty(mensaje: 'Sin ingresos registrados este mes')
                     : RefreshIndicator(
-                        color:     AppTheme.primary,
+                        color: AppTheme.primary,
                         onRefresh: () async => ref.invalidate(ingresosProvider(_mes)),
                         child: ListView.builder(
                           padding:     const EdgeInsets.all(16).copyWith(top: 4),
@@ -125,7 +125,7 @@ class _IngresosScreenState extends ConsumerState<IngresosScreen> {
       isScrollControlled: true,
       backgroundColor:    AppTheme.bgCard,
       shape:              const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder:            (_) => _FormIngreso(
+      builder:            (_) => FormIngreso(
         ingreso: ingreso,
         onSave: (monto) {
           ref.invalidate(ingresosProvider(_mes));
@@ -297,16 +297,16 @@ class _IngresoItem extends ConsumerWidget {
   }
 }
 
-class _FormIngreso extends ConsumerStatefulWidget {
+class FormIngreso extends ConsumerStatefulWidget {
   final Ingreso? ingreso;
   final Function(double) onSave;
-  const _FormIngreso({this.ingreso, required this.onSave});
+  const FormIngreso({super.key, this.ingreso, required this.onSave});
 
   @override
-  ConsumerState<_FormIngreso> createState() => _FormIngresoState();
+  ConsumerState<FormIngreso> createState() => _FormIngresoState();
 }
 
-class _FormIngresoState extends ConsumerState<_FormIngreso> {
+class _FormIngresoState extends ConsumerState<FormIngreso> {
   final _form        = GlobalKey<FormState>();
   final _desc        = TextEditingController();
   final _monto       = TextEditingController();
@@ -354,7 +354,7 @@ class _FormIngresoState extends ConsumerState<_FormIngreso> {
 
               if (_categorias.isNotEmpty)
                 DropdownButtonFormField<int>(
-                  value:        _categoriaId,
+                  value: _categoriaId,
                   decoration:   const InputDecoration(labelText: 'Categoria'),
                   dropdownColor: AppTheme.surfaceColor,
                   style:        const TextStyle(color: AppTheme.textPrimary),

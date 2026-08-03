@@ -6,14 +6,20 @@ import 'core/theme.dart';
 import 'core/notification_listener_channel.dart';
 import 'core/transaction_classifier.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/tarjetas/tarjetas_screen.dart';
+import 'screens/movimientos_screen.dart';
+import 'screens/finanzas_screen.dart';
+import 'screens/mas_screen.dart';
 import 'screens/ingresos_screen.dart';
 import 'screens/gastos_screen.dart';
+import 'screens/tarjetas/tarjetas_screen.dart';
+import 'screens/tarjetas/forms.dart';
 import 'screens/ahorros_screen.dart';
 import 'screens/suscripciones_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 import 'screens/notificaciones/gasto_detectado_dialog.dart';
 import 'widgets/virtual_assistant_widget.dart';
+import 'widgets/custom_bottom_nav.dart';
+import 'widgets/quick_add_sheet.dart';
 import 'providers/virtual_assistant_provider.dart';
 
 import 'core/notification_service.dart';
@@ -45,10 +51,20 @@ class FinanzasApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: const MainNavigation(),
+      // Rutas para el QuickAddSheet
+      routes: {
+        '/ingresos/nuevo':         (_) => const IngresosScreen(),
+        '/gastos/nuevo':           (_) => const GastosScreen(),
+        '/tarjetas/nueva-compra':  (_) => const TarjetasScreen(),
+        '/suscripciones/nueva':    (_) => const SuscripcionesScreen(),
+        '/ahorros/nueva':          (_) => const AhorrosScreen(),
+        '/cuentas-cobrar/nuevo':   (_) => const CuentasCobrarScreen(),
+      },
       builder: (context, child) {
         return Stack(
           children: [
             if (child != null) child,
+            // Rocky sigue igual — overlay flotante global sin cambios
             const GlobalVirtualAssistant(),
           ],
         );
@@ -64,26 +80,35 @@ class MainNavigation extends ConsumerStatefulWidget {
 }
 
 class _MainNavigationState extends ConsumerState<MainNavigation> {
+  /// Indices mapeados a pantallas reales (FAB en pos. 2 no tiene pantalla)
+  /// 0=Inicio, 1=Movimientos, 2=Finanzas, 3=Mas
   int _currentIndex = 0;
 
   late final List<Widget> _screens = [
     DashboardScreen(
-      onNavigate: (i) {
-        setState(() => _currentIndex = i);
-      },
+      onNavigate: (i) => setState(() => _currentIndex = i),
     ),
-    const IngresosScreen(),
-    const GastosScreen(),
-    const TarjetasScreen(),
-    const AhorrosScreen(),
-    const SuscripcionesScreen(),
-    const CuentasCobrarScreen(),
+    const MovimientosScreen(),
+    const FinanzasScreen(),
+    const MasScreen(),
   ];
+
+  static const _viewNames = ['inicio', 'movimientos', 'finanzas', 'mas'];
+
+  // ── Mapeo index de pantalla → contexto del FAB ─────────────
+  static const _fabContexts = [
+    QuickAddContext.inicio,
+    QuickAddContext.movimientos,
+    QuickAddContext.finanzas,
+    QuickAddContext.mas,
+  ];
+
+  // ── Transacciones detectadas ─────────────────────────────────
+  bool _isShowingDialog = false;
 
   @override
   void initState() {
     super.initState();
-    // Al abrir la app, verificar si hay transacciones detectadas pendientes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await NotificationListenerChannel.instance.fetchActiveNotifications();
       _checkPendingTransactions();
@@ -91,24 +116,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     });
   }
 
-  bool _isShowingDialog = false;
-
-  /// Verifica transacciones pendientes guardadas mientras la app estaba cerrada
   Future<void> _checkPendingTransactions() async {
-    if (_isShowingDialog) return; // Si ya hay uno abierto, esperar a que cierre
-
+    if (_isShowingDialog) return;
     final pending = await NotificationListenerChannel.instance.getPendingTransactions();
     if (!mounted || pending.isEmpty) return;
-
     _isShowingDialog = true;
-    // Mostrar el dialog para la primera transaccion pendiente
     _showGastoDetectado(pending.first, 0);
   }
 
-  /// Escucha transacciones en tiempo real mientras la app esta abierta
   void _listenForRealTimeTransactions() {
     NotificationListenerChannel.instance.transactionStream.listen((data) {
-      // Como Kotlin ya guarda la notificacion en "pending", solo avisamos que revise los pendientes
       if (mounted) _checkPendingTransactions();
     });
   }
@@ -131,12 +148,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
         classification: classification,
         onDone: () {
           _isShowingDialog = false;
-          // Verificar si hay mas transacciones pendientes
           _checkPendingTransactions();
         },
       ),
     ).then((_) {
-      // Por si el usuario cierra el modal arrastrandolo hacia abajo o tocando afuera
       if (_isShowingDialog) {
         _isShowingDialog = false;
         _checkPendingTransactions();
@@ -144,47 +159,24 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     });
   }
 
+  // ── Build ────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bgCanvas,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          border: const Border(top: BorderSide(color: AppTheme.borderLight)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(5),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          backgroundColor: AppTheme.bgCard,
-          indicatorColor: AppTheme.primary.withAlpha(25),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          onDestinationSelected: (i) {
-            setState(() => _currentIndex = i);
-            final views = ['dashboard', 'ingresos', 'gastos', 'tarjetas', 'ahorros', 'suscripciones', 'cobrar'];
-            if (i < views.length) {
-              ref.read(virtualAssistantProvider.notifier).setCurrentView(views[i]);
-            }
-          },
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.dashboard_rounded),         label: 'Inicio'),
-            NavigationDestination(icon: Icon(Icons.trending_up_rounded),       label: 'Ingresos'),
-            NavigationDestination(icon: Icon(Icons.receipt_long_rounded),      label: 'Gastos'),
-            NavigationDestination(icon: Icon(Icons.credit_card_rounded),       label: 'Tarjetas'),
-            NavigationDestination(icon: Icon(Icons.savings_rounded),           label: 'Ahorros'),
-            NavigationDestination(icon: Icon(Icons.subscriptions_rounded),     label: 'Suscripc.'),
-            NavigationDestination(icon: Icon(Icons.people_rounded),            label: 'Cobrar'),
-          ],
-        ),
+      bottomNavigationBar: CustomBottomNav(
+        currentIndex: _currentIndex,
+        onTabSelected: (i) {
+          setState(() => _currentIndex = i);
+          if (i < _viewNames.length) {
+            ref.read(virtualAssistantProvider.notifier).setCurrentView(_viewNames[i]);
+          }
+        },
+        onFabTap: () => showQuickAddSheet(context, _fabContexts[_currentIndex]),
       ),
     );
   }

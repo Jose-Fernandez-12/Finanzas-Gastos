@@ -80,7 +80,8 @@ class ReporteDetalladoView extends ConsumerWidget {
                   onPressed: () => PdfReportGenerator.generateAndSaveReport(context, data),
                   icon: const Icon(Icons.picture_as_pdf),
                   label: const Text('Descargar PDF'),
-                  backgroundColor: AppTheme.secondary,
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -93,11 +94,7 @@ class ReporteDetalladoView extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primaryDark, AppTheme.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppTheme.heroGradient,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

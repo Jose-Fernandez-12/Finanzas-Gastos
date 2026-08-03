@@ -8,13 +8,36 @@ class GastosDao {
   GastosDao._();
 
   Future<List<GastoFijo>> getGastosFijos({String? mes}) async {
-    final queryMes = mes ?? DateFormat('yyyy-MM').format(DateTime.now());
+    String whereClause = 'g.activo = 1 AND (g.es_fijo = 1 OR g.mes_referencia = ?)';
+    List<dynamic> args;
+
+    if (mes == 'all') {
+      whereClause = 'g.activo = 1';
+      args = [];
+    } else if (mes != null && mes.startsWith('year:')) {
+      final year = mes.split(':')[1];
+      whereClause = 'g.activo = 1 AND (g.es_fijo = 1 OR g.mes_referencia LIKE ?)';
+      args = ['$year-%'];
+    } else if (mes != null && mes.startsWith('week:')) {
+      final dateStr = mes.split(':')[1];
+      final date = DateTime.parse(dateStr);
+      final monday = date.subtract(Duration(days: date.weekday - 1));
+      final sunday = monday.add(const Duration(days: 6));
+      final mondayStr = '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+      final sundayStr = '${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}';
+      whereClause = 'g.activo = 1 AND (g.es_fijo = 1 OR (g.fecha_ultimo_pago >= ? AND g.fecha_ultimo_pago <= ?))';
+      args = [mondayStr, sundayStr];
+    } else {
+      final queryMes = mes ?? DateFormat('yyyy-MM').format(DateTime.now());
+      args = [queryMes];
+    }
+
     final rows = await DatabaseService.instance.query(
       '''
       SELECT g.*, c.nombre AS categoria_nombre, c.icono AS categoria_icono, c.color AS categoria_color
       FROM gastos_fijos g
       JOIN categorias_gasto c ON g.categoria_id = c.id
-      WHERE g.activo = 1 AND (g.es_fijo = 1 OR g.mes_referencia = ?)
+      WHERE $whereClause
       ORDER BY
         CASE
           WHEN g.fecha_ultimo_pago IS NOT NULL AND strftime('%Y-%m', g.fecha_ultimo_pago) = strftime('%Y-%m', 'now') THEN 1
@@ -22,13 +45,16 @@ class GastosDao {
         END ASC,
         g.dia_pago ASC
       ''',
-      [queryMes]
+      args
     );
     return rows.map((e) => GastoFijo.fromMap(e)).toList();
   }
 
   Future<void> createGastoFijo(GastoFijo gasto) async {
     final map = gasto.toMap();
+    if (map['dia_pago'] == null || map['dia_pago'] < 1 || map['dia_pago'] > 31) {
+      map['dia_pago'] = DateTime.now().day;
+    }
     // Al registrar un gasto, se marca como pagado hoy (el usuario lo ingresa porque ya lo pagó)
     map['fecha_ultimo_pago'] = DateTime.now().toIso8601String().split('T')[0];
     await DatabaseService.instance.insert('gastos_fijos', map);
@@ -36,6 +62,9 @@ class GastosDao {
 
   Future<void> updateGastoFijo(int id, GastoFijo gasto) async {
     final map = gasto.toMap();
+    if (map['dia_pago'] == null || map['dia_pago'] < 1 || map['dia_pago'] > 31) {
+      map['dia_pago'] = DateTime.now().day;
+    }
     map['actualizado_en'] = DateTime.now().toIso8601String();
     await DatabaseService.instance.update('gastos_fijos', map, where: 'id = ?', whereArgs: [id]);
   }

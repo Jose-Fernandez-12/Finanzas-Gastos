@@ -14,6 +14,7 @@ class LocalRepository {
 
   // ---- Dashboard ----
   Future<Map<String, dynamic>> getDashboard() async {
+    await _facturarCuotasManejo();
     final now = DateTime.now();
     final mesActual = "${now.year}-${now.month.toString().padLeft(2, '0')}";
 
@@ -98,6 +99,42 @@ class LocalRepository {
         'ahorros': ahorrosData
       }
     };
+  }
+
+  Future<void> _facturarCuotasManejo() async {
+    try {
+      final now = DateTime.now();
+      final mesActual = "${now.year}-${now.month.toString().padLeft(2, '0')}";
+      final descCuota = 'Cuota Manejo $mesActual';
+
+      final tarjetasData = await DatabaseService.instance.query("SELECT * FROM tarjetas_credito WHERE activa = 1 AND cuota_manejo > 0");
+      for (var t in tarjetasData) {
+        final cuota = (t['cuota_manejo'] as num).toDouble();
+        final tarjetaId = t['id'];
+
+        // Verificar si ya se cobró este mes
+        final exist = await DatabaseService.instance.query(
+          "SELECT id FROM compras_tarjeta WHERE tarjeta_id = ? AND descripcion = ?",
+          [tarjetaId, descCuota]
+        );
+        
+        if (exist.isEmpty) {
+          // Crear la compra a 1 cuota
+          await createCompra(tarjetaId, {
+            'descripcion': descCuota,
+            'comercio': t['banco'],
+            'monto_total': cuota,
+            'num_cuotas': 1,
+            'tasa_ingresada': 0.0,
+            'tipo_tasa': 'MENSUAL',
+            'fecha_compra': now.toIso8601String().split('T')[0],
+            'es_avance': false,
+            'categoria_id': 9, // Otros
+            'notas': 'Cobro automático de cuota de manejo'
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   // ---- Analytics ----
@@ -271,7 +308,7 @@ class LocalRepository {
       'categoria_id': data['categoria_id'],
       'nombre': data['nombre'],
       'monto': data['monto'],
-      'dia_pago': data['dia_pago'],
+      'dia_pago': (data['dia_pago'] != null && data['dia_pago'] >= 1 && data['dia_pago'] <= 31) ? data['dia_pago'] : DateTime.now().day,
       'es_fijo': data['es_fijo'] ?? 1,
       'mes_referencia': data['mes_referencia'] ?? "${now.year}-${now.month.toString().padLeft(2, '0')}",
       'notas': data['notas'],
@@ -286,7 +323,7 @@ class LocalRepository {
       'categoria_id': data['categoria_id'],
       'nombre': data['nombre'],
       'monto': data['monto'],
-      'dia_pago': data['dia_pago'],
+      'dia_pago': (data['dia_pago'] != null && data['dia_pago'] >= 1 && data['dia_pago'] <= 31) ? data['dia_pago'] : DateTime.now().day,
       'es_fijo': data['es_fijo'] ?? 1,
       'mes_referencia': data['mes_referencia'] ?? "${now.year}-${now.month.toString().padLeft(2, '0')}",
       'notas': data['notas'],
@@ -360,17 +397,6 @@ class LocalRepository {
         'color': data['color'] ?? '#1976D2',
         'notas': data['notas']
       });
-
-      double cuotaManejo = (data['cuota_manejo'] as num?)?.toDouble() ?? 0;
-      if (cuotaManejo > 0) {
-        await txn.insert('gastos_fijos', {
-          'categoria_id': 9, // Otros
-          'nombre': 'Cuota Manejo ${data['nombre_tarjeta']}',
-          'monto': cuotaManejo,
-          'dia_pago': data['fecha_pago'],
-          'notas': 'Generado automáticamente por la tarjeta ${data['banco']}'
-        });
-      }
     });
   }
 
@@ -390,25 +416,8 @@ class LocalRepository {
         'actualizado_en': DateTime.now().toIso8601String()
       }, where: 'id = ?', whereArgs: [id]);
 
-      double cuotaManejo = (data['cuota_manejo'] as num?)?.toDouble() ?? 0;
-      if (cuotaManejo > 0) {
-        String nombreGasto = 'Cuota Manejo ${data['nombre_tarjeta']}';
-        final res = await txn.rawQuery("SELECT id FROM gastos_fijos WHERE nombre = ? OR nombre LIKE ?", [nombreGasto, "%${data['nombre_tarjeta']}%"]);
-        if (res.isNotEmpty) {
-          await txn.update('gastos_fijos', {
-            'monto': cuotaManejo,
-            'dia_pago': data['fecha_pago']
-          }, where: 'id = ?', whereArgs: [res.first['id']]);
-        } else {
-          await txn.insert('gastos_fijos', {
-            'categoria_id': 9,
-            'nombre': nombreGasto,
-            'monto': cuotaManejo,
-            'dia_pago': data['fecha_pago'],
-            'notas': 'Generado automáticamente por la tarjeta ${data['banco']}'
-          });
-        }
-      }
+      // Eliminar gasto fijo legado si existía, ya que ahora se cobra directo a la tarjeta
+      await txn.rawDelete("DELETE FROM gastos_fijos WHERE nombre LIKE ?", ['Cuota Manejo %${data['nombre_tarjeta']}%']);
     });
   }
 

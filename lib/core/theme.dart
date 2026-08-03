@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Paleta de colores y tema principal de la app (Light Vibrant Theme — Finanzas)
+/// Paleta de colores y tema principal de la app (Gradient Design System — Finanzas)
 class AppTheme {
-  // Colores primarios y acentos
-  static const Color primary     = Color(0xFF6C63FF);  // Indigo / Violeta vibrante
-  static const Color primaryDark = Color(0xFF4F46E5);  // Indigo profundo
-  static const Color secondary   = Color(0xFF0D9488);  // Teal
-  static const Color accent      = Color(0xFFE11D48);  // Rose
+  // ──────────────────────────────────────────────────────────────
+  // ACENTO PRINCIPAL  (purpura #7C3AED — unico acento de la app)
+  // ──────────────────────────────────────────────────────────────
+  static const Color primary     = Color(0xFF7C3AED); // Purpura principal
+  static const Color primaryDark = Color(0xFF6D28D9); // Purpura profundo
+  static const Color primaryMid  = Color(0xFF990FFA); // Purpura medio (gradiente)
+  static const Color primaryLight= Color(0xFFA855F7); // Purpura claro (gradiente)
 
-  // Colores semánticos financieros (Finanzas HTML)
+  /// Alias para compatibilidad con codigo existente que usaba `accent`
+  static const Color accent      = primary;
+  static const Color secondary   = Color(0xFF0D9488); // Teal (uso puntual)
+
+  // ──────────────────────────────────────────────────────────────
+  // COLORES SEMANTICOS FINANCIEROS
+  // ──────────────────────────────────────────────────────────────
   static const Color colorIngresos    = Color(0xFF10B981); // Green
   static const Color colorGastos      = Color(0xFFEF4444); // Red
   static const Color colorDeudas      = Color(0xFFF59E0B); // Amber
@@ -18,31 +26,104 @@ class AppTheme {
   static const Color colorAlDia       = Color(0xFF10B981);
   static const Color colorCancelado   = Color(0xFF6B7280);
 
-  // Escala de riesgo crediticio
+  // Semaforo rapido
+  static const Color success = Color(0xFF10B981);
+  static const Color warn    = Color(0xFFF59E0B);
+  static const Color danger  = Color(0xFFEF4444);
+
+  // ──────────────────────────────────────────────────────────────
+  // ESCALA DE RIESGO CREDITICIO
+  // ──────────────────────────────────────────────────────────────
   static const Color riesgoBajo     = Color(0xFF10B981);
   static const Color riesgoModerado = Color(0xFFF59E0B);
   static const Color riesgoAlto     = Color(0xFFEF4444);
   static const Color riesgoCritico  = Color(0xFFDC2626);
 
-  // Fondos y superficies (Light Vibrant)
-  static const Color bgCanvas    = Color(0xFFF9FAFB);  // Fondo general claro
-  static const Color bgCard      = Color(0xFFFFFFFF);  // Superficie blanca
-  static const Color bgCardLight = Color(0xFFF3F4F6);  // Superficie gris suave
-  static const Color surfaceColor= Color(0xFFF3F4F6);  // Inputs y hover
-  static const Color borderLight = Color(0xFFE5E7EB);  // Bordes limpios
+  // ──────────────────────────────────────────────────────────────
+  // FONDOS Y SUPERFICIES  (tinte lila suave)
+  // ──────────────────────────────────────────────────────────────
+  static const Color bgCanvas    = Color(0xFFF7F3FF); // Fondo general — lila suave
+  static const Color bgCard      = Color(0xFFFFFFFF); // Superficie blanca
+  static const Color bgCardWarm  = Color(0xFFEFE7FF); // Superficie lila calida
+  static const Color bgCardLight = Color(0xFFEFE7FF); // Alias de bgCardWarm
+  static const Color surfaceColor= Color(0xFFEFE7FF); // Inputs y hover
 
-  // Alias de compatibilidad (para transición suave de código existente)
-  static const Color bgDark      = bgCanvas;
+  // Alias de compatibilidad
+  static const Color bgDark = bgCanvas;
 
-  // Texto (Light Theme)
-  static const Color textPrimary   = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF4B5563);
-  static const Color textMuted     = Color(0xFF9CA3AF);
+  // ──────────────────────────────────────────────────────────────
+  // BORDES
+  // ──────────────────────────────────────────────────────────────
+  static const Color borderLight = Color(0xFFDDD2F2); // Borde general
+  static const Color borderSoft  = Color(0xFFEEE6FB); // Borde suave (cards)
+
+  // ──────────────────────────────────────────────────────────────
+  // TEXTO
+  // ──────────────────────────────────────────────────────────────
+  static const Color textPrimary   = Color(0xFF191225); // fg principal
+  static const Color textSecondary = Color(0xFF443856); // fg secundario
+  static const Color textMuted     = Color(0xFF746985); // texto muted
 
   // Color de marca especial
   static const Color brandWhatsapp = Color(0xFF25D366);
 
-  /// Tema claro principal (Light Vibrant Theme)
+  // ──────────────────────────────────────────────────────────────
+  // GRADIENTES
+  // ──────────────────────────────────────────────────────────────
+
+  /// Gradiente hero de la app (health card, hero cards)
+  static const LinearGradient heroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF7C3AED),
+      Color(0xFF990FFA),
+      Color(0xFFA855F7),
+    ],
+    stops: [0.0, 0.5, 1.0],
+  );
+
+  /// Gradiente para tarjeta RappiCard (oscuro azul marino)
+  static const LinearGradient cardRappiGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF1A1A2E),
+      Color(0xFF16213E),
+      Color(0xFF0F3460),
+    ],
+  );
+
+  /// Gradiente para tarjeta NuBank (purpura)
+  static const LinearGradient cardNuGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF7C3AED),
+      Color(0xFF990FFA),
+      Color(0xFFC084FC),
+    ],
+    stops: [0.0, 0.6, 1.0],
+  );
+
+  // ──────────────────────────────────────────────────────────────
+  // SOMBRAS
+  // ──────────────────────────────────────────────────────────────
+
+  /// Sombra del FAB central
+  static List<BoxShadow> get fabShadow => [
+    BoxShadow(
+      color: primary.withAlpha(89), // ~35% opacidad
+      blurRadius: 12,
+      offset: const Offset(0, 4),
+    ),
+  ];
+
+  // ──────────────────────────────────────────────────────────────
+  // TEMA MATERIAL
+  // ──────────────────────────────────────────────────────────────
+
+  /// Tema claro principal (Gradient Design System)
   static ThemeData get lightTheme {
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
@@ -74,20 +155,20 @@ class AppTheme {
         color:        bgCard,
         elevation:    0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: borderLight, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: borderSoft, width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled:          true,
-        fillColor:       surfaceColor,
+        fillColor:       bgCardWarm,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:   const BorderSide(color: borderLight),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   const BorderSide(color: borderLight),
+          borderSide:   const BorderSide(color: borderSoft),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -113,6 +194,8 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 64,
+        backgroundColor: bgCard,
+        indicatorColor: Color(0x197C3AED), // ~10% opacidad del primary
         labelTextStyle: WidgetStateProperty.all(
           const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: -0.2),
         ),
@@ -125,16 +208,20 @@ class AppTheme {
         elevation:            0,
       ),
       dividerTheme: const DividerThemeData(
-        color: borderLight,
+        color: borderSoft,
         thickness: 1,
       ),
     );
   }
 
-  /// Compatibilidad: darkTheme apunta a lightTheme en esta versión enfocada al diseño claro
+  /// Compatibilidad: darkTheme apunta a lightTheme en esta version
   static ThemeData get darkTheme => lightTheme;
 
-  /// Estilo tipográfico JetBrains Mono para cifras y montos monetarios
+  // ──────────────────────────────────────────────────────────────
+  // UTILIDADES
+  // ──────────────────────────────────────────────────────────────
+
+  /// Estilo tipografico JetBrains Mono para cifras y montos monetarios
   static TextStyle monoStyle({
     Color? color,
     double? fontSize,
@@ -149,7 +236,7 @@ class AppTheme {
     );
   }
 
-  /// Gradiente para las tarjetas de crédito
+  /// Gradiente para las tarjetas de credito basado en color hex
   static LinearGradient cardGradient(String hex) {
     final color = _hexToColor(hex);
     return LinearGradient(
@@ -165,7 +252,7 @@ class AppTheme {
     return Color(int.parse(hex, radix: 16));
   }
 
-  /// Color según nivel de riesgo
+  /// Color segun nivel de riesgo
   static Color colorPorRiesgo(String nivel) {
     switch (nivel) {
       case 'MODERADO': return riesgoModerado;
@@ -174,4 +261,12 @@ class AppTheme {
       default:         return riesgoBajo;
     }
   }
+
+  // ──────────────────────────────────────────────────────────────
+  // RADIOS DE BORDE ESTANDAR
+  // ──────────────────────────────────────────────────────────────
+  static const double radiusSm  = 12.0;
+  static const double radiusMd  = 20.0;
+  static const double radiusLg  = 32.0;
+  static const double radiusPill = 999.0;
 }

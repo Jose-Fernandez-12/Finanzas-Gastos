@@ -46,3 +46,41 @@ final comprasActivasProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
   }
   return activas;
 });
+
+final todasLasComprasProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final tarjetas = await ref.watch(tarjetasProvider.future);
+  List<Map<String, dynamic>> todas = [];
+  
+  for (var t in tarjetas) {
+    final compras = await TarjetasDao.instance.getComprasTarjeta(t.id);
+    for (var c in compras) {
+      final cuotas = c.cuotas ?? [];
+      final todasPagadas = cuotas.isNotEmpty && cuotas.every((cuota) => cuota.estado == 'PAGADA');
+      
+      CuotaAmortizacion? cuotaActualOb;
+      try {
+        cuotaActualOb = cuotas.firstWhere((q) => q.numeroCuota == c.cuotaActual);
+      } catch (_) {
+        if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
+      }
+      final valorCuota = cuotaActualOb?.valorCuota ?? 0.0;
+      
+      todas.add({
+        'id': c.id,
+        'descripcion': c.descripcion,
+        'monto_total': c.montoTotal,
+        'valor_cuota': valorCuota,
+        'cuota_actual': c.cuotaActual,
+        'num_cuotas': c.numCuotas,
+        'saldo_capital': c.saldoCapital,
+        'nombre_tarjeta': t.nombreTarjeta.isNotEmpty ? t.nombreTarjeta : t.banco,
+        'tarjeta_color': t.color,
+        'tarjeta_id': t.id,
+        'tasa_interes_mensual': c.tasaInteresMensual,
+        'pagada': todasPagadas || c.saldoCapital <= 1,
+        'tarjeta_obj': t,
+      });
+    }
+  }
+  return todas;
+});

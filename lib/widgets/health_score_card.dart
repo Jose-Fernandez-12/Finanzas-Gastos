@@ -1,17 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/health_score_calculator.dart';
+import '../core/theme.dart';
 
-/// Tarjeta principal que muestra el índice de salud financiera de Rocky.
-/// Incluye un anillo animado, 4 sub-pills interactivos y una recomendación.
 class HealthScoreCard extends StatefulWidget {
   final HealthScore healthScore;
-
-  /// Callback disparado al tocar una sub-pill.
-  /// Recibe el nombre del factor y su sub-score.
   final void Function(String factor, int subScore)? onFactorTap;
-
-  /// Callback para abrir el laboratorio financiero.
   final VoidCallback? onLabTap;
 
   const HealthScoreCard({
@@ -25,8 +19,7 @@ class HealthScoreCard extends StatefulWidget {
   State<HealthScoreCard> createState() => _HealthScoreCardState();
 }
 
-class _HealthScoreCardState extends State<HealthScoreCard>
-    with SingleTickerProviderStateMixin {
+class _HealthScoreCardState extends State<HealthScoreCard> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
 
@@ -60,209 +53,214 @@ class _HealthScoreCardState extends State<HealthScoreCard>
   @override
   Widget build(BuildContext context) {
     final hs = widget.healthScore;
-    final color = HealthScore.scoreColor(hs.score);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: color.withAlpha(20),
-            blurRadius: 16,
+            color: const Color(0xFF6D28D9).withAlpha(60),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'SALUD FINANCIERA',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                  color: Color(0xFF9CA3AF),
-                ),
+          // Elemento decorativo de fondo (círculo esquina superior derecha)
+          Positioned(
+            top: -40,
+            right: -30,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(15),
+                shape: BoxShape.circle,
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.onLabTap != null)
-                    GestureDetector(
-                      onTap: widget.onLabTap,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0EA5E9).withAlpha(20),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.science_rounded, size: 13, color: Color(0xFF0EA5E9)),
-                            SizedBox(width: 4),
-                            Text(
-                              'LAB',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0EA5E9), letterSpacing: 0.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(20),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      hs.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 20),
-
-          // Anillo + sub-pills en fila
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Anillo animado
-              AnimatedBuilder(
-                animation: _animation,
-                builder: (context, _) => SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: CustomPaint(
-                    painter: _ScoreRingPainter(
-                      progress: _animation.value * hs.score / 100,
-                      color: color,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${(hs.score * _animation.value).round()}',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              color: color,
-                              height: 1,
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top section: Anillo de puntaje y Textos
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Anillo animado
+                    AnimatedBuilder(
+                      animation: _animation,
+                      builder: (context, _) => SizedBox(
+                        width: 75,
+                        height: 75,
+                        child: CustomPaint(
+                          painter: _ScoreRingPainter(
+                            progress: _animation.value * hs.score / 100,
+                            color: Colors.white,
+                            trackColor: Colors.white.withAlpha(40),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${(hs.score * _animation.value).round()}',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                height: 1,
+                              ),
                             ),
                           ),
-                          const Text(
-                            '/100',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF9CA3AF),
-                              fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'SALUD FINANCIERA',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              if (widget.onLabTap != null) ...[
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: widget.onLabTap,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Icon(Icons.science_rounded, size: 12, color: Colors.white),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'LAB',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            hs.label,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _buildRecommendation(hs),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white70,
+                              height: 1.3,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 20),
-
-              // 4 sub-pills en columna (2 filas de 2)
-              Expanded(
-                child: Column(
+                const SizedBox(height: 24),
+                // Separador
+                Container(
+                  height: 1,
+                  color: Colors.white.withAlpha(30),
+                ),
+                const SizedBox(height: 16),
+                // Bottom section: Grid de factores
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SubScorePill(
-                            label: 'Equilibrio',
-                            score: hs.equilibrioScore,
-                            icon: Icons.balance_rounded,
-                            onTap: () => widget.onFactorTap?.call('Equilibrio', hs.equilibrioScore),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _SubScorePill(
-                            label: 'Deuda',
-                            score: hs.deudaScore,
-                            icon: Icons.credit_card_rounded,
-                            onTap: () => widget.onFactorTap?.call('Deuda', hs.deudaScore),
-                          ),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildGridItem('Equilibrio', hs.equilibrioScore, const Color(0xFF10B981), () => widget.onFactorTap?.call('Equilibrio', hs.equilibrioScore)),
+                          const SizedBox(height: 12),
+                          _buildGridItem('Liquidez', hs.liquidezScore, const Color(0xFF3B82F6), () => widget.onFactorTap?.call('Liquidez', hs.liquidezScore)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SubScorePill(
-                            label: 'Liquidez',
-                            score: hs.liquidezScore,
-                            icon: Icons.account_balance_wallet_rounded,
-                            onTap: () => widget.onFactorTap?.call('Liquidez', hs.liquidezScore),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _SubScorePill(
-                            label: 'Ahorro',
-                            score: hs.ahorroScore,
-                            icon: Icons.savings_rounded,
-                            onTap: () => widget.onFactorTap?.call('Ahorro', hs.ahorroScore),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildGridItem('Deuda', hs.deudaScore, const Color(0xFFFBBF24), () => widget.onFactorTap?.call('Deuda', hs.deudaScore)),
+                          const SizedBox(height: 12),
+                          _buildGridItem('Ahorro', hs.ahorroScore, const Color(0xFFF43F5E), () => widget.onFactorTap?.call('Ahorro', hs.ahorroScore)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Recomendación
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb_outline_rounded,
-                    color: color, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _buildRecommendation(hs),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF4B5563),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridItem(String label, int score, Color dotColor, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '$score',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -274,44 +272,43 @@ class _HealthScoreCardState extends State<HealthScoreCard>
     final factor = hs.weakestFactor;
     switch (factor) {
       case 'Equilibrio':
-        return 'Tus gastos fijos consumen una parte alta de tus ingresos. Toca "Equilibrio" para más detalles.';
+        return 'Tus gastos fijos consumen una gran parte de tus ingresos.';
       case 'Deuda':
-        return 'Tu nivel de deuda está afectando tu puntaje. Toca "Deuda" para ver qué recomienda Rocky.';
+        return 'Tu nivel de deuda está jalando el score hacia abajo.';
       case 'Liquidez':
-        return 'Tu margen de maniobra es bajo. Toca "Liquidez" para entender el impacto.';
+        return 'Tu margen de maniobra o liquidez es bajo.';
       case 'Ahorro':
-        return 'Mejorar tu ahorro subiría el puntaje. Toca "Ahorro" para que Rocky te explique cómo.';
+        return 'Tu ahorro está jalando el score hacia abajo.';
       default:
-        return 'Todo se ve bien. Toca cualquier factor para que Rocky lo analice en detalle.';
+        return 'Mantienes un excelente balance en tus finanzas.';
     }
   }
 }
 
-// ---------------------------------------------------------------------------
-// Painter del anillo de progreso
-// ---------------------------------------------------------------------------
 class _ScoreRingPainter extends CustomPainter {
-  final double progress; // 0.0 – 1.0
+  final double progress;
   final Color color;
+  final Color trackColor;
 
-  const _ScoreRingPainter({required this.progress, required this.color});
+  const _ScoreRingPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - 8;
-    const strokeWidth = 10.0;
+    final radius = (size.width / 2) - 4;
+    const strokeWidth = 6.0;
 
-    // Track (fondo)
     final trackPaint = Paint()
-      ..color = const Color(0xFFF3F4F6)
+      ..color = trackColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
-
     canvas.drawCircle(center, radius, trackPaint);
 
-    // Arco de progreso
     final progressPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -320,8 +317,8 @@ class _ScoreRingPainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,                // Inicia arriba
-      2 * math.pi * progress,      // Ángulo según progreso
+      -math.pi / 2,
+      2 * math.pi * progress,
       false,
       progressPaint,
     );
@@ -329,88 +326,5 @@ class _ScoreRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScoreRingPainter old) =>
-      old.progress != progress || old.color != color;
-}
-
-// ---------------------------------------------------------------------------
-// Sub-pill individual (tappable)
-// ---------------------------------------------------------------------------
-class _SubScorePill extends StatelessWidget {
-  final String label;
-  final int score;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _SubScorePill({
-    required this.label,
-    required this.score,
-    required this.icon,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = HealthScore.subScoreColor(score);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withAlpha(15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withAlpha(40)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 11, color: color),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            // 5 puntitos de progreso
-            Row(
-              children: List.generate(5, (i) {
-                final filled = i < (score / 20).round();
-                return Padding(
-                  padding: const EdgeInsets.only(right: 3),
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: filled ? color : color.withAlpha(40),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '$score',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      old.progress != progress || old.color != color || old.trackColor != trackColor;
 }
