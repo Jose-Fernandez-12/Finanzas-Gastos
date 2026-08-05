@@ -16,6 +16,7 @@ class AssistantState {
   final bool isAction;
   final AssistantAnimation animation;
   final String actionId;
+  final bool isInitialGreeting;
 
   AssistantState({
     required this.message, 
@@ -23,14 +24,24 @@ class AssistantState {
     this.isAction = false,
     this.animation = AssistantAnimation.idle,
     this.actionId = '',
+    this.isInitialGreeting = false,
   });
 
-  AssistantState copyWith({String? message, bool? isVisible, bool? isAction, AssistantAnimation? animation}) {
+  AssistantState copyWith({
+    String? message, 
+    bool? isVisible, 
+    bool? isAction, 
+    AssistantAnimation? animation,
+    String? actionId,
+    bool? isInitialGreeting,
+  }) {
     return AssistantState(
       message: message ?? this.message,
       isVisible: isVisible ?? this.isVisible,
       isAction: isAction ?? this.isAction,
       animation: animation ?? this.animation,
+      actionId: actionId ?? this.actionId,
+      isInitialGreeting: isInitialGreeting ?? this.isInitialGreeting,
     );
   }
 }
@@ -108,6 +119,7 @@ class VirtualAssistantNotifier extends Notifier<AssistantState> {
       isVisible: true, 
       isAction: false, 
       animation: anim,
+      isInitialGreeting: true,
     );
     
     Future.microtask(() => _autoHide());

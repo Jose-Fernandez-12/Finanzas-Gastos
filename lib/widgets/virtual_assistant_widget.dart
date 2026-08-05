@@ -132,12 +132,15 @@ class _GlobalVirtualAssistantState extends ConsumerState<GlobalVirtualAssistant>
 
     final state = ref.watch(virtualAssistantProvider);
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final visible = state.isVisible && state.message.isNotEmpty;
+    final isBottom = state.isInitialGreeting;
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutCubic,
-      top: visible ? topPadding + 8 : -(120 + topPadding),
+      top: isBottom ? null : (visible ? topPadding + 8 : -(120 + topPadding)),
+      bottom: isBottom ? (visible ? bottomPadding + 80 : -(120 + bottomPadding)) : null,
       left: 12,
       right: 12,
       child: Material(
