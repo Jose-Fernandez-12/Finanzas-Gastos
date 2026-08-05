@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'local_repository.dart';
 
 class NotificationService {
@@ -80,9 +81,68 @@ class NotificationService {
     await _localNotifications.show(id, title, body, platformDetails);
   }
 
-  /// Revisa la base de datos y programa o dispara notificaciones inmediatamente si hay vencimientos en 3 días o menos
+  /// Programa una notificación para una fecha y hora específicas
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDateTime,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'pagos_alertas_channel_id',
+      'Alertas de Pago',
+      channelDescription: 'Canal para avisar sobre vencimientos de facturas y deudas',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final tz.TZDateTime tzScheduledDate = tz.TZDateTime.from(scheduledDateTime, tz.local);
+
+    if (tzScheduledDate.isAfter(DateTime.now())) {
+      await _localNotifications.zonedSchedule(
+        id,
+        title,
+        body,
+        tzScheduledDate,
+        platformDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
+  }
+
+  /// Calcula la hora de notificación: 9:00 AM del día del evento.
+  /// Si el día del evento es hoy y ya pasaron las 9:00 AM, programa para 10 segundos en el futuro.
+  DateTime _getNotificationDateTime(DateTime eventDate) {
+    final now = DateTime.now();
+    final targetTime = DateTime(eventDate.year, eventDate.month, eventDate.day, 9, 0);
+    if (targetTime.isBefore(now)) {
+      if (eventDate.year == now.year && eventDate.month == now.month && eventDate.day == now.day) {
+        return now.add(const Duration(seconds: 10));
+      }
+    }
+    return targetTime;
+  }
+
+  /// Revisa la base de datos y programa notificaciones para vencimientos en 3 días o menos
   Future<void> checkAndNotifyUpcomingPayments() async {
     try {
+      // Cancelar programaciones previas para reconstruir la agenda con datos actualizados
+      await _localNotifications.cancelAll();
+
       final repo = LocalRepository.instance;
       final dashboardData = await repo.getDashboard();
       if (dashboardData['ok'] != true) return;
@@ -107,10 +167,11 @@ class NotificationService {
             final valor = cuota['valor_cuota'] ?? 0.0;
             final tarjeta = cuota['nombre_tarjeta'] ?? 'Tarjeta';
             
-            await showNotification(
+            await scheduleNotification(
               id: notificationId++,
               title: 'Vencimiento de Tarjeta Cercano',
               body: 'La cuota de "$desc" ($tarjeta) por \$${valor.toStringAsFixed(0)} vence en $diffDays día(s) (el $fechaVencStr).',
+              scheduledDateTime: _getNotificationDateTime(fechaVenc),
             );
           }
         }
@@ -140,10 +201,11 @@ class NotificationService {
               final diffDays = vencimientoGasto.difference(now).inDays + 1;
               final nombre = gasto['nombre'] ?? 'Gasto Fijo';
               final monto = gasto['monto'] ?? 0.0;
-              await showNotification(
+              await scheduleNotification(
                 id: notificationId++,
                 title: 'Pago de Gasto Fijo Pendiente',
                 body: 'El gasto "$nombre" de \$${monto.toStringAsFixed(0)} vence en $diffDays día(s).',
+                scheduledDateTime: _getNotificationDateTime(vencimientoGasto),
               );
             }
           }
@@ -163,26 +225,28 @@ class NotificationService {
 
           if (saldo > 0) {
             if (estado == 'MORA') {
-              await showNotification(
+              await scheduleNotification(
                 id: notificationId++,
                 title: 'Deuda Vencida (Mora)',
                 body: '$deudor te debe \$${saldo.toStringAsFixed(0)} y está retrasado.',
+                scheduledDateTime: _getNotificationDateTime(now),
               );
             } else if (fechaVencStr != null) {
               final fechaVenc = DateTime.tryParse(fechaVencStr);
               if (fechaVenc != null && fechaVenc.isAfter(now.subtract(const Duration(days: 1))) && fechaVenc.isBefore(limitDate)) {
                 final diffDays = fechaVenc.difference(now).inDays + 1;
-                await showNotification(
+                await scheduleNotification(
                   id: notificationId++,
                   title: 'Cobro Próximo a Vencer',
                   body: '$deudor debe pagarte \$${saldo.toStringAsFixed(0)} en $diffDays día(s).',
+                  scheduledDateTime: _getNotificationDateTime(fechaVenc),
                 );
               }
             }
           }
         }
       }
-      // 4. Suscripciones activas con cobro proximo segun su recordatorio_dias
+      // 4. Suscripciones activas con cobro próximo según su recordatorio_dias
       final suscripcionesList = await repo.getSuscripciones();
       for (var s in suscripcionesList) {
         final diaCobro = (s['dia_cobro'] as num?)?.toInt() ?? 1;
@@ -196,19 +260,21 @@ class NotificationService {
           fechaCobro = DateTime(now.year, now.month + 1, diaCobro.clamp(1, 28));
         }
 
+        final recordatorioDate = fechaCobro.subtract(Duration(days: recordatorioDias));
         final diasRestantes = fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
 
         if (diasRestantes <= recordatorioDias && diasRestantes >= 0) {
           final textoTiempo = diasRestantes == 0
               ? 'hoy'
               : diasRestantes == 1
-                  ? 'manana'
-                  : 'en $diasRestantes dias';
+                  ? 'mañana'
+                  : 'en $diasRestantes días';
 
-          await showNotification(
+          await scheduleNotification(
             id: notificationId++,
-            title: 'Suscripcion por cobrar: $nombre',
-            body: 'Se te cobrara \$${monto.toStringAsFixed(0)} $textoTiempo (dia $diaCobro).',
+            title: 'Suscripción por cobrar: $nombre',
+            body: 'Se te cobrará \$${monto.toStringAsFixed(0)} $textoTiempo (dia $diaCobro).',
+            scheduledDateTime: _getNotificationDateTime(recordatorioDate),
           );
         }
       }
@@ -225,18 +291,18 @@ class NotificationService {
           
           if (meta > 0 && actual < meta && cuota > 0) {
             // Un recordatorio para que no olvide separar su cuota
-            await showNotification(
+            await scheduleNotification(
               id: notificationId++,
               title: '¡No olvides tu meta: $nombre!',
-              body: 'Recuerda separar tu cuota de \$${cuota.toStringAsFixed(0)} para seguir acercandote a tu meta.',
+              body: 'Recuerda separar tu cuota de \$${cuota.toStringAsFixed(0)} para seguir acercándote a tu meta.',
+              scheduledDateTime: _getNotificationDateTime(now),
             );
           }
         }
       }
 
     } catch (_) {
-      // Ignorar silenciosamente en produccion
+      // Ignorar silenciosamente en producción
     }
   }
 }
-
