@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:intl/intl.dart';
 import 'database_service.dart';
 import 'amortization_calculator.dart';
@@ -611,6 +612,86 @@ class LocalRepository {
       }
     });
   }
+
+  /// Anticipa N cuotas pendientes de una compra diferida.
+  /// Descuenta el 100% de los intereses futuros correspondientes a las cuotas adelantadas,
+  /// cobrando unicamente el capital, liberando cupo disponible inmediatamente y actualizando la amortizacion.
+  Future<Map<String, dynamic>> anticiparCuotas({
+    required int tarjetaId,
+    required int compraId,
+    required int cantidadCuotas,
+    int? sobreId,
+  }) async {
+    return await DatabaseService.instance.transaction((txn) async {
+      final cuotasPendientes = await txn.rawQuery(
+        "SELECT * FROM cuotas_amortizacion WHERE compra_id = ? AND estado = 'PENDIENTE' ORDER BY numero_cuota ASC",
+        [compraId]
+      );
+
+      if (cuotasPendientes.isEmpty) {
+        return {'ok': false, 'error': 'No hay cuotas pendientes para esta compra.'};
+      }
+
+      final int cuotasAProcesar = min(cantidadCuotas, cuotasPendientes.length);
+      final cuotasSeleccionadas = cuotasPendientes.sublist(0, cuotasAProcesar);
+
+      double capitalTotal = 0.0;
+      double interesAhorrado = 0.0;
+
+      for (var c in cuotasSeleccionadas) {
+        final int id = c['id'] as int;
+        final double cap = (c['valor_capital'] as num?)?.toDouble() ?? 0.0;
+        final double interes = (c['valor_interes'] as num?)?.toDouble() ?? 0.0;
+
+        capitalTotal += cap;
+        interesAhorrado += interes;
+
+        await txn.rawUpdate(
+          "UPDATE cuotas_amortizacion SET estado = 'PAGADA', fecha_pago_real = date('now') WHERE id = ?",
+          [id]
+        );
+      }
+
+      capitalTotal = double.parse(capitalTotal.toStringAsFixed(2));
+      interesAhorrado = double.parse(interesAhorrado.toStringAsFixed(2));
+
+      // Actualizar compras_tarjeta
+      final compra = (await txn.rawQuery("SELECT * FROM compras_tarjeta WHERE id = ?", [compraId])).firstOrNull;
+      if (compra != null) {
+        final double saldoActual = (compra['saldo_capital'] as num?)?.toDouble() ?? 0.0;
+        final double nuevoSaldo = max(0.0, saldoActual - capitalTotal);
+        final int nuevaCuotaActual = (compra['cuota_actual'] as int? ?? 1) + cuotasAProcesar;
+
+        await txn.rawUpdate(
+          "UPDATE compras_tarjeta SET saldo_capital = ?, cuota_actual = ?, actualizado_en = datetime('now') WHERE id = ?",
+          [nuevoSaldo, nuevaCuotaActual, compraId]
+        );
+      }
+
+      // Liberar cupo en la tarjeta de credito
+      await txn.rawUpdate(
+        "UPDATE tarjetas_credito SET cupo_disponible = cupo_disponible + ?, actualizado_en = datetime('now') WHERE id = ?",
+        [capitalTotal, tarjetaId]
+      );
+
+      // Si se especifico un sobre de presupuesto, registrar el gasto
+      if (sobreId != null) {
+        final concepto = 'Anticipo $cuotasAProcesar cuota(s) - ${compra?['descripcion'] ?? 'Tarjeta'}';
+        await txn.rawInsert(
+          "INSERT INTO presupuesto_sobre_gastos (sobre_id, monto, concepto, fecha) VALUES (?, ?, ?, ?)",
+          [sobreId, capitalTotal, concepto, DateTime.now().toIso8601String()]
+        );
+      }
+
+      return {
+        'ok': true,
+        'cuotasAnticipadas': cuotasAProcesar,
+        'capitalPagado': capitalTotal,
+        'interesAhorrado': interesAhorrado,
+      };
+    });
+  }
+
 
   // ---- Ahorros ----
   Future<Map<String, dynamic>> getAhorros() async {

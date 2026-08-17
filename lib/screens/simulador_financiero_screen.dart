@@ -5,7 +5,7 @@ import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/health_score_calculator.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 
 class SimuladorFinancieroScreen extends ConsumerStatefulWidget {
   const SimuladorFinancieroScreen({super.key});
@@ -289,30 +289,7 @@ class _SimuladorFinancieroScreenState extends ConsumerState<SimuladorFinancieroS
 
     setState(() => _haSimulado = true);
 
-    // Rocky reacciona
-    final diff = _scoreSimulado!.score - _scoreActual!.score;
-    final assistant = ref.read(virtualAssistantProvider.notifier);
-    if (diff <= -20) {
-      assistant.showActionMessage(
-        '¡Impacto severo! Tu puntaje caería ${diff.abs()} puntos. Tu cuota mensual sería ${formatCOP(cuotaMensual)}. Piénsalo bien.',
-        AssistantAnimation.warningSevere,
-      );
-    } else if (diff <= -10) {
-      assistant.showActionMessage(
-        'Cuidado: perderías ${diff.abs()} puntos de salud financiera. La cuota de ${formatCOP(cuotaMensual)} afectaría tu liquidez.',
-        AssistantAnimation.glowRed,
-      );
-    } else if (diff < 0) {
-      assistant.showActionMessage(
-        'Impacto moderado: -${diff.abs()} puntos. Parece viable pero tu margen se reduce. Cuota: ${formatCOP(cuotaMensual)}/mes.',
-        AssistantAnimation.nod,
-      );
-    } else {
-      assistant.showActionMessage(
-        'Tus finanzas pueden con esto sin problemas. Cuota mensual: ${formatCOP(cuotaMensual)}.',
-        AssistantAnimation.thumbsUp,
-      );
-    }
+
   }
 
   Widget _buildResultCard() {

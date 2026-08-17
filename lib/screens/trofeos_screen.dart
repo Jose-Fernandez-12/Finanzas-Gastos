@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../providers/logros_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 
 class TrofeosScreen extends ConsumerWidget {
   const TrofeosScreen({super.key});
@@ -185,30 +185,7 @@ class TrofeosScreen extends ConsumerWidget {
   }
 
   void _onLogroTap(WidgetRef ref, LogroEstado logro) {
-    final assistant = ref.read(virtualAssistantProvider.notifier);
-    if (logro.completado) {
-      assistant.showActionMessage(
-        '¡Logro desbloqueado: "${logro.titulo}"! Lo completaste el ${logro.fechaCompletado?.split('T').first ?? 'recientemente'}.',
-        AssistantAnimation.celebration,
-      );
-    } else {
-      final pctStr = (logro.porcentaje * 100).round();
-      String tip;
-      switch (logro.categoria) {
-        case 'ahorro':
-          tip = 'Para "${ logro.titulo}" necesitas llegar a \$${logro.metaValor.round()}. Llevas $pctStr%. ¡Sigue ahorrando!';
-          break;
-        case 'deuda':
-          tip = '"${logro.titulo}" requiere controlar tu deuda. Vas al $pctStr%. ¡Sigue así!';
-          break;
-        case 'salud':
-          tip = 'Tu Health Score debe llegar a ${logro.metaValor.round()} para desbloquear "${logro.titulo}". Vas al $pctStr%.';
-          break;
-        default:
-          tip = '"${logro.titulo}" está al $pctStr%. ¡Tú puedes lograrlo!';
-      }
-      assistant.showActionMessage(tip, AssistantAnimation.nod);
-    }
+    // Rocky desactivado
   }
 }
 
