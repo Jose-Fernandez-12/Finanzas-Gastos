@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
-
+import '../providers/virtual_assistant_provider.dart';
 
 class AnimacionesTestScreen extends ConsumerWidget {
   const AnimacionesTestScreen({super.key});
