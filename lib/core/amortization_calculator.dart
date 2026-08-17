@@ -104,4 +104,50 @@ class AmortizationCalculator {
 
     return tabla;
   }
+
+  /// Calcula el desglose y ahorro de intereses al anticipar N cuotas pendientes.
+  /// Al anticipar cuotas, el usuario paga unicamente el componente de capital,
+  /// ahorrando el 100% de los intereses futuros programados para esas cuotas.
+  static Map<String, dynamic> calcularAhorroAnticipo(
+    List<Map<String, dynamic>> cuotasPendientes, 
+    int cantidadCuotas
+  ) {
+    if (cuotasPendientes.isEmpty || cantidadCuotas <= 0) {
+      return {
+        'cuotasSeleccionadas': <Map<String, dynamic>>[],
+        'cantidad': 0,
+        'capitalTotal': 0.0,
+        'interesAhorrado': 0.0,
+        'totalOriginal': 0.0,
+        'totalPagar': 0.0,
+      };
+    }
+
+    final n = min(cantidadCuotas, cuotasPendientes.length);
+    final seleccionadas = cuotasPendientes.sublist(0, n);
+
+    double capitalTotal = 0.0;
+    double interesAhorrado = 0.0;
+    double totalOriginal = 0.0;
+
+    for (var c in seleccionadas) {
+      final cap = (c['valor_capital'] as num?)?.toDouble() ?? 0.0;
+      final intVal = (c['valor_interes'] as num?)?.toDouble() ?? 0.0;
+      final cuotaVal = (c['valor_cuota'] as num?)?.toDouble() ?? (cap + intVal);
+
+      capitalTotal += cap;
+      interesAhorrado += intVal;
+      totalOriginal += cuotaVal;
+    }
+
+    return {
+      'cuotasSeleccionadas': seleccionadas,
+      'cantidad': n,
+      'capitalTotal': double.parse(capitalTotal.toStringAsFixed(2)),
+      'interesAhorrado': double.parse(interesAhorrado.toStringAsFixed(2)),
+      'totalOriginal': double.parse(totalOriginal.toStringAsFixed(2)),
+      'totalPagar': double.parse(capitalTotal.toStringAsFixed(2)),
+    };
+  }
 }
+
