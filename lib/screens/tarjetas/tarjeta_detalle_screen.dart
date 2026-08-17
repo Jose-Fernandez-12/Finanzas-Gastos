@@ -5,7 +5,7 @@ import '../../core/formatters.dart';
 import '../../core/local_repository.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/virtual_assistant_provider.dart';
+
 import '../../providers/presupuesto_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
@@ -29,9 +29,7 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
   void initState() {
     super.initState();
     _recargarTodo();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('tarjetas');
-    });
+
   }
 
   Future<void> _recargarTodo() async {
@@ -130,9 +128,7 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
                     initialExpand: widget.initialCompraId != null && c['id'] == widget.initialCompraId,
                     onPagoCuota: _recargarTodo,
                     onEdit: (compraToEdit) => _showFormCompra(context, compra: compraToEdit),
-                    onTapCuota: (cuota) {
-                      ref.read(virtualAssistantProvider.notifier).analyzeCuotaIndividual(cuota);
-                    },
+                    onTapCuota: (cuota) {},
                   )),
                 const SizedBox(height: 80),
               ],
@@ -541,7 +537,7 @@ Future<void> _promptPagoCuotaConSobre(
   if (context.mounted) {
     if (sobres.isEmpty) {
       await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId);
-      ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+
       onPagoCuota();
       return;
     }
@@ -590,7 +586,7 @@ Future<void> _promptPagoCuotaConSobre(
                   );
                   ref.invalidate(presupuestoProvider(mes));
                 }
-                ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+
                 onPagoCuota();
               },
               child: const Text('PAGAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

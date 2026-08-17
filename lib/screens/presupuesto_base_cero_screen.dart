@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../providers/presupuesto_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 
 class PresupuestoBaseCeroScreen extends ConsumerStatefulWidget {
   const PresupuestoBaseCeroScreen({super.key});
@@ -279,22 +279,7 @@ class _PresupuestoBaseCeroScreenState extends ConsumerState<PresupuestoBaseCeroS
   }
 
   void _rockyReact(PresupuestoState estado) {
-    if (estado.ingresosMes <= 0) return;
-
-    final assistant = ref.read(virtualAssistantProvider.notifier);
-    if (ref.read(virtualAssistantProvider).isAction) return;
-
-    if (estado.cuadrado && estado.sobres.isNotEmpty) {
-      assistant.showActionMessage(
-        '¡Perfecto! Todo tu dinero tiene un trabajo asignado. Base cero logrado.',
-        AssistantAnimation.celebration,
-      );
-    } else if (estado.sinAsignar < -1) {
-      assistant.showActionMessage(
-        '¡Cuidado! Has asignado ${formatCOP(estado.sinAsignar.abs())} más de lo que ganas.',
-        AssistantAnimation.glitch,
-      );
-    }
+    // Rocky desactivado
   }
 
   void _showCrearSobre(BuildContext context) {

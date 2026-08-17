@@ -53,10 +53,48 @@ class Suscripcion {
     };
   }
 
+  /// Indica si ya se pago en el periodo actual (mes, semana, anio)
+  bool get pagadoEnPeriodoActual {
+    if (fechaUltimoCobro == null || fechaUltimoCobro!.isEmpty) return false;
+    final now = DateTime.now();
+    final ultimoCobro = DateTime.tryParse(fechaUltimoCobro!);
+    if (ultimoCobro == null) return false;
+
+    switch (frecuencia) {
+      case 'Semanal':
+        // Mismo numero de semana ISO
+        final nowWeekStart = now.subtract(Duration(days: now.weekday - 1));
+        final cobroWeekStart = ultimoCobro.subtract(Duration(days: ultimoCobro.weekday - 1));
+        return nowWeekStart.year == cobroWeekStart.year &&
+               nowWeekStart.month == cobroWeekStart.month &&
+               nowWeekStart.day == cobroWeekStart.day;
+      case 'Anual':
+        return ultimoCobro.year == now.year;
+      default: // Mensual
+        return ultimoCobro.year == now.year && ultimoCobro.month == now.month;
+    }
+  }
+
   /// Dias que faltan para el proximo cobro (en el mes actual o siguiente)
   int get diasParaProximoCobro {
     final now = DateTime.now();
     DateTime fechaCobro = DateTime(now.year, now.month, diaCobro);
+
+    // Si ya se pago en este periodo, apuntar al siguiente
+    if (pagadoEnPeriodoActual) {
+      switch (frecuencia) {
+        case 'Semanal':
+          fechaCobro = now.add(const Duration(days: 7));
+          return fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
+        case 'Anual':
+          fechaCobro = DateTime(now.year + 1, now.month, diaCobro);
+          return fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
+        default: // Mensual
+          fechaCobro = DateTime(now.year, now.month + 1, diaCobro);
+          return fechaCobro.difference(DateTime(now.year, now.month, now.day)).inDays;
+      }
+    }
+
     if (fechaCobro.isBefore(now) || fechaCobro.day == now.day) {
       fechaCobro = DateTime(now.year, now.month + 1, diaCobro);
     }
@@ -64,7 +102,8 @@ class Suscripcion {
   }
 
   /// True si vence dentro del periodo de recordatorio
-  bool get vencePronto => diasParaProximoCobro <= recordatorioDias;
+  bool get vencePronto => !pagadoEnPeriodoActual && diasParaProximoCobro <= recordatorioDias;
+
 
   /// Costo anual proyectado segun la frecuencia
   double get costoAnual {

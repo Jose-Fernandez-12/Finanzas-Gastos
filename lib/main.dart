@@ -17,10 +17,8 @@ import 'screens/ahorros_screen.dart';
 import 'screens/suscripciones_screen.dart';
 import 'screens/cuentas_cobrar_screen.dart';
 import 'screens/notificaciones/gasto_detectado_dialog.dart';
-import 'widgets/virtual_assistant_widget.dart';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/quick_add_sheet.dart';
-import 'providers/virtual_assistant_provider.dart';
 
 import 'core/notification_service.dart';
 
@@ -60,15 +58,7 @@ class FinanzasApp extends StatelessWidget {
         '/ahorros/nueva':          (_) => const AhorrosScreen(),
         '/cuentas-cobrar/nuevo':   (_) => const CuentasCobrarScreen(),
       },
-      builder: (context, child) {
-        return Stack(
-          children: [
-            if (child != null) child,
-            // Rocky — global, aparece en todas las pantallas
-            const GlobalVirtualAssistant(),
-          ],
-        );
-      },
+      builder: (context, child) => child ?? const SizedBox.shrink(),
     );
   }
 }
@@ -172,9 +162,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
         currentIndex: _currentIndex,
         onTabSelected: (i) {
           setState(() => _currentIndex = i);
-          if (i < _viewNames.length) {
-            ref.read(virtualAssistantProvider.notifier).setCurrentView(_viewNames[i]);
-          }
         },
         onFabTap: () => showQuickAddSheet(context, _fabContexts[_currentIndex]),
       ),

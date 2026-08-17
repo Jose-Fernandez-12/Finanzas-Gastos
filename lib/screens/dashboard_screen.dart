@@ -4,7 +4,7 @@ import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/health_score_calculator.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../widgets/health_score_card.dart';
 import 'tarjetas/tarjeta_detalle_screen.dart';
 import 'simulador_financiero_screen.dart';
@@ -56,14 +56,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           final HealthScore healthScore = data['health_score'] as HealthScore;
 
-          // Anunciar health score a Rocky en startup
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final assistant = ref.read(virtualAssistantProvider.notifier);
-            if (!ref.read(virtualAssistantProvider).isAction &&
-                DateTime.now().difference(_startupTime).inSeconds >= 12) {
-              assistant.announceHealthScore(healthScore.score, healthScore.weakestFactor);
-            }
-          });
+
 
           // Gastos del mes = gastos fijos + cuotas
           final gastosDelMes = gastosFijos + cuotasTarj;
@@ -94,10 +87,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: HealthScoreCard(
                         healthScore: healthScore,
-                        onFactorTap: (factor, subScore) {
-                          ref.read(virtualAssistantProvider.notifier)
-                              .analyzeHealthFactor(factor, subScore);
-                        },
+                        onFactorTap: (factor, subScore) {},
                         onLabTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(

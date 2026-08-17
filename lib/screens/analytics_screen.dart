@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/analytics_profile_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../core/theme.dart';
 import '../core/formatters.dart';
 import '../core/local_repository.dart';
@@ -39,7 +39,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchGastosDelMes();
-      ref.read(virtualAssistantProvider.notifier).setCurrentView('analitica');
+
     });
   }
 
@@ -228,7 +228,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           // Termómetro
           if (modulos.contains(AnalyticsModuleIds.termometro) && adv != null && adv['termometro'] != null) ...[
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('termometro', adv['termometro'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildTermometroCard(adv['termometro'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -239,7 +239,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Calendario de Estrés de Efectivo'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('estres_efectivo', adv['estres'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildCalendarioEstresCard(adv['estres'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -250,7 +250,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Estado de Endeudamiento'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('endeudamiento', {'pct': endeudamientoPct, 'nivel': nivelRiesgo}),
+              onTap: () {},
               child: _buildEndeudamientoCard(endeudamientoPct, nivelRiesgo, provider),
             ),
             const SizedBox(height: 20),
@@ -267,7 +267,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Días de Trabajo vs Obligaciones'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dias_trabajo', adv['dias_esclavitud'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildEsclavitudFinancieraCard(adv['dias_esclavitud'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -278,7 +278,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Interés Quemado (Dinero al Banco)'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('interes_quemado', adv['interes_quemado'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildInteresQuemadoCard(adv['interes_quemado'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -287,7 +287,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           // Resumen cards
           if (modulos.contains(AnalyticsModuleIds.resumenCards)) ...[
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('resumen', {'ingresos': _mesIngresos, 'egresos': _mesEgresos}),
+              onTap: () {},
               child: _buildResumenCards(_mesIngresos, _mesEgresos),
             ),
             const SizedBox(height: 20),
@@ -298,7 +298,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Eficiencia de Ahorro'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('eficiencia_ahorro', adv['eficiencia_ahorro'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildEficienciaAhorroCard(adv['eficiencia_ahorro'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -309,7 +309,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Dependencia por Tarjeta / Banco'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('dependencia_tarjetas', adv['dependencia_tarjetas'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildDependenciaTarjetasCard(adv['dependencia_tarjetas'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -320,7 +320,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Radar de Gastos Hormiga & Pequeñas Fugas'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('radar_hormiga', adv['radar_hormiga'] as Map<String, dynamic>),
+              onTap: () {},
               child: _buildRadarHormigaCard(adv['radar_hormiga'] as Map<String, dynamic>),
             ),
             const SizedBox(height: 20),
@@ -331,7 +331,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Flujo de Caja'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('flujo_caja', {'historical': historical}),
+              onTap: () {},
               child: _buildBarChart(historical),
             ),
             const SizedBox(height: 20),
@@ -343,7 +343,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(height: 10),
             if ((adv['simulador']['deudas'] as List).isNotEmpty)
               GestureDetector(
-                onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto'}),
+                onTap: () {},
                 child: _buildSimuladorDeudaCard(adv['simulador'] as Map<String, dynamic>),
               )
             else
@@ -361,7 +361,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 _buildAbonoExtraSlider(provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('camino_cero_deuda', {'mesLibreDeDeuda': provider['mesLibreDeDeuda']?.toString() ?? 'pronto', 'pctAbono': _pctAbonoExtra}),
+                  onTap: () {},
                   child: _buildLineChart(proyeccion, provider['mesLibreDeDeuda']?.toString() ?? 'pronto'),
                 ),
               ],
@@ -374,7 +374,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const _SectionTitle(title: 'Gastos por Categoría'),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => ref.read(virtualAssistantProvider.notifier).analyzeChart('categorias', {}),
+              onTap: () {},
               child: _buildCategoriasCard(),
             ),
             const SizedBox(height: 20),
@@ -1579,7 +1579,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   onChanged: (val) { setStateSlider(() => _pctAbonoExtra = val); },
                   onChangeEnd: (val) { 
                     setState(() { _pctAbonoExtra = val; }); 
-                    ref.read(virtualAssistantProvider.notifier).analyzeChart('abono_extra', {'pct': val, 'mesLibre': mesLibre});
+
                   },
                 ),
               ),

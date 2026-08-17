@@ -6,7 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/ingresos_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../models/ingreso.dart';
 import 'presupuesto_base_cero_screen.dart';
 
@@ -223,13 +223,7 @@ class _IngresoItem extends ConsumerWidget {
     final IconData icon = getCategoryIcon(catIconName);
 
     return GestureDetector(
-      onTap: () {
-        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
-          'ingreso',
-          ingreso.monto,
-          ingreso.descripcion ?? 'Ingreso',
-        );
-      },
+      onTap: () {},
       child: Container(
         margin:  const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -487,11 +481,7 @@ class _FormIngresoState extends ConsumerState<FormIngreso> {
           if (monto > 0) {
             final nombreIngreso = _desc.text.trim();
             await LocalRepository.instance.createIngreso(reqData);
-            Future.delayed(const Duration(milliseconds: 1200), () {
-              if (context.mounted) {
-                ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_INGRESO', monto, nombreIngreso);
-              }
-            });
+
           }
         } else {
           await LocalRepository.instance.updateIngreso(widget.ingreso!.id, reqData);
