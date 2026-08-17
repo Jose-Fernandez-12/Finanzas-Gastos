@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 
 class AnimacionesTestScreen extends ConsumerWidget {
   const AnimacionesTestScreen({super.key});
@@ -92,17 +92,14 @@ class AnimacionesTestScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAnim(WidgetRef ref, String title, AssistantAnimation anim, IconData icon, Color color, {Color? bg}) {
+  Widget _buildAnim(WidgetRef ref, String title, dynamic anim, IconData icon, Color color, {Color? bg}) {
     return _AnimButton(
       title: title,
       icon: icon,
       color: color,
       bg: bg,
       onTap: () {
-        ref.read(virtualAssistantProvider.notifier).forceAnimation(
-          anim, 
-          'Probando animacion: $title',
-        );
+        // Rocky desactivado
       },
     );
   }
