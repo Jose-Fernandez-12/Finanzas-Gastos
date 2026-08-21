@@ -6,7 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/cuentas_cobrar_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../models/cuenta_cobrar.dart';
 
 class CuentasCobrarScreen extends ConsumerStatefulWidget {
@@ -87,7 +87,7 @@ class _CuentasCobrarScreenState extends ConsumerState<CuentasCobrarScreen> {
                             onPago: (monto) {
                               ref.invalidate(cuentasCobrarProvider);
                               ref.invalidate(dashboardProvider);
-                              ref.read(virtualAssistantProvider.notifier).registerAction('CUENTA_COBRAR_PAGADA', monto);
+
                             },
                             onEdit: () => _showForm(context, ref, cuenta: cuentasList[i]),
                           ),

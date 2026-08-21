@@ -4,7 +4,7 @@ import '../../core/theme.dart';
 import '../../core/formatters.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/virtual_assistant_provider.dart';
+
 import 'tarjeta_detalle_screen.dart';
 import 'forms.dart';
 
@@ -188,17 +188,6 @@ class TarjetasScreen extends ConsumerWidget {
                   tarjeta = null;
                 }
                 
-                // Rocky analiza la cuota antes de navegar
-                double cuotaVal = (c['valor_cuota'] as num?)?.toDouble() ?? (c['cuota_mensual'] as num?)?.toDouble() ?? 0;
-                final numCuotas = (c['num_cuotas'] as int?) ?? 1;
-                if (cuotaVal == 0 && numCuotas > 0) {
-                  final montoTotal = (c['monto_total'] as num?)?.toDouble() ?? 0;
-                  cuotaVal = montoTotal / numCuotas;
-                }
-                final banco = tarjeta?.banco ?? 'la tarjeta';
-                final interes = (c['tasa_interes'] as num?)?.toDouble() ?? 0.0;
-                ref.read(virtualAssistantProvider.notifier).analyzeCuota(cuotaVal, banco, interes, tarjeta?.fechaPago);
-
                 if (tarjeta != null) {
                   Navigator.push(
                     context,

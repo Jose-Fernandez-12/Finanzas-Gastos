@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/local_repository.dart';
 import '../providers/suscripciones_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../models/suscripcion.dart';
 
 class SuscripcionesScreen extends ConsumerStatefulWidget {
@@ -360,6 +360,7 @@ class _SuscripcionCard extends StatelessWidget {
     final brandColor = _hexToColor(Suscripcion.colorParaServicio(s.nombre));
     final dias = s.diasParaProximoCobro;
     final vence = s.vencePronto;
+    final pagado = s.pagadoEnPeriodoActual;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -368,7 +369,11 @@ class _SuscripcionCard extends StatelessWidget {
           color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: vence ? AppTheme.colorGastos.withAlpha(80) : AppTheme.borderLight,
+            color: pagado
+                ? AppTheme.colorIngresos.withAlpha(80)
+                : vence
+                    ? AppTheme.colorGastos.withAlpha(80)
+                    : AppTheme.borderLight,
           ),
           boxShadow: [
             BoxShadow(
@@ -452,6 +457,33 @@ class _SuscripcionCard extends StatelessWidget {
                               ),
                             ),
                           )
+                        else if (pagado)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppTheme.colorIngresos.withAlpha(20),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.check_circle_rounded,
+                                      size: 12, color: AppTheme.colorIngresos),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Pagado',
+                                    style: TextStyle(
+                                      color: AppTheme.colorIngresos,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
                         else
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
@@ -507,7 +539,7 @@ class _SuscripcionCard extends StatelessWidget {
                           if (v == 'cobrar' && onCobrar != null) onCobrar!();
                         },
                         itemBuilder: (_) => [
-                          if (onCobrar != null)
+                          if (onCobrar != null && !pagado)
                             const PopupMenuItem(
                               value: 'cobrar',
                               child: Row(children: [

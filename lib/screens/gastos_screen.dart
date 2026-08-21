@@ -6,7 +6,7 @@ import '../core/formatters.dart';
 import '../core/local_repository.dart';
 import '../providers/gastos_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/virtual_assistant_provider.dart';
+
 import '../providers/presupuesto_provider.dart';
 import '../models/gasto_fijo.dart';
 
@@ -239,13 +239,7 @@ class _GastoItem extends ConsumerWidget {
     final Color itemColor = isPaidThisMonth ? Colors.green : color;
 
     return GestureDetector(
-      onTap: () {
-        ref.read(virtualAssistantProvider.notifier).analyzeTransactionItem(
-          'gasto',
-          gasto.monto,
-          gasto.nombre,
-        );
-      },
+      onTap: () {},
       child: Container(
         margin:  const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -307,11 +301,7 @@ class _GastoItem extends ConsumerWidget {
                   if (val == 'pay') {
                     try {
                       await LocalRepository.instance.pagarGastoFijo(gasto.id);
-                      Future.delayed(const Duration(milliseconds: 1200), () {
-                        if (context.mounted) {
-                          ref.read(virtualAssistantProvider.notifier).registerAction('GASTO_PAGADO', gasto.monto);
-                        }
-                      });
+
                       if (context.mounted) {
                         ref.invalidate(gastosProvider(currentMonth));
                         ref.invalidate(dashboardProvider);
@@ -502,11 +492,7 @@ class _FormGastoState extends ConsumerState<FormGasto> {
         await LocalRepository.instance.createGastoFijo(data);
         final montoVal = double.tryParse(_monto.text);
         final nombreGasto = _nombre.text.trim();
-        Future.delayed(const Duration(milliseconds: 1200), () {
-          if (context.mounted) {
-            ref.read(virtualAssistantProvider.notifier).registerAction('NUEVO_GASTO', montoVal, nombreGasto);
-          }
-        });
+
       }
       if (mounted) { Navigator.pop(context); widget.onSave(double.parse(_monto.text)); }
     } catch (e) {

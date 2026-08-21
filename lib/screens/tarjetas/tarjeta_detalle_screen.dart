@@ -5,10 +5,11 @@ import '../../core/formatters.dart';
 import '../../core/local_repository.dart';
 import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/virtual_assistant_provider.dart';
+
 import '../../providers/presupuesto_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
+import 'modal_anticipar_cuotas.dart';
 
 class TarjetaDetalleScreen extends ConsumerStatefulWidget {
   final dynamic tarjeta;
@@ -28,9 +29,7 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
   void initState() {
     super.initState();
     _recargarTodo();
-    Future.microtask(() {
-      if (mounted) ref.read(virtualAssistantProvider.notifier).setCurrentView('tarjetas');
-    });
+
   }
 
   Future<void> _recargarTodo() async {
@@ -124,12 +123,12 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
                   ..._compras.map((c) => _CompraCard(
                     compra: c,
                     tarjetaId: t.id,
+                    nombreTarjeta: t.nombreTarjeta.isNotEmpty ? t.nombreTarjeta : t.banco,
+                    tarjetaColor: color,
                     initialExpand: widget.initialCompraId != null && c['id'] == widget.initialCompraId,
                     onPagoCuota: _recargarTodo,
                     onEdit: (compraToEdit) => _showFormCompra(context, compra: compraToEdit),
-                    onTapCuota: (cuota) {
-                      ref.read(virtualAssistantProvider.notifier).analyzeCuotaIndividual(cuota);
-                    },
+                    onTapCuota: (cuota) {},
                   )),
                 const SizedBox(height: 80),
               ],
@@ -233,11 +232,23 @@ class _TarjetaVisual extends StatelessWidget {
 class _CompraCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> compra;
   final int tarjetaId;
+  final String nombreTarjeta;
+  final Color tarjetaColor;
   final VoidCallback onPagoCuota;
   final Function(Map<String, dynamic>) onEdit;
   final Function(Map<String, dynamic>) onTapCuota;
   final bool initialExpand;
-  const _CompraCard({required this.compra, required this.tarjetaId, required this.onPagoCuota, required this.onEdit, required this.onTapCuota, this.initialExpand = false});
+
+  const _CompraCard({
+    required this.compra,
+    required this.tarjetaId,
+    required this.nombreTarjeta,
+    required this.tarjetaColor,
+    required this.onPagoCuota,
+    required this.onEdit,
+    required this.onTapCuota,
+    this.initialExpand = false,
+  });
 
   @override
   ConsumerState<_CompraCard> createState() => _CompraCardState();
@@ -252,6 +263,21 @@ class _CompraCardState extends ConsumerState<_CompraCard> {
     _expandida = widget.initialExpand;
   }
 
+  void _abrirModalAnticipar(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ModalAnticiparCuotas(
+        compra: widget.compra,
+        tarjetaId: widget.tarjetaId,
+        nombreTarjeta: widget.nombreTarjeta,
+        tarjetaColor: widget.tarjetaColor,
+        onCompletado: widget.onPagoCuota,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.compra;
@@ -259,13 +285,19 @@ class _CompraCardState extends ConsumerState<_CompraCard> {
     final cuotaAct = (c['cuota_actual'] as int?) ?? 1;
     final numCuotas = (c['num_cuotas'] as int?) ?? 1;
     final tasa = (c['tasa_interes_mensual'] as num?)?.toDouble() ?? 0;
+    final saldo = (c['saldo_capital'] as num?)?.toDouble() ?? 0;
+
+    final cuotasPendientes = cuotas.where((q) => (q['estado'] as String?)?.toUpperCase() == 'PENDIENTE').toList();
+    final todasPagadas = cuotas.isNotEmpty && cuotasPendientes.isEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppTheme.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(
+          color: todasPagadas ? AppTheme.colorIngresos.withAlpha(60) : AppTheme.borderLight,
+        ),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(6), blurRadius: 6, offset: const Offset(0, 2)),
         ],
@@ -283,17 +315,61 @@ class _CompraCardState extends ConsumerState<_CompraCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(c['descripcion'] as String? ?? '', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                c['descripcion'] as String? ?? '',
+                                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (todasPagadas) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.colorIngresos.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, size: 11, color: AppTheme.colorIngresos),
+                                    SizedBox(width: 3),
+                                    Text('PAGADA', style: TextStyle(color: AppTheme.colorIngresos, fontWeight: FontWeight.w800, fontSize: 10)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                         const SizedBox(height: 4),
-                        Text('· Cuota $cuotaAct/$numCuotas · Tasa ${tasa.toStringAsFixed(1)}% mensual', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                        Text(
+                          todasPagadas
+                              ? 'Completada · $numCuotas cuotas pagadas'
+                              : '· Cuota $cuotaAct/$numCuotas · Tasa ${tasa.toStringAsFixed(1)}% mensual',
+                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(formatCOP((c['monto_total'] as num).toDouble()), style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
-                      Text('Saldo: ${formatCOP((c['saldo_capital'] as num?)?.toDouble() ?? 0)}', style: AppTheme.monoStyle(color: AppTheme.colorDeudas, fontSize: 11)),
+                      Text(
+                        formatCOP((c['monto_total'] as num).toDouble()),
+                        style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                      Text(
+                        todasPagadas ? 'Saldada' : 'Saldo: ${formatCOP(saldo)}',
+                        style: AppTheme.monoStyle(
+                          color: todasPagadas ? AppTheme.colorIngresos : AppTheme.colorDeudas,
+                          fontSize: 11,
+                          fontWeight: todasPagadas ? FontWeight.w700 : FontWeight.normal,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(width: 8),
@@ -322,7 +398,90 @@ class _CompraCardState extends ConsumerState<_CompraCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Divider(color: Colors.white.withAlpha(15)),
-                  const Text('Tabla de amortizacion', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+
+                  // Banner de accion para Anticipar Cuotas (estilo Nu/Rappi)
+                  if (!todasPagadas && cuotasPendientes.isNotEmpty) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12, top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.colorIngresos.withAlpha(20),
+                            AppTheme.primary.withAlpha(20),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.colorIngresos.withAlpha(60)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.colorIngresos.withAlpha(30),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.flash_on_rounded, color: AppTheme.colorIngresos, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Anticipar cuotas',
+                                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+                                ),
+                                Text(
+                                  '${cuotasPendientes.length} cuotas pendientes · Ahorra intereses',
+                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.colorIngresos,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => _abrirModalAnticipar(context),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Anticipar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Tabla de amortizacion', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                      if (!todasPagadas && cuotasPendientes.length > 1)
+                        InkWell(
+                          onTap: () => _abrirModalAnticipar(context),
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            child: Text(
+                              'Adelantar varias',
+                              style: TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                   ...cuotas.map((cuota) {
                     final montoCuota = (cuota['valor_cuota'] as num?)?.toDouble() ?? 0.0;
@@ -378,7 +537,7 @@ Future<void> _promptPagoCuotaConSobre(
   if (context.mounted) {
     if (sobres.isEmpty) {
       await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId);
-      ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+
       onPagoCuota();
       return;
     }
@@ -427,7 +586,7 @@ Future<void> _promptPagoCuotaConSobre(
                   );
                   ref.invalidate(presupuestoProvider(mes));
                 }
-                ref.read(virtualAssistantProvider.notifier).registerAction('PAGO_TARJETA');
+
                 onPagoCuota();
               },
               child: const Text('PAGAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
