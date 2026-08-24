@@ -321,7 +321,7 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                 children: [
                   if (_cuotaMesActual > 0) ...[
                     _buildChipMonto(
-                      label: 'Cuota del mes (${formatCOP(_cuotaMesActual)})',
+                      label: 'Pagar al corte (${formatCOP(_cuotaMesActual)})',
                       isSelected: _montoIngresado == _cuotaMesActual,
                       onTap: () => _setMontoRapido(_cuotaMesActual),
                     ),

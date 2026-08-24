@@ -418,7 +418,7 @@ class DatabaseService {
         WHERE id = ?
       ''', [tId]);
 
-      // Compras segun el extracto
+      // Compras segun el extracto oficial
       final comprasReal = [
         {
           'desc': 'AVANCE DIGITAL',
@@ -428,7 +428,13 @@ class DatabaseService {
           'fecha': '2026-06-20',
           'tasa': 2.1308,
           'es_avance': 1,
-          'saldo': 1563676.29, // $390.919,07 (facturado) + $1.172.757,22 (pendiente)
+          'saldo': 1563676.29,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 390919.07, 'int': 0.0, 'val': 390919.07, 'est': 'PENDIENTE'},
+            {'num': 2, 'fecha': '2026-09-30', 'cap': 390919.07, 'int': 33306.91, 'val': 424225.98, 'est': 'PENDIENTE'},
+            {'num': 3, 'fecha': '2026-10-31', 'cap': 390919.07, 'int': 24980.18, 'val': 415899.25, 'est': 'PENDIENTE'},
+            {'num': 4, 'fecha': '2026-11-30', 'cap': 390919.08, 'int': 16653.46, 'val': 407572.54, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'GOOGLE *LifeAfter',
@@ -438,7 +444,11 @@ class DatabaseService {
           'fecha': '2026-06-25',
           'tasa': 2.1308,
           'es_avance': 0,
-          'saldo': 81333.34, // $40.666,67 + $40.666,67
+          'saldo': 81333.34,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 40666.67, 'int': 2604.49, 'val': 43271.16, 'est': 'PENDIENTE'},
+            {'num': 2, 'fecha': '2026-09-30', 'cap': 40666.67, 'int': 866.53, 'val': 41533.20, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'CORP UNIV IBEROAMERICA',
@@ -448,7 +458,15 @@ class DatabaseService {
           'fecha': '2026-07-16',
           'tasa': 2.1300,
           'es_avance': 0,
-          'saldo': 1826059.17, // $365.211,83 + $1.460.847,34
+          'saldo': 1826059.17,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-07-31', 'cap': 365211.83, 'int': 0.0, 'val': 365211.83, 'est': 'PAGADA'},
+            {'num': 2, 'fecha': '2026-08-31', 'cap': 365211.83, 'int': 70000.72, 'val': 435212.55, 'est': 'PENDIENTE'},
+            {'num': 3, 'fecha': '2026-09-30', 'cap': 365211.83, 'int': 38914.86, 'val': 404126.69, 'est': 'PENDIENTE'},
+            {'num': 4, 'fecha': '2026-10-31', 'cap': 365211.83, 'int': 31131.89, 'val': 396343.72, 'est': 'PENDIENTE'},
+            {'num': 5, 'fecha': '2026-11-30', 'cap': 365211.83, 'int': 23348.92, 'val': 388560.75, 'est': 'PENDIENTE'},
+            {'num': 6, 'fecha': '2026-12-31', 'cap': 365211.85, 'int': 15565.94, 'val': 380777.79, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'PAGO SEGURO EMBEBIDO',
@@ -459,6 +477,9 @@ class DatabaseService {
           'tasa': 0.0,
           'es_avance': 0,
           'saldo': 22928.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 22928.0, 'int': 0.0, 'val': 22928.0, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'GOOGLE *Call of Duty M',
@@ -469,6 +490,9 @@ class DatabaseService {
           'tasa': 0.0,
           'es_avance': 0,
           'saldo': 24900.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 24900.0, 'int': 0.0, 'val': 24900.0, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'DLO*GOOGLE GOOGLE ONE',
@@ -479,6 +503,9 @@ class DatabaseService {
           'tasa': 0.0,
           'es_avance': 0,
           'saldo': 20000.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 20000.0, 'int': 0.0, 'val': 20000.0, 'est': 'PENDIENTE'},
+          ]
         },
         {
           'desc': 'GOOGLE *Minecraft Drea',
@@ -489,6 +516,9 @@ class DatabaseService {
           'tasa': 0.0,
           'es_avance': 0,
           'saldo': 23609.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 23609.0, 'int': 0.0, 'val': 23609.0, 'est': 'PENDIENTE'},
+          ]
         },
       ];
 
@@ -514,35 +544,31 @@ class DatabaseService {
             'saldo_capital': cr['saldo'],
           });
 
-          final tabla = AmortizationCalculator.generarTablaAmortizacion(
-            cr['monto'] as double,
-            (cr['tasa'] as double) / 100.0,
-            cr['num_cuotas'] as int,
-            cr['fecha'] as String,
-            20,
-            31,
-            'RappiCard'
-          );
+          final listaCuotas = cr['cuotas'] as List<Map<String, dynamic>>;
+          double saldo = cr['saldo'] as double;
 
-          for (var q in tabla) {
-            final int numCuota = q['numero_cuota'] as int;
-            final int cuotaAct = cr['cuota_act'] as int;
-            final String estado = numCuota < cuotaAct ? 'PAGADA' : 'PENDIENTE';
-            final String? fPago = numCuota < cuotaAct ? cr['fecha'] as String : null;
+          for (var q in listaCuotas) {
+            final double cap = (q['cap'] as num).toDouble();
+            final double intVal = (q['int'] as num).toDouble();
+            final double valC = (q['val'] as num).toDouble();
+            final String fVenc = q['fecha'] as String;
+            final String est = q['est'] as String;
+            final String? fPago = est == 'PAGADA' ? cr['fecha'] as String : null;
 
             await txn.insert('cuotas_amortizacion', {
               'compra_id': cid,
               'tarjeta_id': tId,
-              'numero_cuota': numCuota,
-              'fecha_vencimiento': q['fecha_vencimiento'],
-              'saldo_inicial': q['saldo_inicial'],
-              'valor_capital': q['valor_capital'],
-              'valor_interes': q['valor_interes'],
-              'valor_cuota': q['valor_cuota'],
-              'saldo_final': q['saldo_final'],
-              'estado': estado,
+              'numero_cuota': q['num'],
+              'fecha_vencimiento': fVenc,
+              'saldo_inicial': saldo,
+              'valor_capital': cap,
+              'valor_interes': intVal,
+              'valor_cuota': valC,
+              'saldo_final': saldo - cap,
+              'estado': est,
               'fecha_pago_real': fPago
             });
+            saldo -= cap;
           }
         }
       });
