@@ -10,6 +10,7 @@ import '../../providers/presupuesto_provider.dart';
 import '../../widgets/common_widgets.dart';
 import 'forms.dart';
 import 'modal_anticipar_cuotas.dart';
+import 'modal_adelantar_pago_tarjeta.dart';
 
 class TarjetaDetalleScreen extends ConsumerStatefulWidget {
   final dynamic tarjeta;
@@ -65,6 +66,18 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
     }
   }
 
+  void _abrirModalAdelantarPago(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ModalAdelantarPagoTarjeta(
+        tarjeta: _tarjeta,
+        onCompletado: _recargarTodo,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _tarjeta;
@@ -110,7 +123,10 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _TarjetaVisual(tarjeta: t),
+                _TarjetaVisual(
+                  tarjeta: t,
+                  onAdelantarPago: () => _abrirModalAdelantarPago(context),
+                ),
                 const SizedBox(height: 20),
                 if (_compras.isEmpty)
                   const Center(
@@ -154,7 +170,8 @@ class _TarjetaDetalleScreenState extends ConsumerState<TarjetaDetalleScreen> {
 
 class _TarjetaVisual extends StatelessWidget {
   final dynamic tarjeta;
-  const _TarjetaVisual({required this.tarjeta});
+  final VoidCallback onAdelantarPago;
+  const _TarjetaVisual({required this.tarjeta, required this.onAdelantarPago});
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +221,7 @@ class _TarjetaVisual extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('Avances disponibles: ', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+          Text('Avances disponibles: ${formatCOP(cupoAvances)}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -215,13 +232,33 @@ class _TarjetaVisual extends StatelessWidget {
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Corte dia ', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-              Text('Pago dia ', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text('Corte dia ${tarjeta.fechaCorte}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text('Pago dia ${tarjeta.fechaPago}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
             ],
+          ),
+          const SizedBox(height: 16),
+          // Botón de Adelantar Pago / Abono libre (Estilo Nu / RappiCard)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: color,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: onAdelantarPago,
+              icon: const Icon(Icons.flash_on_rounded, size: 18),
+              label: const Text(
+                'Adelantar pago / Abonar a tarjeta',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+            ),
           ),
         ],
       ),
