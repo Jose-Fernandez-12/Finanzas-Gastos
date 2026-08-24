@@ -79,7 +79,7 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                cp.cuota_actual as compra_cuota_actual, cp.num_cuotas as compra_num_cuotas
         FROM cuotas_amortizacion c
         JOIN compras_tarjeta cp ON c.compra_id = cp.id
-        WHERE c.tarjeta_id = ? AND c.estado = 'PENDIENTE'
+        WHERE c.tarjeta_id = ? AND UPPER(c.estado) = 'PENDIENTE'
         ORDER BY c.fecha_vencimiento ASC, c.id ASC
       ''', [tId]);
 
@@ -298,12 +298,12 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
             TextFormField(
               controller: _montoController,
               keyboardType: TextInputType.number,
-              style: AppTheme.monoStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24),
+              style: AppTheme.monoStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w900, fontSize: 24),
               decoration: InputDecoration(
                 prefixText: '\$ ',
                 prefixStyle: AppTheme.monoStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 24),
                 hintText: '0',
-                hintStyle: AppTheme.monoStyle(color: Colors.white24, fontWeight: FontWeight.w900, fontSize: 24),
+                hintStyle: AppTheme.monoStyle(color: AppTheme.textMuted.withAlpha(100), fontWeight: FontWeight.w900, fontSize: 24),
                 filled: true,
                 fillColor: AppTheme.surfaceColor,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -410,17 +410,17 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Divider(color: Colors.white.withAlpha(20), height: 1),
+                    Divider(color: interesAhorrado > 0 ? Colors.white.withAlpha(20) : AppTheme.borderLight, height: 1),
                     const SizedBox(height: 12),
 
                     // Desglose
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Cuotas cubiertas:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('Cuotas cubiertas:', style: TextStyle(color: interesAhorrado > 0 ? Colors.white70 : AppTheme.textSecondary, fontSize: 12)),
                         Text(
                           '${cuotasPagadas.length} cuota(s) saldada(s)',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                          style: TextStyle(color: interesAhorrado > 0 ? Colors.white : AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 12),
                         ),
                       ],
                     ),
@@ -428,10 +428,10 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Capital amortizado:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('Capital amortizado:', style: TextStyle(color: interesAhorrado > 0 ? Colors.white70 : AppTheme.textSecondary, fontSize: 12)),
                         Text(
                           formatCOP(capitalAmortizado),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                          style: TextStyle(color: interesAhorrado > 0 ? Colors.white : AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 12),
                         ),
                       ],
                     ),
@@ -440,10 +440,10 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Saldo a favor / Cupo adicional:', style: TextStyle(color: Color(0xFF60A5FA), fontSize: 12)),
+                          const Text('Saldo a favor / Cupo adicional:', style: TextStyle(color: Color(0xFF2563EB), fontSize: 12)),
                           Text(
                             '+ ${formatCOP(excedente)}',
-                            style: const TextStyle(color: Color(0xFF60A5FA), fontWeight: FontWeight.w700, fontSize: 12),
+                            style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w700, fontSize: 12),
                           ),
                         ],
                       ),
@@ -452,10 +452,10 @@ class _ModalAdelantarPagoTarjetaState extends ConsumerState<ModalAdelantarPagoTa
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Nuevo cupo disponible:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text('Nuevo cupo disponible:', style: TextStyle(color: interesAhorrado > 0 ? Colors.white : AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
                         Text(
                           formatCOP(nuevoCupoSimulado),
-                          style: AppTheme.monoStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                          style: AppTheme.monoStyle(color: interesAhorrado > 0 ? Colors.white : AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 16),
                         ),
                       ],
                     ),

@@ -719,7 +719,7 @@ class LocalRepository {
                cp.cuota_actual as compra_cuota_actual, cp.num_cuotas as compra_num_cuotas
         FROM cuotas_amortizacion c
         JOIN compras_tarjeta cp ON c.compra_id = cp.id
-        WHERE c.tarjeta_id = ? AND c.estado = 'PENDIENTE'
+        WHERE c.tarjeta_id = ? AND UPPER(c.estado) = 'PENDIENTE'
         ORDER BY c.fecha_vencimiento ASC, c.id ASC
       ''', [tarjetaId]);
 

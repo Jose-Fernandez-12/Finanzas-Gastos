@@ -18,7 +18,7 @@ enum EyeState {
   sleep,
 }
 
-enum MouthState { neutral, smile, open, teeth, tight, none }
+enum MouthState { neutral, smile, open, teeth, tight, frown, none }
 
 enum ParticleType {
   sparks,
@@ -106,6 +106,42 @@ class RockyPose {
     this.glowColor,
     this.particles = const [],
   });
+
+  RockyPose copyWith({
+    Offset? bodyOffset,
+    double? bodyScaleX,
+    double? bodyScaleY,
+    double? bodyRotation,
+    double? leftArmAngle,
+    double? rightArmAngle,
+    double? rightArmOffsetX,
+    double? leftLegAngle,
+    double? rightLegAngle,
+    double? leftLegOffset,
+    double? rightLegOffset,
+    EyeState? eyeState,
+    MouthState? mouthState,
+    Color? glowColor,
+    List<PixelObject>? particles,
+  }) {
+    return RockyPose(
+      bodyOffset: bodyOffset ?? this.bodyOffset,
+      bodyScaleX: bodyScaleX ?? this.bodyScaleX,
+      bodyScaleY: bodyScaleY ?? this.bodyScaleY,
+      bodyRotation: bodyRotation ?? this.bodyRotation,
+      leftArmAngle: leftArmAngle ?? this.leftArmAngle,
+      rightArmAngle: rightArmAngle ?? this.rightArmAngle,
+      rightArmOffsetX: rightArmOffsetX ?? this.rightArmOffsetX,
+      leftLegAngle: leftLegAngle ?? this.leftLegAngle,
+      rightLegAngle: rightLegAngle ?? this.rightLegAngle,
+      leftLegOffset: leftLegOffset ?? this.leftLegOffset,
+      rightLegOffset: rightLegOffset ?? this.rightLegOffset,
+      eyeState: eyeState ?? this.eyeState,
+      mouthState: mouthState ?? this.mouthState,
+      glowColor: glowColor ?? this.glowColor,
+      particles: particles ?? this.particles,
+    );
+  }
 
   RockyPose lerp(RockyPose other, double t) {
     return RockyPose(
