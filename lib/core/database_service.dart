@@ -395,6 +395,157 @@ class DatabaseService {
           await txn.delete('compras_tarjeta', where: 'id = ?', whereArgs: [id]);
         }
       });
+      await _sincronizarDatosRealesRappiCard(db);
+    } catch (_) {}
+  }
+
+  static Future<void> _sincronizarDatosRealesRappiCard(Database db) async {
+    try {
+      final rappi = (await db.rawQuery("SELECT id FROM tarjetas_credito WHERE banco LIKE '%rappi%' OR nombre_tarjeta LIKE '%rappi%'")).firstOrNull;
+      if (rappi == null) return;
+      final int tId = rappi['id'] as int;
+
+      // Actualizar datos generales de la tarjeta RappiCard segun extracto oficial
+      await db.rawUpdate('''
+        UPDATE tarjetas_credito
+        SET cupo_total = 6100000,
+            cupo_disponible = 2464688.99,
+            cupo_avances_total = 847689.39,
+            fecha_corte = 20,
+            fecha_pago = 31,
+            tasa_interes_mensual = 2.13,
+            actualizado_en = datetime('now')
+        WHERE id = ?
+      ''', [tId]);
+
+      // Compras segun el extracto
+      final comprasReal = [
+        {
+          'desc': 'AVANCE DIGITAL',
+          'monto': 2433000.0,
+          'num_cuotas': 4,
+          'cuota_act': 1,
+          'fecha': '2026-06-20',
+          'tasa': 2.1308,
+          'es_avance': 1,
+          'saldo': 1563676.29, // $390.919,07 (facturado) + $1.172.757,22 (pendiente)
+        },
+        {
+          'desc': 'GOOGLE *LifeAfter',
+          'monto': 122000.0,
+          'num_cuotas': 2,
+          'cuota_act': 1,
+          'fecha': '2026-06-25',
+          'tasa': 2.1308,
+          'es_avance': 0,
+          'saldo': 81333.34, // $40.666,67 + $40.666,67
+        },
+        {
+          'desc': 'CORP UNIV IBEROAMERICA',
+          'monto': 2191271.0,
+          'num_cuotas': 6,
+          'cuota_act': 2,
+          'fecha': '2026-07-16',
+          'tasa': 2.1300,
+          'es_avance': 0,
+          'saldo': 1826059.17, // $365.211,83 + $1.460.847,34
+        },
+        {
+          'desc': 'PAGO SEGURO EMBEBIDO',
+          'monto': 22928.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-07-24',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 22928.0,
+        },
+        {
+          'desc': 'GOOGLE *Call of Duty M',
+          'monto': 24900.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-06',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 24900.0,
+        },
+        {
+          'desc': 'DLO*GOOGLE GOOGLE ONE',
+          'monto': 20000.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-08',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 20000.0,
+        },
+        {
+          'desc': 'GOOGLE *Minecraft Drea',
+          'monto': 23609.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-11',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 23609.0,
+        },
+      ];
+
+      // Sincronizar compras y generar sus tablas de amortizacion exactas
+      await db.transaction((txn) async {
+        // Limpiar compras previas de esta tarjeta para dejar los datos oficiales 1:1
+        final comprasPrevias = await txn.rawQuery("SELECT id FROM compras_tarjeta WHERE tarjeta_id = ?", [tId]);
+        for (var cp in comprasPrevias) {
+          await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [cp['id']]);
+        }
+        await txn.delete('compras_tarjeta', where: 'tarjeta_id = ?', whereArgs: [tId]);
+
+        for (var cr in comprasReal) {
+          final int cid = await txn.insert('compras_tarjeta', {
+            'tarjeta_id': tId,
+            'descripcion': cr['desc'],
+            'monto_total': cr['monto'],
+            'num_cuotas': cr['num_cuotas'],
+            'cuota_actual': cr['cuota_act'],
+            'fecha_compra': cr['fecha'],
+            'tasa_interes_mensual': cr['tasa'],
+            'es_avance': cr['es_avance'],
+            'saldo_capital': cr['saldo'],
+          });
+
+          final tabla = AmortizationCalculator.generarTablaAmortizacion(
+            cr['monto'] as double,
+            (cr['tasa'] as double) / 100.0,
+            cr['num_cuotas'] as int,
+            cr['fecha'] as String,
+            20,
+            31,
+            'RappiCard'
+          );
+
+          for (var q in tabla) {
+            final int numCuota = q['numero_cuota'] as int;
+            final int cuotaAct = cr['cuota_act'] as int;
+            final String estado = numCuota < cuotaAct ? 'PAGADA' : 'PENDIENTE';
+            final String? fPago = numCuota < cuotaAct ? cr['fecha'] as String : null;
+
+            await txn.insert('cuotas_amortizacion', {
+              'compra_id': cid,
+              'tarjeta_id': tId,
+              'numero_cuota': numCuota,
+              'fecha_vencimiento': q['fecha_vencimiento'],
+              'saldo_inicial': q['saldo_inicial'],
+              'valor_capital': q['valor_capital'],
+              'valor_interes': q['valor_interes'],
+              'valor_cuota': q['valor_cuota'],
+              'saldo_final': q['saldo_final'],
+              'estado': estado,
+              'fecha_pago_real': fPago
+            });
+          }
+        }
+      });
     } catch (_) {}
   }
 

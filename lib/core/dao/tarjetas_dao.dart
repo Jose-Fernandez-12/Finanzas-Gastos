@@ -19,7 +19,7 @@ class TarjetasDao {
         [tId]
       );
       final cuotaMes = await DatabaseService.instance.getOne(
-        "SELECT COALESCE(SUM(valor_cuota), 0) AS total FROM cuotas_amortizacion WHERE tarjeta_id = ? AND estado = 'PENDIENTE' AND strftime('%Y-%m', fecha_vencimiento) = strftime('%Y-%m', 'now')",
+        "SELECT COALESCE(SUM(valor_cuota), 0) AS total FROM cuotas_amortizacion WHERE tarjeta_id = ? AND UPPER(estado) = 'PENDIENTE' AND strftime('%Y-%m', fecha_vencimiento) = strftime('%Y-%m', 'now')",
         [tId]
       );
       final avances = await DatabaseService.instance.getOne(
