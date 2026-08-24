@@ -692,6 +692,240 @@ class LocalRepository {
     });
   }
 
+  /// Realiza un abono libre en dinero (ej: $400.000 COP) a una tarjeta de crédito (estilo Nu / RappiCard).
+  /// Aplica el dinero en cascada inteligente liquidando cuotas pendientes desde la más antigua a la más nueva,
+  /// descontando los intereses futuros no causados, amortizando capital, liberando cupo disponible
+  /// e impactando opcionalmente el sobre de presupuesto seleccionado.
+  Future<Map<String, dynamic>> abonarATarjeta({
+    required int tarjetaId,
+    required double monto,
+    int? sobreId,
+    String? concepto,
+  }) async {
+    if (monto <= 0) {
+      return {'ok': false, 'error': 'El monto a abonar debe ser mayor a cero.'};
+    }
+
+    return await DatabaseService.instance.transaction((txn) async {
+      // 1. Obtener la tarjeta
+      final tarjeta = (await txn.rawQuery("SELECT * FROM tarjetas_credito WHERE id = ?", [tarjetaId])).firstOrNull;
+      if (tarjeta == null) {
+        return {'ok': false, 'error': 'Tarjeta no encontrada.'};
+      }
+
+      // 2. Obtener todas las cuotas pendientes de las compras de esta tarjeta, ordenadas por fecha de vencimiento y luego ID
+      final cuotasPendientes = await txn.rawQuery('''
+        SELECT c.*, cp.descripcion as compra_descripcion, cp.saldo_capital as compra_saldo_capital,
+               cp.cuota_actual as compra_cuota_actual, cp.num_cuotas as compra_num_cuotas
+        FROM cuotas_amortizacion c
+        JOIN compras_tarjeta cp ON c.compra_id = cp.id
+        WHERE c.tarjeta_id = ? AND UPPER(c.estado) = 'PENDIENTE'
+        ORDER BY c.fecha_vencimiento ASC, c.id ASC
+      ''', [tarjetaId]);
+
+      double saldoRestante = monto;
+      double capitalAmortizadoTotal = 0.0;
+      double interesAhorradoTotal = 0.0;
+      int cuotasLiquidadas = 0;
+      final Set<int> comprasModificadas = {};
+      final Map<int, double> reduccionCapitalPorCompra = {};
+      final Map<int, int> cuotasAdelantadasPorCompra = {};
+
+      for (var row in cuotasPendientes) {
+        if (saldoRestante <= 0.001) break;
+
+        final int cuotaId = row['id'] as int;
+        final int compraId = row['compra_id'] as int;
+        final double cap = (row['valor_capital'] as num?)?.toDouble() ?? 0.0;
+        final double interes = (row['valor_interes'] as num?)?.toDouble() ?? 0.0;
+
+        comprasModificadas.add(compraId);
+
+        if (saldoRestante >= cap - 0.001) {
+          // Liquidar cuota completa (ahorra el 100% del interés programado de esta cuota)
+          await txn.rawUpdate(
+            "UPDATE cuotas_amortizacion SET estado = 'PAGADA', fecha_pago_real = date('now') WHERE id = ?",
+            [cuotaId]
+          );
+
+          capitalAmortizadoTotal += cap;
+          interesAhorradoTotal += interes;
+          saldoRestante -= cap;
+          cuotasLiquidadas++;
+
+          reduccionCapitalPorCompra[compraId] = (reduccionCapitalPorCompra[compraId] ?? 0.0) + cap;
+          cuotasAdelantadasPorCompra[compraId] = (cuotasAdelantadasPorCompra[compraId] ?? 0) + 1;
+        } else {
+          // Abono parcial a esta cuota
+          final double abonoParcial = saldoRestante;
+          final double nuevoCapitalCuota = max(0.0, cap - abonoParcial);
+          final double nuevoValorCuota = nuevoCapitalCuota + interes;
+
+          await txn.rawUpdate(
+            "UPDATE cuotas_amortizacion SET valor_capital = ?, valor_cuota = ? WHERE id = ?",
+            [nuevoCapitalCuota, nuevoValorCuota, cuotaId]
+          );
+
+          capitalAmortizadoTotal += abonoParcial;
+          saldoRestante = 0.0;
+          reduccionCapitalPorCompra[compraId] = (reduccionCapitalPorCompra[compraId] ?? 0.0) + abonoParcial;
+          break;
+        }
+      }
+
+      // 3. Actualizar saldo_capital y cuota_actual en las compras afectadas
+      for (var compraId in comprasModificadas) {
+        final double capReducido = reduccionCapitalPorCompra[compraId] ?? 0.0;
+        final int cuotasAvanzadas = cuotasAdelantadasPorCompra[compraId] ?? 0;
+
+        final compra = (await txn.rawQuery("SELECT * FROM compras_tarjeta WHERE id = ?", [compraId])).firstOrNull;
+        if (compra != null) {
+          final double saldoActual = (compra['saldo_capital'] as num?)?.toDouble() ?? 0.0;
+          final double nuevoSaldo = max(0.0, saldoActual - capReducido);
+          final int cuotaActual = (compra['cuota_actual'] as int?) ?? 1;
+          final int nuevaCuotaActual = cuotaActual + cuotasAvanzadas;
+
+          await txn.rawUpdate(
+            "UPDATE compras_tarjeta SET saldo_capital = ?, cuota_actual = ?, actualizado_en = datetime('now') WHERE id = ?",
+            [nuevoSaldo, nuevaCuotaActual, compraId]
+          );
+        }
+      }
+
+      // 4. Liberar cupo disponible en la tarjeta
+      // Todo el dinero abonado (capital amortizado + excedente de saldo a favor) libera cupo disponible
+      final double cupoLiberado = monto;
+      final double cupoTotal = (tarjeta['cupo_total'] as num?)?.toDouble() ?? 0.0;
+      final double cupoActual = (tarjeta['cupo_disponible'] as num?)?.toDouble() ?? 0.0;
+      final double nuevoCupo = min(cupoTotal + (monto - capitalAmortizadoTotal), cupoActual + cupoLiberado);
+
+      await txn.rawUpdate(
+        "UPDATE tarjetas_credito SET cupo_disponible = ?, actualizado_en = datetime('now') WHERE id = ?",
+        [nuevoCupo, tarjetaId]
+      );
+
+      // 5. Si se especificó un sobre de presupuesto, registrar el egreso
+      if (sobreId != null) {
+        final nombreTarjeta = (tarjeta['nombre_tarjeta']?.toString().isNotEmpty ?? false)
+            ? tarjeta['nombre_tarjeta']
+            : tarjeta['banco'];
+        final conceptoGasto = concepto ?? 'Abono / Pago Adelantado - $nombreTarjeta';
+
+        await txn.rawInsert(
+          "INSERT INTO presupuesto_sobre_gastos (sobre_id, monto, concepto, fecha) VALUES (?, ?, ?, ?)",
+          [sobreId, monto, conceptoGasto, DateTime.now().toIso8601String()]
+        );
+      }
+
+      return {
+        'ok': true,
+        'montoAbonado': monto,
+        'capitalAmortizado': double.parse(capitalAmortizadoTotal.toStringAsFixed(2)),
+        'interesAhorrado': double.parse(interesAhorradoTotal.toStringAsFixed(2)),
+        'excedenteCupo': double.parse(max(0.0, saldoRestante).toStringAsFixed(2)),
+        'cuotasLiquidadas': cuotasLiquidadas,
+        'comprasImpactadas': comprasModificadas.length,
+      };
+    });
+  }
+
+  /// Realiza un abono libre en dinero a una compra puntual
+  Future<Map<String, dynamic>> abonarACompra({
+    required int tarjetaId,
+    required int compraId,
+    required double monto,
+    int? sobreId,
+  }) async {
+    if (monto <= 0) {
+      return {'ok': false, 'error': 'El monto a abonar debe ser mayor a cero.'};
+    }
+
+    return await DatabaseService.instance.transaction((txn) async {
+      final cuotasPendientes = await txn.rawQuery(
+        "SELECT * FROM cuotas_amortizacion WHERE compra_id = ? AND estado = 'PENDIENTE' ORDER BY numero_cuota ASC",
+        [compraId]
+      );
+
+      if (cuotasPendientes.isEmpty) {
+        return {'ok': false, 'error': 'No hay cuotas pendientes para esta compra.'};
+      }
+
+      double saldoRestante = monto;
+      double capitalAmortizado = 0.0;
+      double interesAhorrado = 0.0;
+      int cuotasLiquidadas = 0;
+
+      for (var c in cuotasPendientes) {
+        if (saldoRestante <= 0.001) break;
+
+        final int cuotaId = c['id'] as int;
+        final double cap = (c['valor_capital'] as num?)?.toDouble() ?? 0.0;
+        final double interes = (c['valor_interes'] as num?)?.toDouble() ?? 0.0;
+
+        if (saldoRestante >= cap - 0.001) {
+          await txn.rawUpdate(
+            "UPDATE cuotas_amortizacion SET estado = 'PAGADA', fecha_pago_real = date('now') WHERE id = ?",
+            [cuotaId]
+          );
+          capitalAmortizado += cap;
+          interesAhorrado += interes;
+          saldoRestante -= cap;
+          cuotasLiquidadas++;
+        } else {
+          final abonoParcial = saldoRestante;
+          final double nuevoCapitalCuota = max(0.0, cap - abonoParcial);
+          final double nuevoValorCuota = nuevoCapitalCuota + interes;
+
+          await txn.rawUpdate(
+            "UPDATE cuotas_amortizacion SET valor_capital = ?, valor_cuota = ? WHERE id = ?",
+            [nuevoCapitalCuota, nuevoValorCuota, cuotaId]
+          );
+
+          capitalAmortizado += abonoParcial;
+          saldoRestante = 0.0;
+          break;
+        }
+      }
+
+      // Actualizar compra
+      final compra = (await txn.rawQuery("SELECT * FROM compras_tarjeta WHERE id = ?", [compraId])).firstOrNull;
+      if (compra != null) {
+        final double saldoActual = (compra['saldo_capital'] as num?)?.toDouble() ?? 0.0;
+        final double nuevoSaldo = max(0.0, saldoActual - capitalAmortizado);
+        final int cuotaActual = (compra['cuota_actual'] as int?) ?? 1;
+        final int nuevaCuotaActual = cuotaActual + cuotasLiquidadas;
+
+        await txn.rawUpdate(
+          "UPDATE compras_tarjeta SET saldo_capital = ?, cuota_actual = ?, actualizado_en = datetime('now') WHERE id = ?",
+          [nuevoSaldo, nuevaCuotaActual, compraId]
+        );
+      }
+
+      // Liberar cupo
+      await txn.rawUpdate(
+        "UPDATE tarjetas_credito SET cupo_disponible = cupo_disponible + ?, actualizado_en = datetime('now') WHERE id = ?",
+        [capitalAmortizado, tarjetaId]
+      );
+
+      // Descontar sobre
+      if (sobreId != null) {
+        final concepto = 'Abono compra - ${compra?['descripcion'] ?? 'Tarjeta'}';
+        await txn.rawInsert(
+          "INSERT INTO presupuesto_sobre_gastos (sobre_id, monto, concepto, fecha) VALUES (?, ?, ?, ?)",
+          [sobreId, capitalAmortizado, concepto, DateTime.now().toIso8601String()]
+        );
+      }
+
+      return {
+        'ok': true,
+        'montoAbonado': monto,
+        'capitalAmortizado': double.parse(capitalAmortizado.toStringAsFixed(2)),
+        'interesAhorrado': double.parse(interesAhorrado.toStringAsFixed(2)),
+        'cuotasLiquidadas': cuotasLiquidadas,
+      };
+    });
+  }
+
 
   // ---- Ahorros ----
   Future<Map<String, dynamic>> getAhorros() async {

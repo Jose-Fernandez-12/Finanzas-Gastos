@@ -6,6 +6,7 @@ import '../../providers/tarjetas_provider.dart';
 import '../../providers/dashboard_provider.dart';
 
 import 'tarjeta_detalle_screen.dart';
+import 'modal_adelantar_pago_tarjeta.dart';
 import 'forms.dart';
 
 class TarjetasScreen extends ConsumerWidget {
@@ -132,6 +133,21 @@ class TarjetasScreen extends ConsumerWidget {
               ref.invalidate(comprasActivasProvider);
               ref.invalidate(dashboardProvider);
             }),
+            onAdelantarPago: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => ModalAdelantarPagoTarjeta(
+                  tarjeta: t,
+                  onCompletado: () {
+                    ref.invalidate(tarjetasProvider);
+                    ref.invalidate(comprasActivasProvider);
+                    ref.invalidate(dashboardProvider);
+                  },
+                ),
+              );
+            },
           );
         },
       ),
@@ -283,7 +299,12 @@ class TarjetasScreen extends ConsumerWidget {
 class _TarjetaCarouselCard extends StatelessWidget {
   final dynamic tarjeta;
   final VoidCallback onTap;
-  const _TarjetaCarouselCard({required this.tarjeta, required this.onTap});
+  final VoidCallback onAdelantarPago;
+  const _TarjetaCarouselCard({
+    required this.tarjeta,
+    required this.onTap,
+    required this.onAdelantarPago,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +312,6 @@ class _TarjetaCarouselCard extends StatelessWidget {
     final color = getTarjetaColor(tMap);
     final cupoDispo = tarjeta.cupoDisponible;
     final nombre = tarjeta.nombreTarjeta.isNotEmpty ? tarjeta.nombreTarjeta : tarjeta.banco;
-    final idStr = tarjeta.id.toString();
 
     final width = MediaQuery.of(context).size.width - 60;
 
@@ -340,22 +360,51 @@ class _TarjetaCarouselCard extends StatelessWidget {
                     _buildCardLogo(nombre),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      'CUPO DISPONIBLE',
-                      style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CUPO DISPONIBLE',
+                          style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.8),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatCOP(cupoDispo),
+                          style: AppTheme.monoStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '**** **** **** ',
+                          style: AppTheme.monoStyle(color: Colors.white.withAlpha(200), fontSize: 12, letterSpacing: 2),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatCOP(cupoDispo),
-                      style: AppTheme.monoStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '**** **** **** ',
-                      style: AppTheme.monoStyle(color: Colors.white.withAlpha(200), fontSize: 13, letterSpacing: 2),
+                    InkWell(
+                      onTap: onAdelantarPago,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(40),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withAlpha(80)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.flash_on_rounded, color: Colors.white, size: 14),
+                            SizedBox(width: 4),
+                            Text(
+                              'Abonar',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

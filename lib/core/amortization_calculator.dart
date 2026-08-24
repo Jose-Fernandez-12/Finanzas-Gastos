@@ -149,5 +149,65 @@ class AmortizationCalculator {
       'totalPagar': double.parse(capitalTotal.toStringAsFixed(2)),
     };
   }
+
+  /// Simula la distribución de un pago libre en cascada (estilo Nu / RappiCard)
+  /// sobre una lista de cuotas pendientes de toda la tarjeta.
+  static Map<String, dynamic> simularAbonoCascadaTarjeta({
+    required List<Map<String, dynamic>> cuotasPendientes,
+    required double montoAbono,
+  }) {
+    if (montoAbono <= 0 || cuotasPendientes.isEmpty) {
+      return {
+        'cuotasPagadas': <Map<String, dynamic>>[],
+        'cuotaParcial': null,
+        'capitalAmortizado': 0.0,
+        'interesAhorrado': 0.0,
+        'excedenteCupo': montoAbono > 0 ? montoAbono : 0.0,
+        'totalCuotasImpactadas': 0,
+      };
+    }
+
+    double saldoRestante = montoAbono;
+    double capitalAmortizado = 0.0;
+    double interesAhorrado = 0.0;
+    final List<Map<String, dynamic>> cuotasPagadas = [];
+    Map<String, dynamic>? cuotaParcial;
+
+    for (var cuota in cuotasPendientes) {
+      if (saldoRestante <= 0.001) break;
+
+      final cap = (cuota['valor_capital'] as num?)?.toDouble() ?? 0.0;
+      final intVal = (cuota['valor_interes'] as num?)?.toDouble() ?? 0.0;
+
+      // Al anticipar, el costo para liquidar la cuota es solo el capital (ahorrando el interés futuro)
+      if (saldoRestante >= cap - 0.001) {
+        // Cubre la cuota completamente
+        cuotasPagadas.add(cuota);
+        capitalAmortizado += cap;
+        interesAhorrado += intVal;
+        saldoRestante -= cap;
+      } else {
+        // Cubre parcialmente esta cuota
+        final abonoParcial = saldoRestante;
+        cuotaParcial = {
+          'cuota': cuota,
+          'abonoCapital': abonoParcial,
+          'nuevoCapital': max(0.0, cap - abonoParcial),
+        };
+        capitalAmortizado += abonoParcial;
+        saldoRestante = 0.0;
+        break;
+      }
+    }
+
+    return {
+      'cuotasPagadas': cuotasPagadas,
+      'cuotaParcial': cuotaParcial,
+      'capitalAmortizado': double.parse(capitalAmortizado.toStringAsFixed(2)),
+      'interesAhorrado': double.parse(interesAhorrado.toStringAsFixed(2)),
+      'excedenteCupo': double.parse(max(0.0, saldoRestante).toStringAsFixed(2)),
+      'totalCuotasImpactadas': cuotasPagadas.length + (cuotaParcial != null ? 1 : 0),
+    };
+  }
 }
 

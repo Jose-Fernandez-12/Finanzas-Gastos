@@ -395,6 +395,183 @@ class DatabaseService {
           await txn.delete('compras_tarjeta', where: 'id = ?', whereArgs: [id]);
         }
       });
+      await _sincronizarDatosRealesRappiCard(db);
+    } catch (_) {}
+  }
+
+  static Future<void> _sincronizarDatosRealesRappiCard(Database db) async {
+    try {
+      final rappi = (await db.rawQuery("SELECT id FROM tarjetas_credito WHERE banco LIKE '%rappi%' OR nombre_tarjeta LIKE '%rappi%'")).firstOrNull;
+      if (rappi == null) return;
+      final int tId = rappi['id'] as int;
+
+      // Actualizar datos generales de la tarjeta RappiCard segun extracto oficial
+      await db.rawUpdate('''
+        UPDATE tarjetas_credito
+        SET cupo_total = 6100000,
+            cupo_disponible = 2464688.99,
+            cupo_avances_total = 847689.39,
+            fecha_corte = 20,
+            fecha_pago = 31,
+            tasa_interes_mensual = 2.13,
+            actualizado_en = datetime('now')
+        WHERE id = ?
+      ''', [tId]);
+
+      // Compras segun el extracto oficial
+      final comprasReal = [
+        {
+          'desc': 'AVANCE DIGITAL',
+          'monto': 2433000.0,
+          'num_cuotas': 4,
+          'cuota_act': 1,
+          'fecha': '2026-06-20',
+          'tasa': 2.1308,
+          'es_avance': 1,
+          'saldo': 1563676.29,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 390919.07, 'int': 0.0, 'val': 390919.07, 'est': 'PENDIENTE'},
+            {'num': 2, 'fecha': '2026-09-30', 'cap': 390919.07, 'int': 33306.91, 'val': 424225.98, 'est': 'PENDIENTE'},
+            {'num': 3, 'fecha': '2026-10-31', 'cap': 390919.07, 'int': 24980.18, 'val': 415899.25, 'est': 'PENDIENTE'},
+            {'num': 4, 'fecha': '2026-11-30', 'cap': 390919.08, 'int': 16653.46, 'val': 407572.54, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'GOOGLE *LifeAfter',
+          'monto': 122000.0,
+          'num_cuotas': 2,
+          'cuota_act': 1,
+          'fecha': '2026-06-25',
+          'tasa': 2.1308,
+          'es_avance': 0,
+          'saldo': 81333.34,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 40666.67, 'int': 2604.49, 'val': 43271.16, 'est': 'PENDIENTE'},
+            {'num': 2, 'fecha': '2026-09-30', 'cap': 40666.67, 'int': 866.53, 'val': 41533.20, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'CORP UNIV IBEROAMERICA',
+          'monto': 2191271.0,
+          'num_cuotas': 6,
+          'cuota_act': 2,
+          'fecha': '2026-07-16',
+          'tasa': 2.1300,
+          'es_avance': 0,
+          'saldo': 1826059.17,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-07-31', 'cap': 365211.83, 'int': 0.0, 'val': 365211.83, 'est': 'PAGADA'},
+            {'num': 2, 'fecha': '2026-08-31', 'cap': 365211.83, 'int': 70000.72, 'val': 435212.55, 'est': 'PENDIENTE'},
+            {'num': 3, 'fecha': '2026-09-30', 'cap': 365211.83, 'int': 38914.86, 'val': 404126.69, 'est': 'PENDIENTE'},
+            {'num': 4, 'fecha': '2026-10-31', 'cap': 365211.83, 'int': 31131.89, 'val': 396343.72, 'est': 'PENDIENTE'},
+            {'num': 5, 'fecha': '2026-11-30', 'cap': 365211.83, 'int': 23348.92, 'val': 388560.75, 'est': 'PENDIENTE'},
+            {'num': 6, 'fecha': '2026-12-31', 'cap': 365211.85, 'int': 15565.94, 'val': 380777.79, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'PAGO SEGURO EMBEBIDO',
+          'monto': 22928.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-07-24',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 22928.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 22928.0, 'int': 0.0, 'val': 22928.0, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'GOOGLE *Call of Duty M',
+          'monto': 24900.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-06',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 24900.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 24900.0, 'int': 0.0, 'val': 24900.0, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'DLO*GOOGLE GOOGLE ONE',
+          'monto': 20000.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-08',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 20000.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 20000.0, 'int': 0.0, 'val': 20000.0, 'est': 'PENDIENTE'},
+          ]
+        },
+        {
+          'desc': 'GOOGLE *Minecraft Drea',
+          'monto': 23609.0,
+          'num_cuotas': 1,
+          'cuota_act': 1,
+          'fecha': '2026-08-11',
+          'tasa': 0.0,
+          'es_avance': 0,
+          'saldo': 23609.0,
+          'cuotas': [
+            {'num': 1, 'fecha': '2026-08-31', 'cap': 23609.0, 'int': 0.0, 'val': 23609.0, 'est': 'PENDIENTE'},
+          ]
+        },
+      ];
+
+      // Sincronizar compras y generar sus tablas de amortizacion exactas
+      await db.transaction((txn) async {
+        // Limpiar compras previas de esta tarjeta para dejar los datos oficiales 1:1
+        final comprasPrevias = await txn.rawQuery("SELECT id FROM compras_tarjeta WHERE tarjeta_id = ?", [tId]);
+        for (var cp in comprasPrevias) {
+          await txn.delete('cuotas_amortizacion', where: 'compra_id = ?', whereArgs: [cp['id']]);
+        }
+        await txn.delete('compras_tarjeta', where: 'tarjeta_id = ?', whereArgs: [tId]);
+
+        for (var cr in comprasReal) {
+          final int cid = await txn.insert('compras_tarjeta', {
+            'tarjeta_id': tId,
+            'descripcion': cr['desc'],
+            'monto_total': cr['monto'],
+            'num_cuotas': cr['num_cuotas'],
+            'cuota_actual': cr['cuota_act'],
+            'fecha_compra': cr['fecha'],
+            'tasa_interes_mensual': cr['tasa'],
+            'es_avance': cr['es_avance'],
+            'saldo_capital': cr['saldo'],
+          });
+
+          final listaCuotas = cr['cuotas'] as List<Map<String, dynamic>>;
+          double saldo = cr['saldo'] as double;
+
+          for (var q in listaCuotas) {
+            final double cap = (q['cap'] as num).toDouble();
+            final double intVal = (q['int'] as num).toDouble();
+            final double valC = (q['val'] as num).toDouble();
+            final String fVenc = q['fecha'] as String;
+            final String est = q['est'] as String;
+            final String? fPago = est == 'PAGADA' ? cr['fecha'] as String : null;
+
+            await txn.insert('cuotas_amortizacion', {
+              'compra_id': cid,
+              'tarjeta_id': tId,
+              'numero_cuota': q['num'],
+              'fecha_vencimiento': fVenc,
+              'saldo_inicial': saldo,
+              'valor_capital': cap,
+              'valor_interes': intVal,
+              'valor_cuota': valC,
+              'saldo_final': saldo - cap,
+              'estado': est,
+              'fecha_pago_real': fPago
+            });
+            saldo -= cap;
+          }
+        }
+      });
     } catch (_) {}
   }
 

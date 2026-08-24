@@ -32,6 +32,10 @@ class ModalAnticiparCuotas extends ConsumerStatefulWidget {
 class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
   late List<Map<String, dynamic>> _cuotasPendientes;
   int _cantidadSeleccionada = 1;
+  bool _modoMontoLibre = false;
+  final TextEditingController _montoLibreController = TextEditingController();
+  double _montoLibre = 0.0;
+
   int? _sobreSeleccionadoId;
   List<Sobre> _sobres = [];
   bool _loadingSobres = true;
@@ -48,8 +52,22 @@ class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
 
     _cuotasPendientes.sort((a, b) => ((a['numero_cuota'] as int?) ?? 0).compareTo((b['numero_cuota'] as int?) ?? 0));
     _cantidadSeleccionada = _cuotasPendientes.isNotEmpty ? 1 : 0;
+    
+    _montoLibreController.addListener(() {
+      final clean = _montoLibreController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      final val = double.tryParse(clean) ?? 0.0;
+      if (val != _montoLibre) {
+        setState(() => _montoLibre = val);
+      }
+    });
 
     _cargarSobres();
+  }
+
+  @override
+  void dispose() {
+    _montoLibreController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarSobres() async {
@@ -107,12 +125,21 @@ class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
       );
     }
 
-    final calculo = AmortizationCalculator.calcularAhorroAnticipo(_cuotasPendientes, _cantidadSeleccionada);
-    final capitalPagar = calculo['capitalTotal'] as double;
-    final interesAhorrado = calculo['interesAhorrado'] as double;
-    final totalOriginal = calculo['totalOriginal'] as double;
+    final calculoCuotas = AmortizationCalculator.calcularAhorroAnticipo(_cuotasPendientes, _cantidadSeleccionada);
+    final calculoLibre = AmortizationCalculator.simularAbonoCascadaTarjeta(
+      cuotasPendientes: _cuotasPendientes,
+      montoAbono: _montoLibre,
+    );
+
+    final capitalPagar = _modoMontoLibre
+        ? (calculoLibre['capitalAmortizado'] as double)
+        : (calculoCuotas['capitalTotal'] as double);
+    final interesAhorrado = _modoMontoLibre
+        ? (calculoLibre['interesAhorrado'] as double)
+        : (calculoCuotas['interesAhorrado'] as double);
+    final totalOriginal = calculoCuotas['totalOriginal'] as double;
     final saldoActual = (widget.compra['saldo_capital'] as num?)?.toDouble() ?? 0.0;
-    final nuevoSaldo = max(0.0, saldoActual - capitalPagar);
+    final nuevoSaldo = max(0.0, saldoActual - (_modoMontoLibre ? _montoLibre : capitalPagar));
     final maxCuotas = _cuotasPendientes.length;
 
     return Container(
@@ -227,91 +254,191 @@ class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
             ),
             const SizedBox(height: 20),
 
-            // Selector de Cuotas
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  '¿Cuántas cuotas deseas adelantar?',
-                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                Text(
-                  '$_cantidadSeleccionada de $maxCuotas',
-                  style: AppTheme.monoStyle(color: AppTheme.primary, fontWeight: FontWeight.w800, fontSize: 13),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Controles de selección de cuotas
+            // Selector de Modo (Por Cuotas vs Por Monto Libre)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.borderLight),
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline_rounded, color: AppTheme.primary, size: 28),
-                    onPressed: _cantidadSeleccionada > 1
-                        ? () => setState(() => _cantidadSeleccionada--)
-                        : null,
-                  ),
                   Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppTheme.primary,
-                        inactiveTrackColor: Colors.white12,
-                        thumbColor: AppTheme.primary,
-                        overlayColor: AppTheme.primary.withAlpha(40),
-                        trackHeight: 4,
-                      ),
-                      child: Slider(
-                        value: _cantidadSeleccionada.toDouble(),
-                        min: 1,
-                        max: maxCuotas.toDouble(),
-                        divisions: maxCuotas > 1 ? maxCuotas - 1 : 1,
-                        onChanged: (val) => setState(() => _cantidadSeleccionada = val.round()),
+                    child: InkWell(
+                      onTap: () => setState(() => _modoMontoLibre = false),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: !_modoMontoLibre ? AppTheme.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Por cuotas',
+                            style: TextStyle(
+                              color: !_modoMontoLibre ? Colors.white : AppTheme.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primary, size: 28),
-                    onPressed: _cantidadSeleccionada < maxCuotas
-                        ? () => setState(() => _cantidadSeleccionada++)
-                        : null,
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _modoMontoLibre = true),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _modoMontoLibre ? AppTheme.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Monto libre (\$)',
+                            style: TextStyle(
+                              color: _modoMontoLibre ? Colors.white : AppTheme.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 18),
 
-            // Botones de acceso rápido
-            Row(
-              children: [
-                _buildQuickButton(
-                  label: '1 cuota',
-                  isSelected: _cantidadSeleccionada == 1,
-                  onTap: () => setState(() => _cantidadSeleccionada = 1),
+            if (!_modoMontoLibre) ...[
+              // Selector de Cuotas
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '¿Cuántas cuotas deseas adelantar?',
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  Text(
+                    '$_cantidadSeleccionada de $maxCuotas',
+                    style: AppTheme.monoStyle(color: AppTheme.primary, fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Controles de selección de cuotas
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.borderLight),
                 ),
-                const SizedBox(width: 8),
-                if (maxCuotas > 2) ...[
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline_rounded, color: AppTheme.primary, size: 28),
+                      onPressed: _cantidadSeleccionada > 1
+                          ? () => setState(() => _cantidadSeleccionada--)
+                          : null,
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: AppTheme.primary,
+                          inactiveTrackColor: Colors.white12,
+                          thumbColor: AppTheme.primary,
+                          overlayColor: AppTheme.primary.withAlpha(40),
+                          trackHeight: 4,
+                        ),
+                        child: Slider(
+                          value: _cantidadSeleccionada.toDouble(),
+                          min: 1,
+                          max: maxCuotas.toDouble(),
+                          divisions: maxCuotas > 1 ? maxCuotas - 1 : 1,
+                          onChanged: (val) => setState(() => _cantidadSeleccionada = val.round()),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primary, size: 28),
+                      onPressed: _cantidadSeleccionada < maxCuotas
+                          ? () => setState(() => _cantidadSeleccionada++)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Botones de acceso rápido
+              Row(
+                children: [
                   _buildQuickButton(
-                    label: '${(maxCuotas / 2).ceil()} cuotas (Mitad)',
-                    isSelected: _cantidadSeleccionada == (maxCuotas / 2).ceil(),
-                    onTap: () => setState(() => _cantidadSeleccionada = (maxCuotas / 2).ceil()),
+                    label: '1 cuota',
+                    isSelected: _cantidadSeleccionada == 1,
+                    onTap: () => setState(() => _cantidadSeleccionada = 1),
                   ),
                   const SizedBox(width: 8),
+                  if (maxCuotas > 2) ...[
+                    _buildQuickButton(
+                      label: '${(maxCuotas / 2).ceil()} cuotas (Mitad)',
+                      isSelected: _cantidadSeleccionada == (maxCuotas / 2).ceil(),
+                      onTap: () => setState(() => _cantidadSeleccionada = (maxCuotas / 2).ceil()),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _buildQuickButton(
+                    label: 'Todas ($maxCuotas)',
+                    isSelected: _cantidadSeleccionada == maxCuotas,
+                    onTap: () => setState(() => _cantidadSeleccionada = maxCuotas),
+                  ),
                 ],
-                _buildQuickButton(
-                  label: 'Todas ($maxCuotas)',
-                  isSelected: _cantidadSeleccionada == maxCuotas,
-                  onTap: () => setState(() => _cantidadSeleccionada = maxCuotas),
+              ),
+            ] else ...[
+              // Input monto libre para esta compra
+              const Text(
+                'Monto en pesos a abonar a esta compra:',
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _montoLibreController,
+                keyboardType: TextInputType.number,
+                style: AppTheme.monoStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22),
+                decoration: InputDecoration(
+                  prefixText: '\$ ',
+                  prefixStyle: AppTheme.monoStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 22),
+                  hintText: '0',
+                  hintStyle: AppTheme.monoStyle(color: Colors.white24, fontWeight: FontWeight.w900, fontSize: 22),
+                  filled: true,
+                  fillColor: AppTheme.surfaceColor,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppTheme.borderLight)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppTheme.borderLight)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildQuickButton(
+                    label: 'Saldar compra (${formatCOP(saldoActual)})',
+                    isSelected: _montoLibre == saldoActual,
+                    onTap: () => setState(() {
+                      _montoLibre = saldoActual;
+                      _montoLibreController.text = saldoActual.toInt().toString();
+                    }),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
 
             // Card de Beneficio y Ahorro en Intereses (Estilo Nu / Rappi)
@@ -515,12 +642,22 @@ class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
   Future<void> _confirmarAnticipo(double montoCapital, double ahorro) async {
     setState(() => _processing = true);
     try {
-      final res = await LocalRepository.instance.anticiparCuotas(
-        tarjetaId: widget.tarjetaId,
-        compraId: widget.compra['id'] as int,
-        cantidadCuotas: _cantidadSeleccionada,
-        sobreId: _sobreSeleccionadoId,
-      );
+      final Map<String, dynamic> res;
+      if (_modoMontoLibre) {
+        res = await LocalRepository.instance.abonarACompra(
+          tarjetaId: widget.tarjetaId,
+          compraId: widget.compra['id'] as int,
+          monto: _montoLibre,
+          sobreId: _sobreSeleccionadoId,
+        );
+      } else {
+        res = await LocalRepository.instance.anticiparCuotas(
+          tarjetaId: widget.tarjetaId,
+          compraId: widget.compra['id'] as int,
+          cantidadCuotas: _cantidadSeleccionada,
+          sobreId: _sobreSeleccionadoId,
+        );
+      }
 
       if (res['ok'] == true) {
         if (mounted) {
@@ -545,7 +682,7 @@ class _ModalAnticiparCuotasState extends ConsumerState<ModalAnticiparCuotas> {
                     child: Text(
                       ahorro > 0
                           ? '¡Anticipo exitoso! Pagaste ${formatCOP(montoCapital)} y ahorraste ${formatCOP(ahorro)} en intereses.'
-                          : '¡Anticipo exitoso! Se pagaron $_cantidadSeleccionada cuota(s) (${formatCOP(montoCapital)}).',
+                          : '¡Anticipo exitoso! Se abonaron ${formatCOP(montoCapital)} a la compra.',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                     ),
                   ),
