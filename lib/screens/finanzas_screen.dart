@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../core/formatters.dart';
+import '../core/local_repository.dart';
+import '../core/dao/tarjetas_dao.dart';
 import '../providers/tarjetas_provider.dart';
 import '../providers/ahorros_provider.dart';
 import '../providers/cuentas_cobrar_provider.dart';
+import '../providers/presupuesto_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../models/tarjeta_credito.dart';
 import '../models/bolsillo_ahorro.dart';
 import '../models/cuenta_cobrar.dart';
@@ -119,6 +123,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                     child: _CuotasResumenCard(
                       totalCuotas: totalCuotas,
                       count: compras.length,
+                      onPagarCuotas: () => _mostrarModalPagarCuotasMes(context, ref, compras),
                     ),
                   );
                 },
@@ -162,6 +167,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                   }
                   return _ComprasList(
                     compras: filtradas,
+                    isPagadas: _verPagadas,
                     onRefresh: () {
                       ref.invalidate(tarjetasProvider);
                       ref.invalidate(comprasActivasProvider);
@@ -480,10 +486,18 @@ class _EmptyTarjetas extends StatelessWidget {
 
 // ── Cuotas resumen ────────────────────────────────────────────────────────
 
+// ── Cuotas resumen ────────────────────────────────────────────────────────
+
 class _CuotasResumenCard extends StatelessWidget {
   final double totalCuotas;
   final int count;
-  const _CuotasResumenCard({required this.totalCuotas, required this.count});
+  final VoidCallback? onPagarCuotas;
+
+  const _CuotasResumenCard({
+    required this.totalCuotas,
+    required this.count,
+    this.onPagarCuotas,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -528,6 +542,26 @@ class _CuotasResumenCard extends StatelessWidget {
               ],
             ),
           ),
+          if (count > 0 && onPagarCuotas != null) ...[
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              icon: const Icon(Icons.flash_on_rounded, size: 14, color: Colors.white),
+              label: const Text(
+                'Pagar cuotas',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              onPressed: onPagarCuotas,
+            ),
+          ],
         ],
       ),
     );
@@ -583,10 +617,17 @@ class _SubTabBar extends StatelessWidget {
 
 // ── Compras list ──────────────────────────────────────────────────────────
 
-class _ComprasList extends StatelessWidget {
+class _ComprasList extends ConsumerWidget {
   final List<Map<String, dynamic>> compras;
+  final bool isPagadas;
   final VoidCallback? onRefresh;
-  const _ComprasList({required this.compras, this.onRefresh});
+
+  const _ComprasList({
+    super.key,
+    required this.compras,
+    this.isPagadas = false,
+    this.onRefresh,
+  });
 
   Color _parseColor(String? hexString) {
     if (hexString == null || hexString.isEmpty) return AppTheme.primary;
@@ -599,7 +640,7 @@ class _ComprasList extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -634,7 +675,7 @@ class _ComprasList extends StatelessWidget {
             }
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
             decoration: const BoxDecoration(color: Colors.transparent),
             child: Row(
               children: [
@@ -695,6 +736,29 @@ class _ComprasList extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (!isPagadas) ...[
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.colorIngresos,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          elevation: 0,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => _promptPagoCuotaDirecta(context, ref, c, onRefresh),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_outline_rounded, size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text('Pagar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -702,6 +766,445 @@ class _ComprasList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Helper para pago directo de una cuota ─────────────────────────────────
+
+Future<void> _promptPagoCuotaDirecta(
+  BuildContext context,
+  WidgetRef ref,
+  Map<String, dynamic> c,
+  VoidCallback? onRefresh,
+) async {
+  final tarjetaId = (c['tarjeta_id'] as num?)?.toInt() ?? 0;
+  final compraId = (c['id'] as num?)?.toInt() ?? 0;
+  var cuotaId = (c['cuota_id'] as num?)?.toInt();
+  final montoCuota = (c['valor_cuota'] as num?)?.toDouble() ?? 0.0;
+  final desc = c['descripcion']?.toString() ?? 'Compra';
+  final cuotaActual = (c['cuota_actual'] as num?)?.toInt() ?? 1;
+  final numCuotas = (c['num_cuotas'] as num?)?.toInt() ?? 1;
+
+  if (cuotaId == null || cuotaId <= 0) {
+    final comprasTarjeta = await TarjetasDao.instance.getComprasTarjeta(tarjetaId);
+    final compraOb = comprasTarjeta.firstWhere((x) => x.id == compraId, orElse: () => comprasTarjeta.first);
+    final cuotas = compraOb.cuotas ?? [];
+    final pendiente = cuotas.firstWhere((q) => q.estado == 'PENDIENTE', orElse: () => cuotas.first);
+    cuotaId = pendiente.id;
+  }
+
+  final mes = mesActual();
+  final sobres = await SobresRepository.obtenerSobresDelMes(mes);
+  int? sobreSeleccionadoId;
+
+  if (sobres.isNotEmpty) {
+    for (var s in sobres) {
+      if (s.nombre.toLowerCase().contains('deuda') || s.nombre.toLowerCase().contains('tarjeta')) {
+        sobreSeleccionadoId = s.id;
+        break;
+      }
+    }
+  }
+
+  if (!context.mounted) return;
+
+  await showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.payment_rounded, color: AppTheme.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Confirmar pago de cuota',
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$desc (Cuota $cuotaActual de $numCuotas)',
+              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.bgCanvas,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.borderLight),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Monto a pagar:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text(
+                    formatCOP(montoCuota),
+                    style: AppTheme.monoStyle(color: AppTheme.colorIngresos, fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            if (sobres.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Text('Descontar de un sobre:', style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<int?>(
+                value: sobreSeleccionadoId,
+                dropdownColor: AppTheme.bgCard,
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppTheme.borderLight)),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('No descontar de ningún sobre')),
+                  ...sobres.map((s) => DropdownMenuItem<int?>(
+                    value: s.id,
+                    child: Text('${s.nombre} (${formatCOP(s.disponible)})'),
+                  )),
+                ],
+                onChanged: (v) => setDialogState(() => sobreSeleccionadoId = v),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.colorIngresos,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId!);
+              if (sobreSeleccionadoId != null) {
+                await SobresRepository.registrarGastoDirecto(
+                  sobreSeleccionadoId!,
+                  montoCuota,
+                  'Pago Cuota Tarjeta - $desc',
+                );
+                ref.invalidate(presupuestoProvider(mes));
+              }
+              ref.invalidate(tarjetasProvider);
+              ref.invalidate(comprasActivasProvider);
+              ref.invalidate(todasLasComprasProvider);
+              ref.invalidate(dashboardProvider);
+              if (onRefresh != null) onRefresh();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Cuota $cuotaActual de "$desc" pagada exitosamente.'),
+                    backgroundColor: AppTheme.success,
+                  ),
+                );
+              }
+            },
+            child: const Text('Confirmar Pago', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Modal para pagar todas las cuotas del mes ─────────────────────────────
+
+void _mostrarModalPagarCuotasMes(BuildContext context, WidgetRef ref, List<Map<String, dynamic>> compras) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _ModalPagarCuotasMes(compras: compras),
+  );
+}
+
+class _ModalPagarCuotasMes extends ConsumerStatefulWidget {
+  final List<Map<String, dynamic>> compras;
+  final VoidCallback? onDone;
+
+  const _ModalPagarCuotasMes({required this.compras, this.onDone});
+
+  @override
+  ConsumerState<_ModalPagarCuotasMes> createState() => _ModalPagarCuotasMesState();
+}
+
+class _ModalPagarCuotasMesState extends ConsumerState<_ModalPagarCuotasMes> {
+  late Set<int> _selectedCompraIds;
+  int? _sobreSeleccionadoId;
+  List<Sobre> _sobres = [];
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCompraIds = widget.compras.map((c) => (c['id'] as num).toInt()).toSet();
+    _cargarSobres();
+  }
+
+  Future<void> _cargarSobres() async {
+    final mes = mesActual();
+    final list = await SobresRepository.obtenerSobresDelMes(mes);
+    int? defaultSobre;
+    for (var s in list) {
+      if (s.nombre.toLowerCase().contains('deuda') || s.nombre.toLowerCase().contains('tarjeta')) {
+        defaultSobre = s.id;
+        break;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sobres = list;
+        _sobreSeleccionadoId = defaultSobre;
+      });
+    }
+  }
+
+  double get _totalSeleccionado {
+    double total = 0.0;
+    for (var c in widget.compras) {
+      final id = (c['id'] as num).toInt();
+      if (_selectedCompraIds.contains(id)) {
+        total += ((c['valor_cuota'] as num?)?.toDouble() ?? 0.0);
+      }
+    }
+    return total;
+  }
+
+  Future<void> _pagarCuotasSeleccionadas() async {
+    if (_selectedCompraIds.isEmpty) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      final mes = mesActual();
+      final comprasAPagar = widget.compras.where((c) => _selectedCompraIds.contains((c['id'] as num).toInt())).toList();
+      
+      for (var c in comprasAPagar) {
+        final tarjetaId = (c['tarjeta_id'] as num?)?.toInt() ?? 0;
+        final compraId = (c['id'] as num?)?.toInt() ?? 0;
+        var cuotaId = (c['cuota_id'] as num?)?.toInt();
+        final montoCuota = (c['valor_cuota'] as num?)?.toDouble() ?? 0.0;
+        final desc = c['descripcion']?.toString() ?? 'Compra';
+
+        if (cuotaId == null || cuotaId <= 0) {
+          final comprasTarjeta = await TarjetasDao.instance.getComprasTarjeta(tarjetaId);
+          final compraOb = comprasTarjeta.firstWhere((x) => x.id == compraId, orElse: () => comprasTarjeta.first);
+          final cuotas = compraOb.cuotas ?? [];
+          final pendiente = cuotas.firstWhere((q) => q.estado == 'PENDIENTE', orElse: () => cuotas.first);
+          cuotaId = pendiente.id;
+        }
+
+        await LocalRepository.instance.pagarCuota(tarjetaId, compraId, cuotaId);
+
+        if (_sobreSeleccionadoId != null) {
+          await SobresRepository.registrarGastoDirecto(
+            _sobreSeleccionadoId!,
+            montoCuota,
+            'Pago Cuota Tarjeta - $desc',
+          );
+        }
+      }
+
+      if (_sobreSeleccionadoId != null) {
+        ref.invalidate(presupuestoProvider(mes));
+      }
+
+      ref.invalidate(tarjetasProvider);
+      ref.invalidate(comprasActivasProvider);
+      ref.invalidate(todasLasComprasProvider);
+      ref.invalidate(dashboardProvider);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${comprasAPagar.length} cuotas pagadas exitosamente (${formatCOP(_totalSeleccionado)}).'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+        if (widget.onDone != null) widget.onDone!();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al pagar cuotas: $e'), backgroundColor: AppTheme.danger),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final count = _selectedCompraIds.length;
+
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      decoration: const BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        top: 20,
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.borderLight,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Pagar Cuotas del Mes',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    if (_selectedCompraIds.length == widget.compras.length) {
+                      _selectedCompraIds.clear();
+                    } else {
+                      _selectedCompraIds = widget.compras.map((c) => (c['id'] as num).toInt()).toSet();
+                    }
+                  });
+                },
+                child: Text(
+                  _selectedCompraIds.length == widget.compras.length ? 'Deseleccionar todas' : 'Seleccionar todas',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Selecciona las cuotas que deseas liquidar este mes:',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          // Lista de cuotas
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: widget.compras.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.borderLight),
+              itemBuilder: (ctx, i) {
+                final c = widget.compras[i];
+                final id = (c['id'] as num).toInt();
+                final isSelected = _selectedCompraIds.contains(id);
+                final desc = c['descripcion']?.toString() ?? 'Compra';
+                final tarjeta = c['nombre_tarjeta']?.toString() ?? '';
+                final cuotaActual = (c['cuota_actual'] as num?)?.toInt() ?? 1;
+                final numCuotas = (c['num_cuotas'] as num?)?.toInt() ?? 1;
+                final monto = (c['valor_cuota'] as num?)?.toDouble() ?? 0.0;
+
+                return CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeColor: AppTheme.primary,
+                  value: isSelected,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selectedCompraIds.add(id);
+                      } else {
+                        _selectedCompraIds.remove(id);
+                      }
+                    });
+                  },
+                  title: Text(desc, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+                  subtitle: Text('$tarjeta · Cuota $cuotaActual de $numCuotas', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  secondary: Text(
+                    formatCOP(monto),
+                    style: AppTheme.monoStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Selector de sobre opcional
+          if (_sobres.isNotEmpty) ...[
+            const Text('Descontar de un sobre (opcional):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<int?>(
+              value: _sobreSeleccionadoId,
+              dropdownColor: AppTheme.bgCard,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppTheme.borderLight)),
+              ),
+              items: [
+                const DropdownMenuItem<int?>(value: null, child: Text('No descontar de ningún sobre')),
+                ..._sobres.map((s) => DropdownMenuItem<int?>(
+                  value: s.id,
+                  child: Text('${s.nombre} (${formatCOP(s.disponible)})'),
+                )),
+              ],
+              onChanged: (v) => setState(() => _sobreSeleccionadoId = v),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Botón pagar total
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.colorIngresos,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _isProcessing || _selectedCompraIds.isEmpty ? null : _pagarCuotasSeleccionadas,
+              child: _isProcessing
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.check_circle_rounded, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          count == 0 ? 'Selecciona al menos una cuota' : 'Pagar $count cuotas (${formatCOP(_totalSeleccionado)})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -103,6 +103,12 @@ class MainActivity : FlutterActivity() {
             })
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        eventSink?.success(mapOf("type" to "check_pending"))
+    }
+
     private fun isNotificationServiceEnabled(): Boolean {
         val pkgName = packageName
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false

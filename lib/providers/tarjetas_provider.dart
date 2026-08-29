@@ -24,9 +24,13 @@ final comprasActivasProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
       if (!todasPagadas && c.saldoCapital > 1) {
         CuotaAmortizacion? cuotaActualOb;
         try {
-          cuotaActualOb = cuotas.firstWhere((q) => q.numeroCuota == c.cuotaActual);
+          cuotaActualOb = cuotas.firstWhere((q) => q.numeroCuota == c.cuotaActual && q.estado == 'PENDIENTE');
         } catch (_) {
-          if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
+          try {
+            cuotaActualOb = cuotas.firstWhere((q) => q.estado == 'PENDIENTE');
+          } catch (_) {
+            if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
+          }
         }
         final valorCuota = cuotaActualOb?.valorCuota ?? 0.0;
         activas.add({
@@ -34,12 +38,15 @@ final comprasActivasProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
           'descripcion': c.descripcion,
           'monto_total': c.montoTotal,
           'valor_cuota': valorCuota,
-          'cuota_actual': c.cuotaActual,
+          'cuota_actual': cuotaActualOb?.numeroCuota ?? c.cuotaActual,
           'num_cuotas': c.numCuotas,
           'saldo_capital': c.saldoCapital,
           'nombre_tarjeta': t.nombreTarjeta.isNotEmpty ? t.nombreTarjeta : t.banco,
           'tarjeta_color': t.color,
           'tarjeta_id': t.id,
+          'cuota_id': cuotaActualOb?.id,
+          'fecha_vencimiento': cuotaActualOb?.fechaVencimiento,
+          'tarjeta_obj': t,
         });
       }
     }
@@ -59,9 +66,13 @@ final todasLasComprasProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       
       CuotaAmortizacion? cuotaActualOb;
       try {
-        cuotaActualOb = cuotas.firstWhere((q) => q.numeroCuota == c.cuotaActual);
+        cuotaActualOb = cuotas.firstWhere((q) => q.numeroCuota == c.cuotaActual && q.estado == 'PENDIENTE');
       } catch (_) {
-        if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
+        try {
+          cuotaActualOb = cuotas.firstWhere((q) => q.estado == 'PENDIENTE');
+        } catch (_) {
+          if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
+        }
       }
       final valorCuota = cuotaActualOb?.valorCuota ?? 0.0;
       
@@ -70,12 +81,14 @@ final todasLasComprasProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
         'descripcion': c.descripcion,
         'monto_total': c.montoTotal,
         'valor_cuota': valorCuota,
-        'cuota_actual': c.cuotaActual,
+        'cuota_actual': cuotaActualOb?.numeroCuota ?? c.cuotaActual,
         'num_cuotas': c.numCuotas,
         'saldo_capital': c.saldoCapital,
         'nombre_tarjeta': t.nombreTarjeta.isNotEmpty ? t.nombreTarjeta : t.banco,
         'tarjeta_color': t.color,
         'tarjeta_id': t.id,
+        'cuota_id': cuotaActualOb?.id,
+        'fecha_vencimiento': cuotaActualOb?.fechaVencimiento,
         'tasa_interes_mensual': c.tasaInteresMensual,
         'pagada': todasPagadas || c.saldoCapital <= 1,
         'tarjeta_obj': t,

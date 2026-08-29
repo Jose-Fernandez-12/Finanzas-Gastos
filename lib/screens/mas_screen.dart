@@ -238,7 +238,7 @@ class _AnalyticaPreview extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Resumen Analítica',
+                  'Ver Analíticas',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 18),
