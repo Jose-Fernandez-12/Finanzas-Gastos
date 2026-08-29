@@ -69,7 +69,7 @@ class MainNavigation extends ConsumerStatefulWidget {
   ConsumerState<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends ConsumerState<MainNavigation> {
+class _MainNavigationState extends ConsumerState<MainNavigation> with WidgetsBindingObserver {
   /// Indices mapeados a pantallas reales (FAB en pos. 2 no tiene pantalla)
   /// 0=Inicio, 1=Movimientos, 2=Finanzas, 3=Mas
   int _currentIndex = 0;
@@ -99,11 +99,25 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await NotificationListenerChannel.instance.fetchActiveNotifications();
       _checkPendingTransactions();
       _listenForRealTimeTransactions();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPendingTransactions();
+    }
   }
 
   Future<void> _checkPendingTransactions() async {
