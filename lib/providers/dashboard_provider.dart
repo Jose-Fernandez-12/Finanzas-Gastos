@@ -29,8 +29,8 @@ final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final cupoDispo = (t['cupo_disponible'] as num?)?.toDouble() ?? 0.0;
     deudaTarjetas += (cupoTotal - cupoDispo);
     final cuotas = await DatabaseService.instance.query(
-      "SELECT COALESCE(SUM(valor_cuota), 0) as total FROM cuotas_amortizacion WHERE tarjeta_id = ? AND (strftime('%Y-%m', fecha_vencimiento) = ? OR strftime('%Y-%m', fecha_pago_real) = ?) AND estado IN ('PENDIENTE', 'PAGADA')",
-      [t['id'], mesActual, mesActual]
+      "SELECT SUM(c.valor_cuota) as total FROM cuotas_amortizacion c JOIN compras_tarjeta cp ON c.compra_id = cp.id WHERE c.tarjeta_id = ? AND c.numero_cuota = cp.cuota_actual AND c.estado = 'PENDIENTE' AND strftime('%Y-%m', c.fecha_vencimiento) <= ?",
+      [t['id'], mesActual]
     );
     cuotasTarjetasMes += (cuotas.first['total'] as num?)?.toDouble() ?? 0.0;
   }

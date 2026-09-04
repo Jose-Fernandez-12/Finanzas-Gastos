@@ -32,6 +32,24 @@ final comprasActivasProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
             if (cuotas.isNotEmpty) cuotaActualOb = cuotas.last;
           }
         }
+        
+        if (cuotaActualOb != null && cuotaActualOb.fechaVencimiento.isNotEmpty) {
+          try {
+            final fPago = DateTime.parse("${cuotaActualOb.fechaVencimiento}T00:00:00");
+            DateTime fCorte = DateTime(fPago.year, fPago.month, t.fechaCorte);
+            if (fCorte.isAfter(fPago) || fCorte.isAtSameMomentAs(fPago)) {
+              fCorte = DateTime(fCorte.year, fCorte.month - 1, fCorte.day);
+            }
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            
+            // Si hoy es antes de la fecha de corte, no la mostramos como "activa" para pagar
+            if (today.isBefore(fCorte)) {
+              continue;
+            }
+          } catch (_) {}
+        }
+
         final valorCuota = cuotaActualOb?.valorCuota ?? 0.0;
         activas.add({
           'id': c.id,
