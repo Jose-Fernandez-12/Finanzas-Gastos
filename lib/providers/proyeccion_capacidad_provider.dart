@@ -25,8 +25,8 @@ final proyeccionCapacidadProvider = FutureProvider.family<Map<String, dynamic>, 
   double cuotasTarjetasMes = 0.0;
   for (var t in tarjetasData) {
     final cuotas = await DatabaseService.instance.query(
-      "SELECT COALESCE(SUM(valor_cuota), 0) as total FROM cuotas_amortizacion WHERE tarjeta_id = ? AND (strftime('%Y-%m', fecha_vencimiento) = ? OR strftime('%Y-%m', fecha_pago_real) = ?) AND estado IN ('PENDIENTE', 'PAGADA')",
-      [t['id'], mesProyeccion, mesProyeccion]
+      "SELECT SUM(c.valor_cuota) as total FROM cuotas_amortizacion c JOIN compras_tarjeta cp ON c.compra_id = cp.id WHERE c.tarjeta_id = ? AND c.numero_cuota = cp.cuota_actual AND c.estado = 'PENDIENTE' AND strftime('%Y-%m', c.fecha_vencimiento) <= ?",
+      [t['id'], mesProyeccion]
     );
     cuotasTarjetasMes += (cuotas.first['total'] as num?)?.toDouble() ?? 0.0;
   }

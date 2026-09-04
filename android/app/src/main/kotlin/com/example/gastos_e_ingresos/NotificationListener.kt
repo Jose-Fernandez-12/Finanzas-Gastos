@@ -1,10 +1,17 @@
 package com.example.gastos_e_ingresos
 
 import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -207,7 +214,7 @@ class NotificationListener : NotificationListenerService() {
 
         // 3. Si se parseo exitosamente, guardar como transaccion pendiente
         if (parsed != null) {
-            savePendingTransaction(
+            val wasSaved = savePendingTransaction(
                 appLabel   = appLabel,
                 pkg        = pkg,
                 titulo     = titulo,
@@ -217,8 +224,12 @@ class NotificationListener : NotificationListenerService() {
                 tipoTarjeta= parsed.third,
                 timestamp  = timestamp
             )
-            // Notificar a Flutter si esta corriendo via EventChannel handler en MainActivity
-            MainActivity.sendNotificationEvent(this, pkg, parsed.first, parsed.second, parsed.third, timestamp)
+            if (wasSaved) {
+                // Notificar a Flutter si esta corriendo via EventChannel handler en MainActivity
+                MainActivity.sendNotificationEvent(this, pkg, parsed.first, parsed.second, parsed.third, timestamp)
+                // Mostrar notificación en la barra de estado de Android para que el usuario registre la compra
+                showLocalNotification(parsed.first, parsed.second, parsed.third, appLabel)
+            }
         }
     }
 
@@ -338,7 +349,7 @@ class NotificationListener : NotificationListenerService() {
     private fun savePendingTransaction(
         appLabel: String, pkg: String, titulo: String, cuerpo: String,
         monto: Double, comercio: String, tipoTarjeta: String, timestamp: String
-    ) {
+    ): Boolean {
         val pendingJson = prefs.getString(KEY_PENDING_TRANSACTIONS, "[]")
         val pending = JSONArray(pendingJson)
 
@@ -350,7 +361,7 @@ class NotificationListener : NotificationListenerService() {
             if (p.optString("timestamp").startsWith(timestampMin) &&
                 p.optDouble("monto") == monto) {
                 Log.d(TAG, "Transaccion duplicada (misma app o cruzada) ignorada: $monto en $comercio")
-                return
+                return false
             }
         }
 
@@ -367,5 +378,76 @@ class NotificationListener : NotificationListenerService() {
         pending.put(entry)
         prefs.edit().putString(KEY_PENDING_TRANSACTIONS, pending.toString()).apply()
         Log.d(TAG, "Transaccion pendiente guardada: $monto en $comercio ($tipoTarjeta)")
+        return true
+    }
+
+    private fun showLocalNotification(monto: Double, comercio: String, tipoTarjeta: String, appLabel: String) {
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "transacciones_detectadas_channel"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Transacciones Detectadas",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notificaciones para registrar compras y gastos detectados"
+                    enableVibration(true)
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("from_notification", true)
+            }
+
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                (System.currentTimeMillis() % 100000).toInt(),
+                intent,
+                pendingIntentFlags
+            )
+
+            val tipoTexto = when (tipoTarjeta) {
+                "ingreso" -> "Ingreso detectado"
+                "credito_avance" -> "Avance detectado"
+                "credito" -> "Compra detectada"
+                "debito" -> "Gasto débito detectado"
+                else -> "Transacción detectada"
+            }
+
+            val formatter = java.text.DecimalFormat("#,###")
+            val montoStr = formatter.format(monto).replace(",", ".")
+            val comercioLabel = if (comercio.isNotBlank()) comercio else appLabel
+
+            val builder = NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("$tipoTexto: $comercioLabel")
+                .setContentText("$appLabel: \$$montoStr. Toca para registrarlo en tus finanzas.")
+                .setStyle(
+                    NotificationCompat.BigTextStyle().bigText(
+                        "$appLabel detectó un movimiento por \$$montoStr en $comercioLabel. Toca aquí para clasificarlo y registrarlo."
+                    )
+                )
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+
+            val notificationId = (System.currentTimeMillis() % 100000).toInt()
+            notificationManager.notify(notificationId, builder.build())
+            Log.d(TAG, "Notificacion del sistema lanzada para: $comercioLabel por $montoStr")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error mostrando notificacion local de transaccion", e)
+        }
     }
 }
