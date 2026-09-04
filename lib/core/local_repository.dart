@@ -39,8 +39,8 @@ class LocalRepository {
       final cupoDispo = (t['cupo_disponible'] as num?)?.toDouble() ?? 0.0;
       deudaTarjetas += (cupoTotal - cupoDispo);
       final cuotas = await DatabaseService.instance.query(
-        "SELECT SUM(c.valor_cuota) as total FROM cuotas_amortizacion c JOIN compras_tarjeta cp ON c.compra_id = cp.id WHERE c.tarjeta_id = ? AND c.numero_cuota = cp.cuota_actual AND c.estado = 'PENDIENTE'",
-        [t['id']]
+        "SELECT SUM(c.valor_cuota) as total FROM cuotas_amortizacion c JOIN compras_tarjeta cp ON c.compra_id = cp.id WHERE c.tarjeta_id = ? AND c.numero_cuota = cp.cuota_actual AND c.estado = 'PENDIENTE' AND strftime('%Y-%m', c.fecha_vencimiento) <= ?",
+        [t['id'], mesActual]
       );
       cuotasTarjetasMes += (cuotas.first['total'] as num?)?.toDouble() ?? 0.0;
     }
@@ -738,37 +738,60 @@ class LocalRepository {
         final int compraId = row['compra_id'] as int;
         final double cap = (row['valor_capital'] as num?)?.toDouble() ?? 0.0;
         final double interes = (row['valor_interes'] as num?)?.toDouble() ?? 0.0;
+        final String fechaVenc = row['fecha_vencimiento']?.toString() ?? '';
+        final String mesActual = "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}";
+        
+        // Si la cuota vence este mes o antes, el interés ya se causó y debe pagarse.
+        final bool isCurrentOrPastMonth = fechaVenc.substring(0, 7).compareTo(mesActual) <= 0;
+        final double valorRequerido = isCurrentOrPastMonth ? (cap + interes) : cap;
+        final double interesAhorradoEstaCuota = isCurrentOrPastMonth ? 0.0 : interes;
 
         comprasModificadas.add(compraId);
 
-        if (saldoRestante >= cap - 0.001) {
-          // Liquidar cuota completa (ahorra el 100% del interés programado de esta cuota)
+        if (saldoRestante >= valorRequerido - 0.001) {
+          // Liquidar cuota completa
           await txn.rawUpdate(
             "UPDATE cuotas_amortizacion SET estado = 'PAGADA', fecha_pago_real = date('now') WHERE id = ?",
             [cuotaId]
           );
 
           capitalAmortizadoTotal += cap;
-          interesAhorradoTotal += interes;
-          saldoRestante -= cap;
+          interesAhorradoTotal += interesAhorradoEstaCuota;
+          saldoRestante -= valorRequerido;
           cuotasLiquidadas++;
 
           reduccionCapitalPorCompra[compraId] = (reduccionCapitalPorCompra[compraId] ?? 0.0) + cap;
           cuotasAdelantadasPorCompra[compraId] = (cuotasAdelantadasPorCompra[compraId] ?? 0) + 1;
         } else {
           // Abono parcial a esta cuota
-          final double abonoParcial = saldoRestante;
-          final double nuevoCapitalCuota = max(0.0, cap - abonoParcial);
-          final double nuevoValorCuota = nuevoCapitalCuota + interes;
+          double abonoInteres = 0.0;
+          double abonoCapital = 0.0;
+
+          if (isCurrentOrPastMonth) {
+            // Primero se paga el interés, luego el capital
+            if (saldoRestante >= interes) {
+               abonoInteres = interes;
+               abonoCapital = saldoRestante - interes;
+            } else {
+               abonoInteres = saldoRestante;
+               abonoCapital = 0.0;
+            }
+          } else {
+            abonoCapital = saldoRestante;
+          }
+
+          final double nuevoCapitalCuota = max(0.0, cap - abonoCapital);
+          final double nuevoInteresCuota = max(0.0, interes - abonoInteres);
+          final double nuevoValorCuota = nuevoCapitalCuota + nuevoInteresCuota;
 
           await txn.rawUpdate(
-            "UPDATE cuotas_amortizacion SET valor_capital = ?, valor_cuota = ? WHERE id = ?",
-            [nuevoCapitalCuota, nuevoValorCuota, cuotaId]
+            "UPDATE cuotas_amortizacion SET valor_capital = ?, valor_interes = ?, valor_cuota = ? WHERE id = ?",
+            [nuevoCapitalCuota, nuevoInteresCuota, nuevoValorCuota, cuotaId]
           );
 
-          capitalAmortizadoTotal += abonoParcial;
+          capitalAmortizadoTotal += abonoCapital;
           saldoRestante = 0.0;
-          reduccionCapitalPorCompra[compraId] = (reduccionCapitalPorCompra[compraId] ?? 0.0) + abonoParcial;
+          reduccionCapitalPorCompra[compraId] = (reduccionCapitalPorCompra[compraId] ?? 0.0) + abonoCapital;
           break;
         }
       }
